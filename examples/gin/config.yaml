@@ -1,0 +1,19 @@
+name: simple-server
+
+env:
+  name: local
+  type: local
+log:
+  rootLevel: debug
+
+httpServer:
+  port: 8080
+  bindAddress:
+  basePath: /api/v1/
+  reqLoggerExcludes: [ "/health", "/ready" ]
+  cors:
+    allowOrigins: ["http://localhost:3000"]
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+    allowHeaders: ["Origin", "Content-Length", "Content-Type", "Authorization"]
+    allowCredentials: false
+    allowWildcard: true

@@ -1,0 +1,69 @@
+x-common-variables: &common-variables
+  POSTGRES_DB: fw_test_local
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_HOST: db
+
+services:
+
+  ########################### External Services ################################
+  # ----------------------------------------------------------------------------
+  # Setup the local postgres database.
+  #
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    command: ["postgres", "-c", "log_statement=all"]
+    ports:
+      - "5432:5432"
+    volumes:
+      - "pg_data:/data"
+    environment: *common-variables
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      close:
+        aliases:
+          - postgres
+
+
+  # ----------------------------------------------------------------------------
+  # Setup the local redis server.
+  #
+  redis:
+    image: redis:alpine
+    container_name: redis
+    hostname: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - "redis_data:/data"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      close:
+        aliases:
+          - redis
+
+# ----------------------------------------------------------------------------
+# Networking
+#
+networks:
+  open:
+    driver: bridge
+  close:
+    driver: bridge
+
+# ----------------------------------------------------------------------------
+# Volume Mounts
+#
+volumes:
+  redis_data:
+  pg_data:
