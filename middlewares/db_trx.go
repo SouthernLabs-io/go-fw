@@ -5,18 +5,19 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 type DatabaseTrxMiddleware struct {
 	BaseMiddleware
-	db core.Database
+	db database.DB
 }
 
 func NewDatabaseTrx(
 	conf core.Config,
 	lf *core.LoggerFactory,
-	db core.Database,
+	db database.DB,
 ) *DatabaseTrxMiddleware {
 	return &DatabaseTrxMiddleware{
 		BaseMiddleware{conf, lf.GetLoggerForType(DatabaseTrxMiddleware{})},
@@ -36,7 +37,7 @@ func (m *DatabaseTrxMiddleware) Run(ctx *gin.Context) {
 
 	defer func() {
 		if panicErr := recover(); panicErr != nil {
-			tx := core.GetDBTxFromCtx(ctx)
+			tx := database.GetDBTxFromCtx(ctx)
 			if tx != nil && !tx.IsAutomatic() && !tx.IsClosed() {
 				// Update logger to latest in context
 				logger = core.GetLoggerFromCtx(ctx)
@@ -53,7 +54,7 @@ func (m *DatabaseTrxMiddleware) Run(ctx *gin.Context) {
 
 	ctx.Next()
 
-	tx := core.GetDBTxFromCtx(ctx)
+	tx := database.GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.IsAutomatic() && !tx.IsClosed() {
 		// Update logger to latest in context
 		logger = core.GetLoggerFromCtx(ctx)

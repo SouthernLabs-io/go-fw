@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
@@ -37,7 +38,7 @@ type HealthCheckMiddleware struct {
 }
 
 type HealthCheckMiddlewareParams struct {
-	core.BaseParams
+	di.BaseParams
 
 	HealthChecks []HealthCheckProvider `group:"health_checks"`
 }

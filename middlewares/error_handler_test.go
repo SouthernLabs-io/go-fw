@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/test"
@@ -19,7 +19,7 @@ import (
 func TestErrorHandler(t *testing.T) {
 	conf := test.NewConfig(t.Name())
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
-	ctx := test.NewContext(core.Database{}, lf)
+	ctx := test.NewContext(database.DB{}, lf)
 
 	errMappers := []middlewares.ErrorMapper{
 		middlewares.NewErrorCodeMapper(

@@ -4,6 +4,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 )
 
 type Resource interface {
@@ -11,7 +12,7 @@ type Resource interface {
 }
 
 func ProvideAsResource(provider any, anns ...fx.Annotation) fx.Option {
-	return core.FxProvideAs[Resource](provider, nil, append(anns, fx.ResultTags(`group:"resources"`)))
+	return di.FxProvideAs[Resource](provider, nil, append(anns, fx.ResultTags(`group:"resources"`)))
 }
 
 type Resources []Resource

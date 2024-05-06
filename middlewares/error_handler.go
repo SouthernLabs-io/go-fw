@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -47,7 +48,7 @@ type ErrorHandlerMiddleware struct {
 	errMappers []ErrorMapper
 }
 type ErrorHandlerMiddlewareParams struct {
-	core.BaseParams
+	di.BaseParams
 	ErrorMappers       []ErrorMapper        `group:"error_mappers"`
 	DefaultErrorMapper ErrorResponseBuilder `name:"default_error_mapper" optional:"true"`
 }

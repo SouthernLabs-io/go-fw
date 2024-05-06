@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
@@ -28,7 +29,7 @@ type ReadyCheckMiddleware struct {
 }
 
 type ReadyCheckMiddlewareParams struct {
-	core.BaseParams
+	di.BaseParams
 	LF          *core.LoggerFactory
 	ReadyChecks []ReadyCheckProvider `group:"ready_checks"`
 }

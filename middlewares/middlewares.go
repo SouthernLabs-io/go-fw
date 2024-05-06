@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 )
 
 type MiddlewarePriority int
@@ -40,7 +41,7 @@ func (m *BaseMiddleware) GetLogger() core.Logger {
 }
 
 func ProvideAsMiddleware(provider any, anns ...fx.Annotation) fx.Option {
-	return core.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"middlewares"`)})
+	return di.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"middlewares"`)})
 }
 
 type Middlewares []Middleware

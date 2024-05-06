@@ -7,6 +7,8 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
 )
@@ -48,7 +50,7 @@ type ContextProvider interface {
 type LongRunningWorkerHandler struct {
 	conf    core.Config
 	logger  core.Logger
-	db      core.Database
+	db      database.DB
 	workers []LongRunningWorker
 	sd      fx.Shutdowner
 
@@ -60,7 +62,7 @@ type LongRunningWorkerHandler struct {
 }
 
 type LongRunningWorkerHandlerParams struct {
-	core.BaseParams
+	di.BaseParams
 	Workers []LongRunningWorker `group:"long_running_workers"`
 }
 
@@ -78,7 +80,7 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 func NewLongRunningWorkerHandler(
 	conf core.Config,
 	lf *core.LoggerFactory,
-	db core.Database,
+	db database.DB,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,
 	workers []LongRunningWorker,
@@ -287,10 +289,10 @@ func (h *LongRunningWorkerHandler) Stop(ctx context.Context) {
 }
 
 func ProvideAsLongRunningWorker(provider any, anns ...fx.Annotation) fx.Option {
-	return core.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
+	return di.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
 }
 
-var ModuleWorkerHandler = core.FxProvideAs[WorkerHandler](
+var ModuleWorkerHandler = di.FxProvideAs[WorkerHandler](
 	NewLongRunningWorkerHandlerFx,
 	nil,
 	[]fx.Annotation{fx.ResultTags(`group:"worker_handlers"`)},

@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// CtxKey must be an alias to any and set as string like: ctxKey("lib_logger_factory") for gin.Context.Value to work properly.
+type CtxKey any
+
 type noDeadlineContext struct {
 	context.Context
 }
@@ -36,23 +39,6 @@ func (c *noDeadlineContext) Value(key any) any {
 // NoDeadlineAndNotCancellableContext This creates a context that is not connected to the parent deadline/cancellable behavior.
 func NoDeadlineAndNotCancellableContext(parent context.Context) context.Context {
 	return &noDeadlineContext{parent}
-}
-
-func NewContextWithDeps(
-	parentCtx context.Context,
-	db Database,
-	lf *LoggerFactory,
-) context.Context {
-	var ctx context.Context
-	if parentCtx == nil {
-		ctx = context.Background()
-	} else {
-		ctx = parentCtx
-	}
-
-	ctx = db.SetCtx(ctx)
-	ctx = lf.SetCtx(ctx)
-	return ctx
 }
 
 func CtxSetValue(ctx context.Context, key any, value any) context.Context {

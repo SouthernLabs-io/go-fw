@@ -14,7 +14,7 @@ import (
 	"github.com/southernlabs-io/go-fw/syncmap"
 )
 
-var loggerFactoryCtxKey = ctxKey("lib_logger_factory")
+var loggerFactoryCtxKey = CtxKey("_fw_logger_factory")
 
 // defaultLoggerFactory is the default logger factory used by the package-level functions.
 var defaultLoggerFactory = NewLoggerFactory(NewCoreConfig())

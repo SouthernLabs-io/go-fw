@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 )
 
 type TheStruct struct {
@@ -38,6 +39,7 @@ func TestLevels(t *testing.T) {
 		Levels: map[string]core.LogLevel{
 			"github.com/southernlabs-io":                                              core.LogLevelWarn,
 			"github.com/southernlabs-io/go-fw":                                        core.LogLevelInfo,
+			"github.com/southernlabs-io/go-fw/database":                               core.LogLevelDebug,
 			"github.com/southernlabs-io/go-fw/core":                                   core.LogLevelDebug,
 			"github.com/southernlabs-io/go-fw/core.AWSSecretsManager":                 core.LogLevelTrace,
 			"github.com/southernlabs-io/go-fw/core_test":                              core.LogLevelDebug,
@@ -100,7 +102,7 @@ func TestLevels(t *testing.T) {
 	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by type package match
-	l = lf.GetLoggerForType(core.Database{})
+	l = lf.GetLoggerForType(database.DB{})
 	require.NotZero(t, l)
 	require.Equal(t, core.LogLevelDebug, l.Level())
 

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx/fxtest"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/redis"
 )
 
@@ -22,8 +23,8 @@ type TargetBase struct {
 	Ctx  context.Context
 	Conf core.Config
 
-	DB    core.Database `optional:"true"`
-	Redis redis.Redis   `optional:"true"`
+	DB    database.DB `optional:"true"`
+	Redis redis.Redis `optional:"true"`
 
 	HTTPHandler core.HTTPHandler `optional:"true"`
 }

@@ -1,21 +1,23 @@
-package core
+package di
 
 import (
 	"reflect"
 
 	"go.uber.org/fx"
 
+	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 type BaseParams struct {
 	fx.In
-	LF           *LoggerFactory
+	LF           *core.LoggerFactory
 	FxLifecycle  fx.Lifecycle
 	FxShutdowner fx.Shutdowner
 
-	Conf Config
-	DB   Database `optional:"true"`
+	Conf core.Config
+	DB   database.DB `optional:"true"`
 }
 
 func FxProvideAs[I any](provider any, tAnns []fx.Annotation, iAnns []fx.Annotation) fx.Option {

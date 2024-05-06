@@ -8,16 +8,17 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
-func NewTestDatabase(conf core.Config, lf *core.LoggerFactory) core.Database {
+func NewTestDatabase(conf core.Config, lf *core.LoggerFactory) database.DB {
 	if conf.Env.Type != core.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 
 	dbName := CreateTestDBName(conf)
-	postgresDB := core.MustOpenGORM(conf, "postgres", lf)
+	postgresDB := database.MustOpenGORM(conf, "postgres", lf)
 	lf.GetLogger().Infof("Resetting DB: %s", dbName)
 	if err := postgresDB.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to drop db: %s, error: %w", dbName, err))
@@ -25,8 +26,8 @@ func NewTestDatabase(conf core.Config, lf *core.LoggerFactory) core.Database {
 	if err := postgresDB.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to create db: %s, error: %w", dbName, err))
 	}
-	db := core.MustOpenGORM(conf, dbName, lf)
-	return core.Database{
+	db := database.MustOpenGORM(conf, dbName, lf)
+	return database.DB{
 		DB:     db,
 		DbName: dbName,
 	}
@@ -66,14 +67,14 @@ func CreateTestDBName(conf core.Config) string {
 	)
 }
 
-func OnTestDBStop(conf core.Config, db core.Database, lf *core.LoggerFactory) error {
-	err := core.OnDBStop(db)
+func OnTestDBStop(conf core.Config, db database.DB, lf *core.LoggerFactory) error {
+	err := database.OnDBStop(db)
 	if err != nil {
 		return err
 	}
 
 	dbName := db.DbName
-	postgresDB := core.MustOpenGORM(conf, "postgres", lf)
+	postgresDB := database.MustOpenGORM(conf, "postgres", lf)
 	lf.GetLogger().Infof("Dropping DB: %s", dbName)
 	if err := postgresDB.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to drop db: %s, error: %w", dbName, err))

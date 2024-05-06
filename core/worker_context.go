@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var workerInfoKey = ctxKey("lib_worker")
+var workerInfoKey = CtxKey("_fw_worker")
 
 type _WorkerInfo struct {
 	Name string

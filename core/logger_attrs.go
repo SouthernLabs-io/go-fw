@@ -5,7 +5,7 @@ import (
 	"log/slog"
 )
 
-var loggerAttrsCtxKey = ctxKey("lib_logger_attrs")
+var loggerAttrsCtxKey = CtxKey("_fw_logger_attrs")
 
 // GetLoggerAttrsFromCtx returns the attributes from the context, or nil if there are none.
 func GetLoggerAttrsFromCtx(ctx ValueContext) []slog.Attr {

@@ -1,4 +1,4 @@
-package core
+package database
 
 import (
 	"context"
@@ -16,12 +16,13 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 var (
-	DBCtxKey   = ctxKey("lib_db")
-	DBTxCtxKey = ctxKey("lib_db_tx")
+	DBCtxKey   = core.CtxKey("_fw_db")
+	DBTxCtxKey = core.CtxKey("_fw_db_tx")
 )
 
 const (
@@ -29,12 +30,12 @@ const (
 	ErrCodeRollbackFailed = "DB_ROLLBACK_FAILED"
 )
 
-type Database struct {
+type DB struct {
 	*gorm.DB
 	DbName string
 }
 
-func CreateDBName(conf Config) string {
+func CreateDBName(conf core.Config) string {
 	return strings.ReplaceAll(
 		strings.ToLower(fmt.Sprintf("%s_%s", conf.Name, conf.Env.Name)),
 		"-",
@@ -42,26 +43,26 @@ func CreateDBName(conf Config) string {
 	)
 }
 
-// NewDatabase creates a new database instance
-func NewDatabase(conf Config, lf *LoggerFactory) Database {
-	if conf.Env.Type == EnvTypeTest {
+// NewDB creates a new database instance
+func NewDB(conf core.Config, lf *core.LoggerFactory) DB {
+	if conf.Env.Type == core.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 
 	dbName := CreateDBName(conf)
 	db := MustOpenGORM(conf, dbName, lf)
-	return Database{
+	return DB{
 		DB:     db,
 		DbName: dbName,
 	}
 }
 
-func (d Database) SetCtx(ctx context.Context) context.Context {
+func (d DB) SetCtx(ctx context.Context) context.Context {
 	if d.DB == nil {
 		return ctx
 	}
 
-	return CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
+	return core.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
 }
 
 func GetDBFromCtx(ctx context.Context) *gorm.DB {
@@ -74,7 +75,7 @@ func GetDBFromCtx(ctx context.Context) *gorm.DB {
 	return nil
 }
 
-func (d Database) HealthCheck() error {
+func (d DB) HealthCheck() error {
 	return d.Exec("SELECT 1").Error
 }
 
@@ -103,11 +104,11 @@ func (t *DBTx) DeferredCommitOrRollback(err *error) {
 		*err = errors.Newf(errors.ErrCodePanic, "panic in transaction: %v", r)
 		// FIXME: a panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
 		// log it here and kill the app, because it will leak memory otherwise
-		var logger Logger
+		var logger core.Logger
 		if t.Statement != nil && t.Statement.Context != nil {
-			logger = GetLoggerFromCtx(t.Statement.Context)
+			logger = core.GetLoggerFromCtx(t.Statement.Context)
 		} else {
-			logger = GetLogger()
+			logger = core.GetLogger()
 		}
 		logger.Errorf(
 			`A panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
@@ -119,11 +120,11 @@ Killing the process, because it will leak memory otherwise
 	}
 	if *err != nil {
 		if rollbackErr := t.Rollback().Error; rollbackErr != nil {
-			var logger Logger
+			var logger core.Logger
 			if t.Statement != nil && t.Statement.Context != nil {
-				logger = GetLoggerFromCtx(t.Statement.Context)
+				logger = core.GetLoggerFromCtx(t.Statement.Context)
 			} else {
-				logger = GetLoggerFromCtx(context.Background())
+				logger = core.GetLoggerFromCtx(context.Background())
 			}
 			logger.ErrorE(errors.Newf(ErrCodeRollbackFailed, "failed to rollback on error: %w,\n rollback error: %w", *err, rollbackErr))
 		}
@@ -140,7 +141,7 @@ func (t *DBTx) Commit() *gorm.DB {
 		t.DB = &gorm.DB{Error: sql.ErrTxDone}
 	}()
 	if t.parentTx != nil {
-		GetLoggerFromCtx(t.DB.Statement.Context).Debugf("SubTx: release savepoint: %s", t.savePoint)
+		core.GetLoggerFromCtx(t.DB.Statement.Context).Debugf("SubTx: release savepoint: %s", t.savePoint)
 		return t.DB.Exec("RELEASE SAVEPOINT " + t.savePoint)
 	}
 	return t.DB.Commit()
@@ -153,7 +154,7 @@ func (t *DBTx) Rollback() *gorm.DB {
 		t.DB = &gorm.DB{Error: sql.ErrTxDone}
 	}()
 	if t.parentTx != nil {
-		GetLoggerFromCtx(t.DB.Statement.Context).Infof("SubTx: rollback to savepoint: %s", t.savePoint)
+		core.GetLoggerFromCtx(t.DB.Statement.Context).Infof("SubTx: rollback to savepoint: %s", t.savePoint)
 		return t.parentTx.RollbackTo(t.savePoint)
 	}
 	return t.DB.Rollback()
@@ -174,7 +175,7 @@ func InTx(ctx context.Context) *DBTx {
 	// check if there is one already
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {
-		GetLoggerFromCtx(ctx).Debugf("tx found in ctx, returning it!")
+		core.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, returning it!")
 		return tx
 	}
 
@@ -191,7 +192,7 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {
 		savePoint := fmt.Sprintf("sub_%d_%d", time.Now().UnixNano(), rand.Uint32())
-		GetLoggerFromCtx(ctx).Debugf("tx found in ctx, creating a sub tx with savepoint: %s", savePoint)
+		core.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, creating a sub tx with savepoint: %s", savePoint)
 		err := tx.DB.Exec("SAVEPOINT " + savePoint).Error
 		if err != nil {
 			panic(errors.NewUnknownf("failed to create a save point in the db transaction: %w", err))
@@ -211,12 +212,12 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	}
 
 	tx = &DBTx{DB: db.Begin(txOptions...)}
-	ctx = CtxSetValue(ctx, DBTxCtxKey, tx)
+	ctx = core.CtxSetValue(ctx, DBTxCtxKey, tx)
 
 	return tx, ctx
 }
 
-func MustOpenGORM(conf Config, dbName string, lf *LoggerFactory) *gorm.DB {
+func MustOpenGORM(conf core.Config, dbName string, lf *core.LoggerFactory) *gorm.DB {
 	dbConf := conf.Database
 	dsn := fmt.Sprintf("host='%s' user='%s' password='%s' dbname='%s' port=%d",
 		dbConf.Host,
@@ -225,7 +226,7 @@ func MustOpenGORM(conf Config, dbName string, lf *LoggerFactory) *gorm.DB {
 		dbName,
 		dbConf.Port)
 	gormConf := gorm.Config{
-		Logger: NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
+		Logger: core.NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
 		NowFunc: func() time.Time {
 			// Return time with microsecond precision. Postgres timestamp type has microsecond precision.
 			return time.UnixMicro(time.Now().UnixMicro())
@@ -245,11 +246,11 @@ func MustOpenGORM(conf Config, dbName string, lf *LoggerFactory) *gorm.DB {
 		dsn = strings.ReplaceAll(dsn, "'"+dbConf.Pass+"'", "*")
 		panic(errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err))
 	}
-	lf.GetLogger().Infof("Database connection established: \"%s\"", dbName)
+	lf.GetLogger().Infof("DB connection established: \"%s\"", dbName)
 	return db
 }
 
-func OnDBStop(db Database) error {
+func OnDBStop(db DB) error {
 	sqlDB, err := db.DB.DB()
 	if err != nil {
 		return err
@@ -257,4 +258,4 @@ func OnDBStop(db Database) error {
 	return sqlDB.Close()
 }
 
-var ModuleDB = fx.Provide(fx.Annotate(NewDatabase, fx.OnStop(OnDBStop)))
+var Module = fx.Provide(fx.Annotate(NewDB, fx.OnStop(OnDBStop)))

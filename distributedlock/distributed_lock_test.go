@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/redis"
@@ -42,7 +42,7 @@ func setupRedis(t *testing.T) (redis.Redis, context.Context) {
 			t.Error(err)
 		}
 	})
-	return rds, test.NewContext(core.Database{}, lf)
+	return rds, test.NewContext(database.DB{}, lf)
 }
 
 func TestLockOneTimeUse(t *testing.T) {

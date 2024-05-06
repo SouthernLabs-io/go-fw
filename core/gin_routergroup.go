@@ -80,7 +80,7 @@ func NewGinRouterGroup(routerGroup *gin.RouterGroup) GinRouterGroup {
 	return g
 }
 
-var routeMetadataCtxKey = ctxKey("lib_route_metadata")
+var routeMetadataCtxKey = CtxKey("_fw_route_metadata")
 
 func GetPathMetaFromCtx(ctx *gin.Context) []any {
 	if meta, exists := ctx.Get(routeMetadataCtxKey.(string)); exists {
