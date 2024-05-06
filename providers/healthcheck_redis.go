@@ -1,8 +1,8 @@
 package providers
 
 import (
-	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/redis"
+	"github.com/southernlabs-io/go-fw/rest/middlewares"
 )
 
 type RedisHealthCheckProvider struct {

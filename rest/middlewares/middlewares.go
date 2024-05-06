@@ -8,6 +8,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/di"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type MiddlewarePriority int
@@ -26,7 +27,7 @@ const (
 )
 
 type Middleware interface {
-	Setup(httpHandler core.HTTPHandler)
+	Setup(httpHandler rest.HTTPHandler)
 	Priority() MiddlewarePriority
 	GetLogger() core.Logger
 }
@@ -51,7 +52,7 @@ func NewMiddlewares(deps struct {
 
 	LF          *core.LoggerFactory
 	Middlewares []Middleware `group:"middlewares"`
-	HTTPHandler core.HTTPHandler
+	HTTPHandler rest.HTTPHandler
 }) Middlewares {
 	// We want a stable order
 	slices.SortFunc(deps.Middlewares, func(a, b Middleware) int {
@@ -83,7 +84,7 @@ func NewMiddlewares(deps struct {
 	return deps.Middlewares
 }
 
-func (ms Middlewares) Setup(httpHandler core.HTTPHandler) {
+func (ms Middlewares) Setup(httpHandler rest.HTTPHandler) {
 	for _, middleware := range ms {
 		t := reflect.TypeOf(middleware).Elem()
 		middleware.GetLogger().Debugf("Setting up middleware %s.%s", t.PkgPath(), t.Name())

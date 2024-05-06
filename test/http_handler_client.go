@@ -11,17 +11,17 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 // HTTPHandlerClient is a client for testing HTTPHandler implementations.
 type HTTPHandlerClient struct {
 	t           *testing.T
-	httpHandler core.HTTPHandler
+	httpHandler rest.HTTPHandler
 	headers     http.Header
 }
 
-func NewHTTPClient(t *testing.T, httpHandler core.HTTPHandler) *HTTPHandlerClient {
+func NewHTTPClient(t *testing.T, httpHandler rest.HTTPHandler) *HTTPHandlerClient {
 	return &HTTPHandlerClient{
 		t:           t,
 		httpHandler: httpHandler,

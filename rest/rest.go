@@ -3,12 +3,11 @@ package rest
 import (
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/di"
 )
 
 type Resource interface {
-	Setup(httpHandler core.HTTPHandler)
+	Setup(httpHandler HTTPHandler)
 }
 
 func ProvideAsResource(provider any, anns ...fx.Annotation) fx.Option {
@@ -19,17 +18,20 @@ type Resources []Resource
 
 func NewResources(in struct {
 	fx.In
-	Resources   []Resource       `group:"resources"`
-	HTTPHandler core.HTTPHandler `optional:"true"`
+	Resources   []Resource  `group:"resources"`
+	HTTPHandler HTTPHandler `optional:"true"`
 }) Resources {
 	Resources(in.Resources).Setup(in.HTTPHandler)
 	return in.Resources
 }
 
-func (rs Resources) Setup(httpHandler core.HTTPHandler) {
+func (rs Resources) Setup(httpHandler HTTPHandler) {
 	for _, r := range rs {
 		r.Setup(httpHandler)
 	}
 }
 
-var Module = fx.Invoke(NewResources)
+var Module = fx.Options(
+	fx.Invoke(NewResources),
+	fx.Provide(NewHTTPHandler),
+)

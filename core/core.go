@@ -18,7 +18,6 @@ var Module = fx.Options(
 	fx.Provide(NewAWSSecretsManager),
 	fx.Provide(NewConfig),
 	fx.Provide(NewCoreConfig),
-	fx.Provide(NewHTTPHandler),
 	fx.Provide(NewLoggerFactory),
 	fx.Provide(NewSlackClient),
 	fx.Provide(NewSlackFxLifecycleLoggerInterceptor),

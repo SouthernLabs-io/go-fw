@@ -12,6 +12,7 @@ import (
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
+	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -54,7 +55,7 @@ func NewHealthCheck(conf core.Config, lf *core.LoggerFactory, healthChecks []Hea
 	}
 }
 
-func (m *HealthCheckMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *HealthCheckMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	rel, err := filepath.Rel(httpHandler.BasePath, "/health")
 	if err != nil {
 		panic(errors.NewUnknownf("failed to get relative path, error: %w", err))

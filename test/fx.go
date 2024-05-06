@@ -11,6 +11,7 @@ import (
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/redis"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type Target interface {
@@ -26,7 +27,7 @@ type TargetBase struct {
 	DB    database.DB `optional:"true"`
 	Redis redis.Redis `optional:"true"`
 
-	HTTPHandler core.HTTPHandler `optional:"true"`
+	HTTPHandler rest.HTTPHandler `optional:"true"`
 }
 
 func (f TargetBase) GetBase() TargetBase {

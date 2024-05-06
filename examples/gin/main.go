@@ -6,8 +6,8 @@ import (
 	"github.com/southernlabs-io/go-fw/bootstrap"
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest/middlewares"
 )
 
 func main() {

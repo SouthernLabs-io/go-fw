@@ -5,9 +5,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
-	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/providers"
 	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest/middlewares"
 )
 
 type ServeCommand struct {
@@ -38,7 +38,7 @@ func (s *ServeCommand) Run() CommandRunner {
 		fx.In
 
 		Conf        core.Config
-		HTTPHandler core.HTTPHandler //It is here for the container to initialize it
+		HTTPHandler rest.HTTPHandler //It is here for the container to initialize it
 	}) {
 		logger := core.GetLoggerForType(s)
 		if dep.Conf.Datadog.Tracing {

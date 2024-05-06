@@ -2,7 +2,7 @@ package providers
 
 import (
 	"github.com/southernlabs-io/go-fw/database"
-	"github.com/southernlabs-io/go-fw/middlewares"
+	"github.com/southernlabs-io/go-fw/rest/middlewares"
 )
 
 type DatabaseHealthCheckProvider struct {

@@ -12,7 +12,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/middlewares"
+	"github.com/southernlabs-io/go-fw/rest/middlewares"
 	"github.com/southernlabs-io/go-fw/test"
 )
 

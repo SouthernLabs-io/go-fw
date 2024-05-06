@@ -7,6 +7,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type AuthZProvider interface {
@@ -31,7 +32,7 @@ func NewAuthZ(
 	}
 }
 
-func (m *AuthZMiddleware) Setup(core.HTTPHandler) {
+func (m *AuthZMiddleware) Setup(rest.HTTPHandler) {
 }
 
 func (m *AuthZMiddleware) Priority() MiddlewarePriority {

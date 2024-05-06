@@ -44,9 +44,9 @@ func (w *SimpleWorker) Run(ctx context.Context) error {
 
 var _ worker.LongRunningWorker = (*SimpleWorker)(nil)
 
-func NewSimpleWorker(logger core.Logger) *SimpleWorker {
+func NewSimpleWorker(lf *core.LoggerFactory) *SimpleWorker {
 	wf := &SimpleWorker{
-		logger: logger,
+		logger: lf.GetLoggerForType(SimpleWorker{}),
 		id:     uuid.NewString(),
 	}
 	return wf

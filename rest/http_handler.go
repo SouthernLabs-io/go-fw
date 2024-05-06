@@ -1,4 +1,4 @@
-package core
+package rest
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"go.uber.org/fx"
 	gintrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gin-gonic/gin"
 
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -22,15 +23,15 @@ type HTTPHandler struct {
 
 // NewHTTPHandler creates a new request handler
 func NewHTTPHandler(
-	conf Config,
-	lf *LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 	lc fx.Lifecycle,
 ) HTTPHandler {
 	logger := lf.GetLoggerForType(HTTPHandler{})
 	ginLogger := lf.GetLoggerForType(gin.Engine{})
-	gin.DefaultWriter = NewDefaultGinWriter(ginLogger)
-	gin.DefaultErrorWriter = NewDefaultErrorGinWriter(ginLogger)
-	if conf.Env.Type == EnvTypeProd {
+	gin.DefaultWriter = core.NewDefaultGinWriter(ginLogger)
+	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(ginLogger)
+	if conf.Env.Type == core.EnvTypeProd {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)

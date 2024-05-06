@@ -5,9 +5,10 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
-func NewTestHTTPHandler(conf core.Config, lf *core.LoggerFactory) core.HTTPHandler {
+func NewTestHTTPHandler(conf core.Config, lf *core.LoggerFactory) rest.HTTPHandler {
 	ginLogger := lf.GetLoggerForType(&gin.Engine{})
 	gin.DefaultWriter = core.NewDefaultGinWriter(ginLogger)
 	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(ginLogger)
@@ -17,9 +18,9 @@ func NewTestHTTPHandler(conf core.Config, lf *core.LoggerFactory) core.HTTPHandl
 	engine.ContextWithFallback = true
 
 	basePath := conf.HttpServer.BasePath
-	root := core.NewGinRouterGroup(engine.Group(basePath))
+	root := rest.NewGinRouterGroup(engine.Group(basePath))
 
-	return core.HTTPHandler{
+	return rest.HTTPHandler{
 		Engine:   engine,
 		Root:     root,
 		BasePath: "",

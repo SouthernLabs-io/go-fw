@@ -12,6 +12,7 @@ import (
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
+	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -49,7 +50,7 @@ func NewReadyCheck(
 	}
 }
 
-func (m *ReadyCheckMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *ReadyCheckMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	rel, err := filepath.Rel(httpHandler.BasePath, "/ready")
 	if err != nil {
 		panic(errors.NewUnknownf("failed to get relative path, error: %w", err))

@@ -5,6 +5,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
@@ -42,7 +43,7 @@ func (w *ServeWorkCommand) Run() CommandRunner {
 		fx.In
 
 		Conf          core.Config
-		HTTPHandler   core.HTTPHandler       //It is here for the container to initialize it
+		HTTPHandler   rest.HTTPHandler       //It is here for the container to initialize it
 		WorkerHandler []worker.WorkerHandler `group:"worker_handlers"` //It is here for the container to initialize it
 	}) {
 		logger := core.GetLoggerForType(w)

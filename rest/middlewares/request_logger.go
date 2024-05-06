@@ -13,6 +13,7 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type RequestLoggerMiddleware struct {
@@ -42,7 +43,7 @@ func NewRequestLogger(conf core.Config, lf *core.LoggerFactory) *RequestLoggerMi
 	}
 }
 
-func (m *RequestLoggerMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *RequestLoggerMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 

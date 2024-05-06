@@ -12,6 +12,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/syncmap"
 )
 
@@ -93,7 +94,7 @@ func NewAuthN(
 	}
 }
 
-func (m *AuthNMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *AuthNMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	httpHandler.Root.Use(m.Require)
 }
 

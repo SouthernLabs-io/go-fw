@@ -13,6 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type ErrorResponseBuilder = func(*gin.Error) (body any, status int, buildErr error)
@@ -81,7 +82,7 @@ func NewErrorHandler(
 	}
 }
 
-func (m *ErrorHandlerMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *ErrorHandlerMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 

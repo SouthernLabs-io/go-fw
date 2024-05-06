@@ -7,6 +7,7 @@ import (
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type DatabaseTrxMiddleware struct {
@@ -25,7 +26,7 @@ func NewDatabaseTrx(
 	}
 }
 
-func (m *DatabaseTrxMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *DatabaseTrxMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 

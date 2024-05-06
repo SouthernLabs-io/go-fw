@@ -9,6 +9,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type PanicRecoveryMiddleware struct {
@@ -28,7 +29,7 @@ func (m *PanicRecoveryMiddleware) Priority() MiddlewarePriority {
 	return MiddlewarePriorityHighest + 1
 }
 
-func (m *PanicRecoveryMiddleware) Setup(httpHandler core.HTTPHandler) {
+func (m *PanicRecoveryMiddleware) Setup(httpHandler rest.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 
