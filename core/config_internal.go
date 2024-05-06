@@ -2,69 +2,115 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/iancoleman/strcase"
 	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/cast"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
-// findConfigFile calls the recursiveFileFinder, to find a config file. If the file is not found, an os.ErrNotExist will be returned.
+// findConfigFile calls the recursiveFileFinder, to find a config file in Test model.
+// If the file is not found, an os.ErrNotExist will be returned.
 func findConfigFile(fileName string) (string, error) {
-	return recursiveFileFinder(fileName, "")
-}
-
-// recursiveFileFinder will traverse the tree upwards until a go.mod file is found in test mode. An os.ErrNotExist will be returned if
-// it was not found.
-func recursiveFileFinder(fileName string, prefix string) (string, error) {
-	filePath, err := filepath.Abs(prefix + fileName)
+	if testing.Testing() {
+		return recursiveFileFinder(fileName, "")
+	}
+	err := statFile(fileName)
 	if err != nil {
 		return "", err
 	}
-	if filePath == "/"+fileName {
-		return "", os.ErrNotExist
-	}
-	if _, err = os.Stat(filePath); err != nil {
+	return fileName, err
+}
+
+// statFile will check if the file exists.
+func statFile(filePath string) error {
+	if _, err := os.Stat(filePath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return "", errors.NewUnknownf("failed to stat file: %s, error: %w", filePath, err)
+			return errors.NewUnknownf("failed to stat file: %s, error: %w", filePath, err)
 		}
-		// This asserts the application is not test mode before it walks up the tree to find a go.mod file.
-		if !testing.Testing() {
-			return "", os.ErrNotExist
-		}
-		if _, err = os.Stat(prefix + "go.mod"); err != nil {
-			if !errors.Is(err, os.ErrNotExist) {
-				return "", errors.NewUnknownf("failed to stat file: go.mod, error: %w", err)
-			}
-			return recursiveFileFinder(fileName, "../"+prefix)
-		}
-		return "", os.ErrNotExist
+		return os.ErrNotExist
+	}
+	return nil
+}
+
+func absFile(relFilePath string) (string, error) {
+	filePath, err := filepath.Abs(relFilePath)
+	if err != nil {
+		return "", errors.NewUnknownf("failed to get absolute path for file: %s, error: %w", relFilePath, err)
 	}
 	return filePath, nil
 }
 
-func loadConfig(conf any, preprocess func(v *viper.Viper, structKeys map[string]bool)) {
-	v := viper.New()
-
-	dotEnvFile := ".env"
-	if testing.Testing() {
-		dotEnvFile = ".env.test"
+// recursiveFileFinder will traverse the filesystem looking for a file with the given name.
+// The algorithm to search is as follows:
+//
+//  1. Check if the file exists in a sub-folder called test.
+//  2. Check if the file exists in current folder.
+//  3. Check if the current folder has a go.mod file, if not, then step one level up and repeat the process.
+//
+// An os.ErrNotExist will be returned if it was not found.
+func recursiveFileFinder(fileName string, prefix string) (string, error) {
+	// 1. Check if the file exists in a sub-folder called test.
+	filePath, err := absFile(filepath.Join(prefix, "test", fileName))
+	if err != nil {
+		return "", err
 	}
 
-	dotEnvPath, err := findConfigFile(dotEnvFile)
+	if err = statFile(filePath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		// 2. Check if the file exists in current folder.
+		filePath, err = absFile(filepath.Join(prefix, fileName))
+		if err != nil {
+			return "", err
+		}
+		if err = statFile(filePath); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return "", err
+			}
+
+			// 3. Check if the current folder has a go.mod file, if not, then step one level up and repeat the process.
+			filePath, err = absFile(filepath.Join(prefix, "go.mod"))
+			if err != nil {
+				return "", err
+			}
+			if err = statFile(filePath); err != nil {
+				if !errors.Is(err, os.ErrNotExist) {
+					return "", err
+				}
+				// go.mod does not exist in the current folder, step one level up and repeat the process.
+				// But first check if we are at the root of the filesystem.
+				if string(filepath.Separator) == filepath.Base(filePath) {
+					return "", os.ErrNotExist
+				}
+				return recursiveFileFinder(fileName, "../"+prefix)
+			} else {
+				// go.mod exists in the current folder, but the file was not found.
+				return "", os.ErrNotExist
+			}
+		}
+	}
+
+	// File found!
+	return filePath, nil
+}
+
+func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
+	dotEnvPath, err := findConfigFile(".env")
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			panic(errors.NewUnknownf("failed to find dot env file, error: %w", err))
 		}
 	} else {
+		fmt.Printf("[%T] Loading dot env file: %s\n", *conf, dotEnvPath)
 		err = godotenv.Load(dotEnvPath)
 		if err != nil {
 			panic(errors.NewUnknownf("failed to load dot env file: %s, error: %w", dotEnvPath, err))
@@ -73,136 +119,116 @@ func loadConfig(conf any, preprocess func(v *viper.Viper, structKeys map[string]
 
 	yamlConfPath, err := findConfigFile("config.yaml")
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			panic(errors.NewUnknownf("failed to read config.yaml, error: %w", err))
-		}
-	} else {
-		v.SetConfigFile(yamlConfPath)
-		err = v.ReadInConfig()
-		if err != nil {
-			panic(errors.NewUnknownf("failed to load config file: %s, error: %w", yamlConfPath, err))
-		}
+		panic(errors.NewUnknownf("failed to read config.yaml, error: %w", err))
 	}
 
-	structKeys, err := getStructKeys(v, conf)
+	fmt.Printf("[%T] Loading config file: %s\n", *conf, yamlConfPath)
+	yamlBytes, err := os.ReadFile(yamlConfPath)
 	if err != nil {
-		panic(errors.NewUnknownf("failed to get struct keys for: %T, error: %w", conf, err))
+		panic(errors.NewUnknownf("failed to read config.yaml, error: %w", err))
 	}
 
-	err = bindStructKeys(v, structKeys)
-	if err != nil {
-		panic(errors.NewUnknownf("failed to bind struct keys from os.Environ(), error: %w", err))
-	}
-
-	if preprocess != nil {
-		preprocess(v, structKeys)
-	}
-
-	err = v.Unmarshal(
-		conf,
-		viper.DecodeHook(
-			mapstructure.ComposeDecodeHookFunc(
-				mapstructure.StringToTimeDurationHookFunc(),
-				mapstructure.StringToSliceHookFunc(","),
-				mapstructure.TextUnmarshallerHookFunc(),
-			),
-		),
-	)
+	// Unmarshal to a map for easier manipulation
+	confMap := make(map[string]any)
+	err = yaml.Unmarshal(yamlBytes, &confMap)
 	if err != nil {
 		panic(errors.NewUnknownf("failed to unmarshal config to struct: %T, error: %w", conf, err))
 	}
+
+	// Parse current Environment variables
+	envMap := make(map[string]string)
+	for _, envPair := range os.Environ() {
+		key, val, found := strings.Cut(envPair, "=")
+		if !found {
+			println("Failed to parse env pair: ", envPair, ", skipping it")
+			continue
+		}
+		envMap[strings.ToLower(key)] = val
+	}
+
+	// Bind environment variables to the config map
+	var bindEnvVars func(acc string, m map[string]any)
+	bindEnvVars = func(acc string, m map[string]any) {
+		for key, val := range m {
+			switch v := val.(type) {
+			case map[string]any:
+				bindEnvVars(acc+strings.ToLower(key)+"_", v)
+			default:
+				envKey := acc + strings.ToLower(key)
+				//println("Looking up env key:", envKey)
+				if envVal, ok := envMap[envKey]; ok {
+					//println("Setting", key, "to", envVal)
+					m[key] = envVal
+				}
+			}
+		}
+	}
+	bindEnvVars("", confMap)
+
+	if preprocess != nil {
+		preprocess(confMap)
+	}
+
+	// Create a new decoder with all the necessary hooks and decode the map to the conf struct
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		Squash:           true,
+		Result:           conf,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+			mapstructure.TextUnmarshallerHookFunc(),
+		),
+	})
+	if err != nil {
+		panic(errors.NewUnknownf("failed to create decoder: %w", err))
+	}
+
+	err = decoder.Decode(confMap)
+	if err != nil {
+		panic(errors.NewUnknownf("failed to decode config map to struct: %T, error: %w", conf, err))
+	}
 }
 
-func loadSecrets(conf CoreConfig) func(*viper.Viper, map[string]bool) {
-	return func(v *viper.Viper, structKeys map[string]bool) {
+func loadSecrets(conf RootConfig) func(map[string]any) {
+	return func(confMap map[string]any) {
 		if conf.Env.Type == EnvTypeTest {
 			return
 		}
 		lf := NewLoggerFactory(conf)
 		secretsMgr := NewAWSSecretsManager(conf, NewAWSConfig(conf), lf)
 		ctx := context.Background()
-		for key := range structKeys {
-			val := v.GetString(key)
-			if !strings.HasPrefix(val, "<secret") || !strings.HasSuffix(val, ">") {
-				continue
+
+		var traverse func(string, map[string]any)
+		traverse = func(prefix string, m map[string]any) {
+			for key, val := range m {
+				key = prefix + key
+				switch v := val.(type) {
+				case map[string]any:
+					traverse(key+".", v)
+				case string:
+					if !strings.HasPrefix(v, "<secret") || !strings.HasSuffix(v, ">") {
+						continue
+					}
+
+					var smKey, secret string
+					var err error
+					if v == "<secret>" {
+						smKey = key
+						secret, err = secretsMgr.GetSecret(ctx, smKey)
+					} else if v[7] == ':' {
+						smKey = v[8 : len(v)-1]
+						secret, err = secretsMgr.GetSecretVerbatim(ctx, smKey)
+					} else {
+						panic(errors.Newf(errors.ErrCodeBadArgument, "invalid secret value: %s, for key: %s", v, key))
+					}
+					if err != nil {
+						panic(errors.NewUnknownf("could not load secret: %s, error: %w", smKey, err))
+					}
+					m[key] = secret
+				}
 			}
-
-			var smKey, secret string
-			var err error
-			if val == "<secret>" {
-				smKey = strcase.ToKebab(key)
-				secret, err = secretsMgr.GetSecret(ctx, smKey)
-			} else if val[7] == ':' {
-				smKey = val[8 : len(val)-1]
-				secret, err = secretsMgr.GetSecretVerbatim(ctx, smKey)
-			} else {
-				panic(errors.Newf(errors.ErrCodeBadArgument, "invalid secret key: %s", key))
-			}
-			if err != nil {
-				panic(errors.NewUnknownf("could not load secret: %s, error: %w", smKey, err))
-			}
-			v.Set(key, secret)
 		}
+		traverse("", confMap)
 	}
-}
-
-func bindStructKeys(v *viper.Viper, structKeys map[string]bool) error {
-	for key := range structKeys {
-		if err := v.BindEnv(key, strcase.ToScreamingSnake(strings.ReplaceAll(key, ".", "_"))); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func getStructKeys(v *viper.Viper, input any) (map[string]bool, error) {
-	envKeysMap := map[string]any{}
-	if err := mapstructure.Decode(input, &envKeysMap); err != nil {
-		return nil, err
-	}
-
-	return flattenAndMergeMap(v, map[string]bool{}, envKeysMap, ""), nil
-}
-
-// flattenAndMergeMap recursively flattens the given map into a map[string]bool
-// of key paths (used as a set, easier to manipulate than a []string):
-//   - each path is merged into a single key string, delimited with v.keyDelim
-//   - if a path is shadowed by an earlier value in the initial shadow map,
-//     it is skipped.
-//
-// The resulting set of paths is merged to the given shadow set at the same time.
-// Copied from Viper source code
-func flattenAndMergeMap(v *viper.Viper, shadow map[string]bool, m map[string]interface{}, prefix string) map[string]bool {
-	if shadow != nil && prefix != "" && shadow[prefix] {
-		// prefix is shadowed => nothing more to flatten
-		return shadow
-	}
-	if shadow == nil {
-		shadow = make(map[string]bool)
-	}
-
-	vType := reflect.ValueOf(v).Elem()
-	keyDelimField := vType.FieldByName("keyDelim")
-
-	var m2 map[string]interface{}
-	if prefix != "" {
-		prefix += keyDelimField.String() //NOTE: this is an unexported field, so we use reflection: v.keyDelim
-	}
-	for k, val := range m {
-		fullKey := prefix + k
-		switch tv := val.(type) {
-		case map[string]interface{}:
-			m2 = tv
-		case map[interface{}]interface{}:
-			m2 = cast.ToStringMap(val)
-		default:
-			// immediate value
-			shadow[fullKey] = true //Note: Original code was using toLower which breaks our intention of using camelCase to snake
-			continue
-		}
-		// recursively merge to shadow map
-		shadow = flattenAndMergeMap(v, shadow, m2, fullKey)
-	}
-	return shadow
 }

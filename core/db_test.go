@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -14,21 +14,21 @@ func TestDBTx(t *testing.T) {
 	test.IntegrationTest(t)
 
 	conf := test.NewConfig("dbtx-/asd")
-	lf := test.NewLoggerFactory(t, conf.CoreConfig)
-	conf.Database = lib.DatabaseConfig{
+	lf := test.NewLoggerFactory(t, conf.RootConfig)
+	conf.Database = core.DatabaseConfig{
 		Host: "localhost",
 		Port: 5432,
 		User: "postgres",
 		Pass: "postgres",
 	}
 	db := test.NewTestDatabase(conf, lf)
-	defer func(conf lib.Config, lf *lib.LoggerFactory, db lib.Database) {
+	defer func(conf core.Config, lf *core.LoggerFactory, db core.Database) {
 		err := test.OnTestDBStop(conf, db, lf)
 		require.NoError(t, err)
 	}(conf, lf, db)
 	ctx := test.NewContext(db, lf)
 
-	tx, ctx2 := lib.WithTx(ctx)
+	tx, ctx2 := core.WithTx(ctx)
 	require.NotNil(t, tx)
 	require.NotNil(t, ctx2)
 	require.False(t, tx.IsAutomatic())
@@ -37,7 +37,7 @@ func TestDBTx(t *testing.T) {
 	creatTableSQL := "CREATE TABLE test (id text not null)"
 	subTxCount := 3
 	for i := 0; i < subTxCount; i++ {
-		subTx, ctx3 := lib.WithTx(ctx2)
+		subTx, ctx3 := core.WithTx(ctx2)
 		require.NotNil(t, subTx)
 		require.NotNil(t, ctx3)
 		require.False(t, subTx.IsAutomatic())
@@ -72,7 +72,7 @@ func TestDBTx(t *testing.T) {
 	require.ErrorIs(t, tx.Error, sql.ErrTxDone)
 
 	var count int64
-	err = lib.InTx(ctx2).Raw("SELECT COUNT(*) FROM test").Row().Scan(&count)
+	err = core.InTx(ctx2).Raw("SELECT COUNT(*) FROM test").Row().Scan(&count)
 	require.Nil(t, err)
 	require.EqualValues(t, 1, count)
 }

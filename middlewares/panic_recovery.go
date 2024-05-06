@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -16,8 +16,8 @@ type PanicRecoveryMiddleware struct {
 }
 
 func NewPanicRecovery(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 ) *PanicRecoveryMiddleware {
 	return &PanicRecoveryMiddleware{
 		BaseMiddleware{conf, lf.GetLoggerForType(PanicRecoveryMiddleware{})},
@@ -28,7 +28,7 @@ func (m *PanicRecoveryMiddleware) Priority() MiddlewarePriority {
 	return MiddlewarePriorityHighest + 1
 }
 
-func (m *PanicRecoveryMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *PanicRecoveryMiddleware) Setup(httpHandler core.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 
@@ -59,7 +59,7 @@ func handlePanic(ctx *gin.Context, errAny any, logError bool) bool {
 	}
 
 	if logError {
-		lib.GetLoggerFromCtx(ctx).ErrorE(recoveryErr)
+		core.GetLoggerFromCtx(ctx).ErrorE(recoveryErr)
 	}
 
 	if brokenPipe {

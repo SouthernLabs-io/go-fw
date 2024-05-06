@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
@@ -41,11 +41,11 @@ func (w *ServeWorkCommand) Run() CommandRunner {
 	return func(dep struct {
 		fx.In
 
-		Conf          lib.Config
-		HTTPHandler   lib.HTTPHandler        //It is here for the container to initialize it
+		Conf          core.Config
+		HTTPHandler   core.HTTPHandler       //It is here for the container to initialize it
 		WorkerHandler []worker.WorkerHandler `group:"worker_handlers"` //It is here for the container to initialize it
 	}) {
-		logger := lib.GetLoggerForType(w)
+		logger := core.GetLoggerForType(w)
 		if dep.Conf.Datadog.Tracing {
 			startTracer(dep.Conf, logger)
 		}

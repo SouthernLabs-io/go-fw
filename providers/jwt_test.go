@@ -8,11 +8,11 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 func Test(t *testing.T) {
-	conf := lib.Config{JWT: lib.JWTConfig{SigningKey: "dabbad00"}}
+	conf := core.Config{JWT: core.JWTConfig{SigningKey: "dabbad00"}}
 	ctx := context.Background()
 
 	jwtSvc := NewJWTProvider(conf)
@@ -26,7 +26,7 @@ func Test(t *testing.T) {
 }
 
 func TestWithExp(t *testing.T) {
-	conf := lib.Config{JWT: lib.JWTConfig{SigningKey: "dabbad00"}}
+	conf := core.Config{JWT: core.JWTConfig{SigningKey: "dabbad00"}}
 	ctx := context.Background()
 
 	jwtSvc := NewJWTProvider(conf)

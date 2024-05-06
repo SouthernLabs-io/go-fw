@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/queue"
 )
 
@@ -184,8 +184,8 @@ func (t *_Task) Value() any {
 }
 
 func (t *_Task) configureContext(parentCtx context.Context, name string) {
-	t.ctx, t.ctxCancel = context.WithCancel(lib.NewWorkerContext(
-		parentCtx, name, fmt.Sprintf("%d@%s", t.id, lib.CachedHostname()),
+	t.ctx, t.ctxCancel = context.WithCancel(core.NewWorkerContext(
+		parentCtx, name, fmt.Sprintf("%d@%s", t.id, core.CachedHostname()),
 	))
 }
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
@@ -37,7 +37,7 @@ type HealthCheckMiddleware struct {
 }
 
 type HealthCheckMiddlewareParams struct {
-	lib.BaseParams
+	core.BaseParams
 
 	HealthChecks []HealthCheckProvider `group:"health_checks"`
 }
@@ -46,14 +46,14 @@ func NewHealthCheckFx(params HealthCheckMiddlewareParams) *HealthCheckMiddleware
 	return NewHealthCheck(params.Conf, params.LF, params.HealthChecks)
 }
 
-func NewHealthCheck(conf lib.Config, lf *lib.LoggerFactory, healthChecks []HealthCheckProvider) *HealthCheckMiddleware {
+func NewHealthCheck(conf core.Config, lf *core.LoggerFactory, healthChecks []HealthCheckProvider) *HealthCheckMiddleware {
 	return &HealthCheckMiddleware{
 		BaseMiddleware{conf, lf.GetLoggerForType(HealthCheckMiddleware{})},
 		slices.Filter(healthChecks, predicates.Not(predicates.Nil[HealthCheckProvider])),
 	}
 }
 
-func (m *HealthCheckMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *HealthCheckMiddleware) Setup(httpHandler core.HTTPHandler) {
 	rel, err := filepath.Rel(httpHandler.BasePath, "/health")
 	if err != nil {
 		panic(errors.NewUnknownf("failed to get relative path, error: %w", err))

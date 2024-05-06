@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -15,7 +15,7 @@ func TestNoDeadlineContext(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer cancel(myErr)
 
-	ndCtx := lib.NoDeadlineAndNotCancellableContext(ctx)
+	ndCtx := core.NoDeadlineAndNotCancellableContext(ctx)
 	require.NotNil(t, ndCtx)
 
 	// Check it is not done

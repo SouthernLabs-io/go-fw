@@ -7,17 +7,17 @@ import (
 
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
-func NewTestDatabase(conf lib.Config, lf *lib.LoggerFactory) lib.Database {
-	if conf.Env.Type != lib.EnvTypeTest {
+func NewTestDatabase(conf core.Config, lf *core.LoggerFactory) core.Database {
+	if conf.Env.Type != core.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 
 	dbName := CreateTestDBName(conf)
-	postgresDB := lib.MustOpenGORM(conf, "postgres", lf)
+	postgresDB := core.MustOpenGORM(conf, "postgres", lf)
 	lf.GetLogger().Infof("Resetting DB: %s", dbName)
 	if err := postgresDB.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to drop db: %s, error: %w", dbName, err))
@@ -25,8 +25,8 @@ func NewTestDatabase(conf lib.Config, lf *lib.LoggerFactory) lib.Database {
 	if err := postgresDB.Exec(fmt.Sprintf(`CREATE DATABASE "%s"`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to create db: %s, error: %w", dbName, err))
 	}
-	db := lib.MustOpenGORM(conf, dbName, lf)
-	return lib.Database{
+	db := core.MustOpenGORM(conf, dbName, lf)
+	return core.Database{
 		DB:     db,
 		DbName: dbName,
 	}
@@ -38,7 +38,7 @@ var dbNameReplacer = strings.NewReplacer(
 	"test", "",
 )
 
-func CreateTestDBName(conf lib.Config) string {
+func CreateTestDBName(conf core.Config) string {
 	// Postgres max length for db name is 63
 	const maxLen = 63
 	s := dbNameReplacer.Replace(strings.ToLower(conf.Name))
@@ -66,14 +66,14 @@ func CreateTestDBName(conf lib.Config) string {
 	)
 }
 
-func OnTestDBStop(conf lib.Config, db lib.Database, lf *lib.LoggerFactory) error {
-	err := lib.OnDBStop(db)
+func OnTestDBStop(conf core.Config, db core.Database, lf *core.LoggerFactory) error {
+	err := core.OnDBStop(db)
 	if err != nil {
 		return err
 	}
 
 	dbName := db.DbName
-	postgresDB := lib.MustOpenGORM(conf, "postgres", lf)
+	postgresDB := core.MustOpenGORM(conf, "postgres", lf)
 	lf.GetLogger().Infof("Dropping DB: %s", dbName)
 	if err := postgresDB.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS "%s" WITH (FORCE)`, dbName)).Error; err != nil {
 		panic(errors.NewUnknownf("failed to drop db: %s, error: %w", dbName, err))

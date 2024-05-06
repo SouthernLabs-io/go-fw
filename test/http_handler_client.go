@@ -9,18 +9,19 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	lib "github.com/southernlabs-io/go-fw/core"
 	"github.com/stretchr/testify/require"
+
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 // HTTPHandlerClient is a client for testing HTTPHandler implementations.
 type HTTPHandlerClient struct {
 	t           *testing.T
-	httpHandler lib.HTTPHandler
+	httpHandler core.HTTPHandler
 	headers     http.Header
 }
 
-func NewHTTPClient(t *testing.T, httpHandler lib.HTTPHandler) *HTTPHandlerClient {
+func NewHTTPClient(t *testing.T, httpHandler core.HTTPHandler) *HTTPHandlerClient {
 	return &HTTPHandlerClient{
 		t:           t,
 		httpHandler: httpHandler,

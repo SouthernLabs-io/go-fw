@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
@@ -28,8 +28,8 @@ type ReadyCheckMiddleware struct {
 }
 
 type ReadyCheckMiddlewareParams struct {
-	lib.BaseParams
-	LF          *lib.LoggerFactory
+	core.BaseParams
+	LF          *core.LoggerFactory
 	ReadyChecks []ReadyCheckProvider `group:"ready_checks"`
 }
 
@@ -38,8 +38,8 @@ func NewReadyCheckFx(params ReadyCheckMiddlewareParams) *ReadyCheckMiddleware {
 }
 
 func NewReadyCheck(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 	readyChecks []ReadyCheckProvider,
 ) *ReadyCheckMiddleware {
 	return &ReadyCheckMiddleware{
@@ -48,7 +48,7 @@ func NewReadyCheck(
 	}
 }
 
-func (m *ReadyCheckMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *ReadyCheckMiddleware) Setup(httpHandler core.HTTPHandler) {
 	rel, err := filepath.Rel(httpHandler.BasePath, "/ready")
 	if err != nil {
 		panic(errors.NewUnknownf("failed to get relative path, error: %w", err))

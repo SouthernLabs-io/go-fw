@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
 )
@@ -46,9 +46,9 @@ type ContextProvider interface {
 }
 
 type LongRunningWorkerHandler struct {
-	conf    lib.Config
-	logger  lib.Logger
-	db      lib.Database
+	conf    core.Config
+	logger  core.Logger
+	db      core.Database
 	workers []LongRunningWorker
 	sd      fx.Shutdowner
 
@@ -60,7 +60,7 @@ type LongRunningWorkerHandler struct {
 }
 
 type LongRunningWorkerHandlerParams struct {
-	lib.BaseParams
+	core.BaseParams
 	Workers []LongRunningWorker `group:"long_running_workers"`
 }
 
@@ -76,9 +76,9 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 }
 
 func NewLongRunningWorkerHandler(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
-	db lib.Database,
+	conf core.Config,
+	lf *core.LoggerFactory,
+	db core.Database,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,
 	workers []LongRunningWorker,
@@ -131,10 +131,10 @@ func (h *LongRunningWorkerHandler) Run() error {
 	handlerErrChn := make(chan error, len(h.workers))
 	for _, worker := range h.workers {
 		grWorker := worker
-		grCtx := lib.NewWorkerContext(h.ctx, grWorker.GetName(), grWorker.GetID())
+		grCtx := core.NewWorkerContext(h.ctx, grWorker.GetName(), grWorker.GetID())
 		go func() {
 			var err error
-			logger := lib.GetLoggerFromCtx(grCtx)
+			logger := core.GetLoggerFromCtx(grCtx)
 			switch grWorker.GetConcurrency().Mode {
 			case ConcurrencyModeMulti:
 				err = h.multiWorkerRunner(grCtx, grWorker)
@@ -184,14 +184,14 @@ func (h *LongRunningWorkerHandler) Run() error {
 }
 
 func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worker LongRunningWorker) error {
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	ttl := worker.GetConcurrency().SingleLockTTL
 	// FIXME: the distributed lock implementation should be configurable
 	dl := distributedlock.NewDistributedPostgresLock(worker.GetName(), ttl)
 	for {
 		// Use a function closure to use defer to unlock the lock
 		err := func() (err error) {
-			defer lib.DeferredPanicToError(
+			defer core.DeferredPanicToError(
 				&err,
 				"long running worker handler panicked while managing lock for single worker: %s",
 				worker.GetName(),
@@ -203,7 +203,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			}
 
 			// Defer unlock
-			ndcCtx := lib.NoDeadlineAndNotCancellableContext(ctx)
+			ndcCtx := core.NoDeadlineAndNotCancellableContext(ctx)
 			defer func(dl *distributedlock.DistributedPostgresLock, ctx context.Context) {
 				err := dl.Unlock(ctx)
 				if err != nil {
@@ -241,8 +241,8 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 			err = errors.Newf(ErrCodeWorkerError, "multi worker: %s error: %w", worker.GetName(), err)
 		}
 	}()
-	defer lib.DeferredPanicToError(&err, "worker: %s panicked", worker.GetName())
-	logger := lib.GetLoggerFromCtx(ctx)
+	defer core.DeferredPanicToError(&err, "worker: %s panicked", worker.GetName())
+	logger := core.GetLoggerFromCtx(ctx)
 	logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 	err = worker.Run(ctx)
 	return
@@ -287,10 +287,10 @@ func (h *LongRunningWorkerHandler) Stop(ctx context.Context) {
 }
 
 func ProvideAsLongRunningWorker(provider any, anns ...fx.Annotation) fx.Option {
-	return lib.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
+	return core.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
 }
 
-var ModuleWorkerHandler = lib.FxProvideAs[WorkerHandler](
+var ModuleWorkerHandler = core.FxProvideAs[WorkerHandler](
 	NewLongRunningWorkerHandlerFx,
 	nil,
 	[]fx.Annotation{fx.ResultTags(`group:"worker_handlers"`)},

@@ -9,20 +9,20 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
 func TestGinLoggerSkipCallers(t *testing.T) {
 	config := test.NewConfig(t.Name())
-	config.Env.Type = lib.EnvTypeSandbox
+	config.Env.Type = core.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
-	logger := lib.NewLoggerWithWriter(config.CoreConfig, "gin_logger", buffer)
-	logger.SetLevel(lib.LogLevelDebug)
+	logger := core.NewLoggerWithWriter(config.RootConfig, "gin_logger", buffer)
+	logger.SetLevel(core.LogLevelDebug)
 
-	gin.DefaultWriter = lib.NewDefaultGinWriter(logger)
-	gin.DefaultErrorWriter = lib.NewDefaultErrorGinWriter(logger)
+	gin.DefaultWriter = core.NewDefaultGinWriter(logger)
+	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(logger)
 	gin.SetMode(gin.DebugMode)
 
 	ginEngine := gin.New()

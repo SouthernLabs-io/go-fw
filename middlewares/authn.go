@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/syncmap"
 )
@@ -46,7 +46,7 @@ func MustGetPrincipal(ctx *gin.Context) Principal {
 
 func SetPrincipal(ctx *gin.Context, principal Principal) {
 	ctx.Set(PrincipalCtxKey, principal)
-	attrs := lib.GetLoggerAttrsFromCtx(ctx)
+	attrs := core.GetLoggerAttrsFromCtx(ctx)
 	principalAttr := slog.Group("usr",
 		slog.Any("id", principal.GetID()),
 		slog.Any("type", principal.GetType()),
@@ -57,7 +57,7 @@ func SetPrincipal(ctx *gin.Context, principal Principal) {
 			return
 		}
 	}
-	lib.CtxAppendLoggerAttrs(ctx, principalAttr)
+	core.CtxAppendLoggerAttrs(ctx, principalAttr)
 }
 
 type AuthNProvider interface {
@@ -79,8 +79,8 @@ type AuthNMiddleware struct {
 }
 
 func NewAuthN(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 	provider AuthNProvider,
 ) *AuthNMiddleware {
 	return &AuthNMiddleware{
@@ -93,7 +93,7 @@ func NewAuthN(
 	}
 }
 
-func (m *AuthNMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *AuthNMiddleware) Setup(httpHandler core.HTTPHandler) {
 	httpHandler.Root.Use(m.Require)
 }
 
@@ -127,13 +127,13 @@ func (m *AuthNMiddleware) Require(ctx *gin.Context) {
 	excluded := m.excludesCache.LoadOrStore(_PathMethod{path: ctx.FullPath(), method: ctx.Request.Method}, func(pathMethod _PathMethod) bool {
 		// exclude paths that are not under the base path, like /health
 		if !strings.HasPrefix(pathMethod.path, m.Conf.HttpServer.BasePath) {
-			lib.GetLoggerFromCtx(ctx).Infof("Excluded path: %s", pathMethod.path)
+			core.GetLoggerFromCtx(ctx).Infof("Excluded path: %s", pathMethod.path)
 			return true
 		}
 		for excludePath, methods := range m.excludes {
 			if strings.HasPrefix(pathMethod.path, path.Join(m.Conf.HttpServer.BasePath, excludePath)) &&
 				(len(methods) == 0 || slices.Contains(methods, pathMethod.method)) {
-				lib.GetLoggerFromCtx(ctx).Infof("Excluded path: %s for method: %s", pathMethod.path, pathMethod.method)
+				core.GetLoggerFromCtx(ctx).Infof("Excluded path: %s for method: %s", pathMethod.path, pathMethod.method)
 				return true
 			}
 		}
@@ -150,7 +150,7 @@ func (m *AuthNMiddleware) Require(ctx *gin.Context) {
 		if errors.Is(err, ErrInvalidToken) {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 		} else {
-			lib.GetLoggerFromCtx(ctx).Errorf("Failed to authenticate, error: %s", err)
+			core.GetLoggerFromCtx(ctx).Errorf("Failed to authenticate, error: %s", err)
 			ctx.AbortWithStatus(http.StatusInternalServerError)
 		}
 	} else {

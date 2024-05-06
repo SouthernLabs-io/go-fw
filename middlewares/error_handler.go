@@ -10,7 +10,7 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -47,7 +47,7 @@ type ErrorHandlerMiddleware struct {
 	errMappers []ErrorMapper
 }
 type ErrorHandlerMiddlewareParams struct {
-	lib.BaseParams
+	core.BaseParams
 	ErrorMappers       []ErrorMapper        `group:"error_mappers"`
 	DefaultErrorMapper ErrorResponseBuilder `name:"default_error_mapper" optional:"true"`
 }
@@ -62,8 +62,8 @@ func NewErrorHandlerFx(params ErrorHandlerMiddlewareParams) *ErrorHandlerMiddlew
 }
 
 func NewErrorHandler(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 	errMappings []ErrorMapper,
 	defaultErrorMapper ErrorResponseBuilder,
 ) *ErrorHandlerMiddleware {
@@ -80,7 +80,7 @@ func NewErrorHandler(
 	}
 }
 
-func (m *ErrorHandlerMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *ErrorHandlerMiddleware) Setup(httpHandler core.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 
@@ -108,7 +108,7 @@ func (m *ErrorHandlerMiddleware) handleErrors(ctx *gin.Context, brokenPipe bool)
 	shouldWrite := !brokenPipe && !ctx.Writer.Written()
 	var mappedErr error
 	var otherErrs []error
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	for _, ginErr := range ctx.Errors {
 		if ginErr == nil {
 			continue
@@ -163,11 +163,11 @@ func (m *ErrorHandlerMiddleware) handleErrors(ctx *gin.Context, brokenPipe bool)
 	}
 
 	status := ctx.Writer.Status()
-	level := lib.LogLevelInfo
+	level := core.LogLevelInfo
 	if status >= 500 {
-		level = lib.LogLevelError
+		level = core.LogLevelError
 	} else if status >= 400 {
-		level = lib.LogLevelWarn
+		level = core.LogLevelWarn
 	}
 
 	if len(otherErrs) == 0 {

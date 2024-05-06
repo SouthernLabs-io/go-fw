@@ -33,12 +33,12 @@ type ValueContext interface{ Value(any) any }
 
 type LoggerFactory struct {
 	loggersByPath *syncmap.Map[string, Logger]
-	coreConfig    CoreConfig
+	coreConfig    RootConfig
 	writer        io.Writer
 }
 
 // NewLoggerFactory creates a new logger factory with the given core configuration.
-func NewLoggerFactory(coreConfig CoreConfig) *LoggerFactory {
+func NewLoggerFactory(coreConfig RootConfig) *LoggerFactory {
 	normalized := make(map[string]LogLevel, len(coreConfig.Log.Levels))
 	for pth, level := range coreConfig.Log.Levels {
 		normalized[path.Clean(pth)] = level
@@ -52,7 +52,7 @@ func NewLoggerFactory(coreConfig CoreConfig) *LoggerFactory {
 }
 
 // NewLoggerFactoryWithWriter creates a new logger factory with the given core configuration and writer.
-func NewLoggerFactoryWithWriter(coreConfig CoreConfig, writer io.Writer) *LoggerFactory {
+func NewLoggerFactoryWithWriter(coreConfig RootConfig, writer io.Writer) *LoggerFactory {
 	factory := NewLoggerFactory(coreConfig)
 	factory.writer = writer
 	return factory

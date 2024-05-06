@@ -4,14 +4,14 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/rest"
 )
 
 func main() {
-	defer lib.DeferredPanicToLogAndExit()
+	defer core.DeferredPanicToLogAndExit()
 	var deps = fx.Options(
 		// middlewares
 		middlewares.RequestLoggerModule,

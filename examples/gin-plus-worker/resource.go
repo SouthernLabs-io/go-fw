@@ -5,20 +5,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type SimpleResource struct {
-	logger lib.Logger
+	logger core.Logger
 }
 
-func NewSimpleResource(logger lib.Logger) *SimpleResource {
+func NewSimpleResource(logger core.Logger) *SimpleResource {
 	return &SimpleResource{
 		logger: logger,
 	}
 }
 
-func (sr *SimpleResource) Setup(httpHandler lib.HTTPHandler) {
+func (sr *SimpleResource) Setup(httpHandler core.HTTPHandler) {
 	httpHandler.Root.Group("simples").GET("hello", sr.Get)
 }
 

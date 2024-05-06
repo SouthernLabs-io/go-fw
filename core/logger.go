@@ -41,12 +41,12 @@ type Logger struct {
 }
 
 // NewLogger creates a new logger with the given core configuration.
-func NewLogger(conf CoreConfig, name string) Logger {
+func NewLogger(conf RootConfig, name string) Logger {
 	return NewLoggerWithWriter(conf, name, os.Stdout)
 }
 
 // NewLoggerWithWriter creates a new logger with the given core configuration and writer.
-func NewLoggerWithWriter(conf CoreConfig, name string, writer io.Writer) Logger {
+func NewLoggerWithWriter(conf RootConfig, name string, writer io.Writer) Logger {
 	logger := Logger{
 		ctx:    context.Background(),
 		name:   name,
@@ -106,7 +106,7 @@ func NewLoggerWithWriter(conf CoreConfig, name string, writer io.Writer) Logger 
 		logger.hOpts.IsSlogJSON = true
 		logger.h = slog.NewJSONHandler(writer, &slogHOpts).WithAttrs([]slog.Attr{
 			// It must be in flat mode, so we can add dd fields later
-			slog.String("dd.version", version.Full),
+			slog.String("dd.version", version.SemVer),
 		})
 	}
 

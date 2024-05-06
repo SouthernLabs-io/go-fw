@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type TheStruct struct {
 }
 
-func (t TheStruct) Method(lf *lib.LoggerFactory) lib.Logger {
+func (t TheStruct) Method(lf *core.LoggerFactory) core.Logger {
 	return lf.GetLogger()
 }
 
@@ -24,42 +24,42 @@ type WrapperStruct struct {
 	TheStruct
 }
 
-func (t *WrapperStruct) CallWrappedMethod(lf *lib.LoggerFactory) lib.Logger {
+func (t *WrapperStruct) CallWrappedMethod(lf *core.LoggerFactory) core.Logger {
 	return t.TheStruct.Method(lf)
 }
 
-func (t *WrapperStruct) MethodInPtr(lf *lib.LoggerFactory) lib.Logger {
+func (t *WrapperStruct) MethodInPtr(lf *core.LoggerFactory) core.Logger {
 	return lf.GetLogger()
 }
 
 func TestLevels(t *testing.T) {
-	logConf := lib.LogConfig{
-		Level: lib.LogLevelError,
-		Levels: map[string]lib.LogLevel{
-			"github.com/southernlabs-io":                                              lib.LogLevelWarn,
-			"github.com/southernlabs-io/go-fw":                                        lib.LogLevelInfo,
-			"github.com/southernlabs-io/go-fw/core":                                   lib.LogLevelDebug,
-			"github.com/southernlabs-io/go-fw/core.AWSSecretsManager":                 lib.LogLevelTrace,
-			"github.com/southernlabs-io/go-fw/core_test":                              lib.LogLevelDebug,
-			"github.com/southernlabs-io/go-fw/core_test.TestLevels":                   lib.LogLevelTrace,
-			"github.com/southernlabs-io/go-fw/core_test.CustomSlice":                  lib.LogLevelTrace,
-			"github.com/southernlabs-io/go-fw/core_test.TheStruct.Method":             lib.LogLevelTrace,
-			"github.com/southernlabs-io/go-fw/core_test.(*WrapperStruct).MethodInPtr": lib.LogLevelTrace,
-			"my-local-package":      lib.LogLevelInfo,
-			"my-local-package/math": lib.LogLevelDebug,
+	logConf := core.LogConfig{
+		Level: core.LogLevelError,
+		Levels: map[string]core.LogLevel{
+			"github.com/southernlabs-io":                                              core.LogLevelWarn,
+			"github.com/southernlabs-io/go-fw":                                        core.LogLevelInfo,
+			"github.com/southernlabs-io/go-fw/core":                                   core.LogLevelDebug,
+			"github.com/southernlabs-io/go-fw/core.AWSSecretsManager":                 core.LogLevelTrace,
+			"github.com/southernlabs-io/go-fw/core_test":                              core.LogLevelDebug,
+			"github.com/southernlabs-io/go-fw/core_test.TestLevels":                   core.LogLevelTrace,
+			"github.com/southernlabs-io/go-fw/core_test.CustomSlice":                  core.LogLevelTrace,
+			"github.com/southernlabs-io/go-fw/core_test.TheStruct.Method":             core.LogLevelTrace,
+			"github.com/southernlabs-io/go-fw/core_test.(*WrapperStruct).MethodInPtr": core.LogLevelTrace,
+			"my-local-package":      core.LogLevelInfo,
+			"my-local-package/math": core.LogLevelDebug,
 		},
 	}
-	lf := lib.NewLoggerFactory(lib.CoreConfig{
+	lf := core.NewLoggerFactory(core.RootConfig{
 		Log: logConf,
 	})
 	require.NotNil(t, lf)
 
-	var l lib.Logger
+	var l core.Logger
 
 	// Test Root level
 	l = lf.GetLoggerForPath("/")
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelError, l.Level())
+	require.Equal(t, core.LogLevelError, l.Level())
 
 	// Test level by exact math
 	for pth, level := range logConf.Levels {
@@ -77,87 +77,87 @@ func TestLevels(t *testing.T) {
 	// Test no partial match
 	l = lf.GetLoggerForPath("github.com/southernlabs-io/go-")
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelWarn, l.Level())
+	require.Equal(t, core.LogLevelWarn, l.Level())
 
 	// Test case-sensitive match
 	l = lf.GetLoggerForPath("github.com/southernlabs-io/go-FW")
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelWarn, l.Level())
+	require.Equal(t, core.LogLevelWarn, l.Level())
 
 	// Test level by segment match at package level
 	l = lf.GetLoggerForPath("github.com/southernlabs-io/go-fw/another-package")
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelInfo, l.Level())
+	require.Equal(t, core.LogLevelInfo, l.Level())
 
 	// Test level by segment match at package function level
 	l = lf.GetLoggerForPath("github.com/southernlabs-io/go-fw/core.AnotherFunction")
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 
 	// Test level by type exact match
-	l = lf.GetLoggerForType(lib.AWSSecretsManager{})
+	l = lf.GetLoggerForType(core.AWSSecretsManager{})
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by type package match
-	l = lf.GetLoggerForType(lib.Database{})
+	l = lf.GetLoggerForType(core.Database{})
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 
 	// Test level by stack match
 	l = lf.GetLogger()
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by function match from inline call
 	func() {
 		l = lf.GetLogger()
 		require.NotZero(t, l)
-		require.Equal(t, lib.LogLevelTrace, l.Level())
+		require.Equal(t, core.LogLevelTrace, l.Level())
 	}()
 
 	// Test level by exact match from inline type def
 	type CustomSlice []string
 	l = lf.GetLoggerForType(CustomSlice{})
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by package match from inline type def
 	type CustomString string
 	l = lf.GetLoggerForType(CustomString(""))
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 
 	// Test level by exact match from struct method
 	l = TheStruct{}.Method(lf)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by exact match from struct method
 	l = (&TheStruct{}).Method(lf)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by exact match from struct method
 	l = (&WrapperStruct{}).MethodInPtr(lf)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	// Test level by exact match from struct method
 	l = (&WrapperStruct{}).Method(lf)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 
 	l = (&WrapperStruct{}).CallWrappedMethod(lf)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelTrace, l.Level())
+	require.Equal(t, core.LogLevelTrace, l.Level())
 }
 
 func TestContext(t *testing.T) {
-	lf := lib.NewLoggerFactory(lib.CoreConfig{
-		Log: lib.LogConfig{
-			Level:  lib.LogLevelDebug,
-			Writer: lib.LogConfigWriterBuffer,
+	lf := core.NewLoggerFactory(core.RootConfig{
+		Log: core.LogConfig{
+			Level:  core.LogLevelDebug,
+			Writer: core.LogConfigWriterBuffer,
 		},
 	})
 	require.NotNil(t, lf)
@@ -166,7 +166,7 @@ func TestContext(t *testing.T) {
 	ctx := context.Background()
 	l := lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 	buffer, isBuffer := l.Writer().(*bytes.Buffer)
 	require.True(t, isBuffer)
 	l.Info("an info message")
@@ -179,13 +179,13 @@ func TestContext(t *testing.T) {
 	require.NotContains(t, msg, "duration")
 
 	// Test adding context attributes
-	ctx = lib.CtxWithLoggerAttrs(ctx,
+	ctx = core.CtxWithLoggerAttrs(ctx,
 		slog.String("req_id", "123"),
 		slog.String("method", "GET"),
 	)
 	l = lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 	buffer, isBuffer = l.Writer().(*bytes.Buffer)
 	require.True(t, isBuffer)
 	buffer.Reset()
@@ -200,10 +200,10 @@ func TestContext(t *testing.T) {
 	require.Equal(t, "GET", msg["method"])
 
 	// Test adding context attributes with append
-	ctx = lib.CtxAppendLoggerAttrs(ctx, slog.Int64("duration", time.Second.Milliseconds()))
+	ctx = core.CtxAppendLoggerAttrs(ctx, slog.Int64("duration", time.Second.Milliseconds()))
 	l = lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
-	require.Equal(t, lib.LogLevelDebug, l.Level())
+	require.Equal(t, core.LogLevelDebug, l.Level())
 	buffer, isBuffer = l.Writer().(*bytes.Buffer)
 	require.True(t, isBuffer)
 	buffer.Reset()

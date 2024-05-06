@@ -10,7 +10,7 @@ import (
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
-func NewAWSConfig(conf CoreConfig) *aws.Config {
+func NewAWSConfig(conf RootConfig) *aws.Config {
 	awsConfig, err := awsconfig.LoadDefaultConfig(context.Background())
 	if err != nil {
 		panic(errors.NewUnknownf("failed to build default AWS config, error: %w", err))

@@ -1,17 +1,3 @@
-name: go-fw
-
-env:
-  name: local
-  type: local
-log:
-  level: debug
-
-httpServer:
-  port: 8080
-  bindAddress:
-  basePath: /api/v1/
-  reqLoggerExcludes: [ "/health", "/ready" ]
-
 database:
   user: postgres
   pass: postgres

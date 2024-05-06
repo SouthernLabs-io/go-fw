@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type ctxKeyType string
@@ -15,7 +15,7 @@ const ctxKey ctxKeyType = "ctxKey"
 
 func TestNewWorkerContextWithNameAndID(t *testing.T) {
 	initialCtx := context.WithValue(context.Background(), ctxKey, "sentinel")
-	ctx := lib.NewWorkerContext(
+	ctx := core.NewWorkerContext(
 		initialCtx,
 		"test_worker_name",
 		"test_worker_id",

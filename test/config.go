@@ -4,26 +4,26 @@ import (
 	"fmt"
 	"time"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
-func NewConfig(testName string) lib.Config {
-	coreConfig := lib.NewCoreConfig()
+func NewConfig(testName string) core.Config {
+	coreConfig := core.NewCoreConfig()
 	if coreConfig.Name == "" {
 		coreConfig.Name = fmt.Sprintf("no_service_name_%d", time.Now().UnixMicro())
 	}
 	coreConfig.Name += "-" + testName
 
-	coreConfig.Env = lib.EnvConfig{
+	coreConfig.Env = core.EnvConfig{
 		Name: "test",
-		Type: lib.EnvTypeTest,
+		Type: core.EnvTypeTest,
 	}
 
-	config := lib.Config{CoreConfig: coreConfig}
-	lib.LoadConfig(coreConfig, &config)
+	config := core.Config{RootConfig: coreConfig}
+	core.LoadConfig(coreConfig, &config)
 	return config
 }
 
-func ProvideCoreConfig(config lib.Config) lib.CoreConfig {
-	return config.CoreConfig
+func ProvideCoreConfig(config core.Config) core.RootConfig {
+	return config.RootConfig
 }

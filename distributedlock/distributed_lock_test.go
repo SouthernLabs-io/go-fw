@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/redis"
@@ -19,7 +19,7 @@ func setupDB(t *testing.T) context.Context {
 	test.IntegrationTest(t)
 
 	conf := test.NewConfig(t.Name())
-	lf := test.NewLoggerFactory(t, conf.CoreConfig)
+	lf := test.NewLoggerFactory(t, conf.RootConfig)
 	db := test.NewTestDatabase(conf, lf)
 	t.Cleanup(func() {
 		err := test.OnTestDBStop(conf, db, lf)
@@ -34,7 +34,7 @@ func setupRedis(t *testing.T) (redis.Redis, context.Context) {
 	test.IntegrationTest(t)
 
 	conf := test.NewConfig(t.Name())
-	lf := test.NewLoggerFactory(t, conf.CoreConfig)
+	lf := test.NewLoggerFactory(t, conf.RootConfig)
 	rds := test.NewTestRedis(conf, lf)
 	t.Cleanup(func() {
 		err := test.OnTestRedisStop(rds)
@@ -42,7 +42,7 @@ func setupRedis(t *testing.T) (redis.Redis, context.Context) {
 			t.Error(err)
 		}
 	})
-	return rds, test.NewContext(lib.Database{}, lf)
+	return rds, test.NewContext(core.Database{}, lf)
 }
 
 func TestLockOneTimeUse(t *testing.T) {

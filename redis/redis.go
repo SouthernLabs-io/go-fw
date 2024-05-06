@@ -6,7 +6,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -14,8 +14,8 @@ type Redis struct {
 	Client *redis.Client
 }
 
-func NewRedis(conf lib.Config, lf *lib.LoggerFactory) *Redis {
-	if conf.Env.Type == lib.EnvTypeTest {
+func NewRedis(conf core.Config, lf *core.LoggerFactory) *Redis {
+	if conf.Env.Type == core.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 
@@ -26,7 +26,7 @@ func NewRedis(conf lib.Config, lf *lib.LoggerFactory) *Redis {
 	}
 }
 
-func MustOpenRedis(conf lib.Config, lf *lib.LoggerFactory) *redis.Client {
+func MustOpenRedis(conf core.Config, lf *core.LoggerFactory) *redis.Client {
 	rdsConf := conf.Redis
 
 	opt, err := redis.ParseURL(rdsConf.URL)
@@ -47,8 +47,8 @@ func (r Redis) HealthCheck() error {
 	return r.Client.Ping(context.Background()).Err()
 }
 
-func OnRedisOnStop(r Redis) error {
+func OnStop(r Redis) error {
 	return r.Client.Close()
 }
 
-var ModuleRedis = fx.Provide(fx.Annotate(NewRedis, fx.OnStop(OnRedisOnStop)))
+var Module = fx.Provide(fx.Annotate(NewRedis, fx.OnStop(OnStop)))

@@ -39,18 +39,19 @@ import (
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/middlewares"
 )
 
 func main() {
+	defer core.DeferredPanicToLogAndExit()
 	var deps = fx.Options(
 		// middlewares
 		middlewares.RequestLoggerModule,
 	)
 	err := bootstrap.NewAppWithServe(deps).Execute()
 	if err != nil {
-		logger := lib.GetGlobalLogger()
-		logger.Panic("Failed to execute with error: ", err)
+		panic(errors.NewUnknownf("failed to execute with error: %w", err))
 	}
 }
 ```
@@ -72,20 +73,25 @@ httpServer:
   reqLoggerExcludes: [ "/health", "/ready" ]
 
 database:
-  user: user
-  # pass: it is given over an env prop.
+  user: postgres
+  pass: <secret> # It will be loaded from a SecretManager. It can also be overridden by an env var for development
   host: localhost
   port: 5432
 ```
 
-Now we can create a `.env` file:
+Now we can create a `.env` file for use locally:
 ```shell    
-DATABASE_PASS=pass
+DATABASE_PASS=postgres
 ```
 
-Now let's run it:
+Now let's run it without building it:
 ```shell    
-# the following flags are will set version info for the compiled binary:
+ go run main.go app:server
+```
+
+To build it and run it:
+```shell
+# the following flags will set version info for the compiled binary:
  go build \
   -ldflags="-s -w \
   -X github.com/southernlabs-io/go-fw/version.BuildTime=$(date -u '+%Y-%m-%d_%I:%M:%S%p') \
@@ -95,3 +101,6 @@ Now let's run it:
 
 ./my-server app:server
 ```
+
+## Docs
+- Configuration: [CONFIG.md](CONFIG.md)

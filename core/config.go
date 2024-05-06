@@ -135,7 +135,7 @@ type SlackConfig struct {
 	}
 }
 
-type CoreConfig struct {
+type RootConfig struct {
 	Name    string
 	Secrets SecretsConfig
 	Env     EnvConfig
@@ -144,7 +144,7 @@ type CoreConfig struct {
 }
 
 type Config struct {
-	CoreConfig
+	RootConfig
 
 	Database DatabaseConfig
 
@@ -157,20 +157,20 @@ type Config struct {
 	Slack SlackConfig
 }
 
-func NewConfig(core CoreConfig) Config {
+func NewConfig(root RootConfig) Config {
 	conf := Config{
-		CoreConfig: core,
+		RootConfig: root,
 	}
-	LoadConfig(core, &conf)
+	LoadConfig(root, &conf)
 	return conf
 }
 
-func NewCoreConfig() CoreConfig {
-	var conf CoreConfig
+func NewCoreConfig() RootConfig {
+	var conf RootConfig
 	loadConfig(&conf, nil)
 	return conf
 }
 
-func LoadConfig(core CoreConfig, dst any) {
-	loadConfig(dst, loadSecrets(core))
+func LoadConfig[T any](root RootConfig, dst *T) {
+	loadConfig(dst, loadSecrets(root))
 }

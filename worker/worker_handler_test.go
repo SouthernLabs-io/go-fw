@@ -1,4 +1,4 @@
-package test
+package worker_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/test"
 	"github.com/southernlabs-io/go-fw/worker"
 )
@@ -116,7 +116,7 @@ func (t TestLongRunningWorker) GetConcurrency() worker.ConcurrencyConfig {
 }
 
 func (t TestLongRunningWorker) Run(ctx context.Context) error {
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	for {
 		logger.Debug("TestLongRunningWorker running")
 
@@ -141,7 +141,7 @@ func NewTestLongRunningWorker(name string) *TestLongRunningWorker {
 }
 
 func (t TestLongRunningWorkerBroken) Run(ctx context.Context) error {
-	lib.GetLoggerFromCtx(ctx).Debug("quiting")
+	core.GetLoggerFromCtx(ctx).Debug("quiting")
 	return nil
 }
 

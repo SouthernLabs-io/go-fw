@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	fwsync "github.com/southernlabs-io/go-fw/sync"
 )
@@ -32,7 +32,7 @@ func NewDistributedPostgresLock(resource string, ttl time.Duration) *Distributed
 	}
 }
 
-func setupDB(tx *lib.DBTx) error {
+func setupDB(tx *core.DBTx) error {
 	err := tx.Exec(`
 		CREATE SCHEMA IF NOT EXISTS distributed_lock;
 		CREATE TABLE IF NOT EXISTS distributed_lock.lock (
@@ -72,7 +72,7 @@ func (l *DistributedPostgresLock) Lock(ctx context.Context) error {
 }
 
 func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err error) {
-	tx, _ := lib.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	tx, _ := core.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	// we wrap the deferred call so it is not bound to this tx in case we have to re create
 	// the tx due to schema initialization race
 	defer func() {
@@ -84,12 +84,12 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 	err = setupDB(tx)
 	if err != nil {
 		if errors.Is(err, errSchemaAlreadyInitialized) {
-			lib.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
+			core.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
 			// The transaction is dead. We need to roll it back and create a new one
 			if err = tx.Rollback().Error; err != nil {
 				return false, err
 			}
-			tx, _ = lib.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+			tx, _ = core.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		} else {
 			return false, err
 		}
@@ -126,7 +126,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 		return false, err
 	}
 
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
 		l.expiration = until
 		logger.Debugf("acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, until)
@@ -138,7 +138,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 }
 
 func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
-	res := lib.InTx(ctx).Exec(
+	res := core.InTx(ctx).Exec(
 		"UPDATE distributed_lock.lock SET expiration = now() WHERE resource = ? AND instance_id = ? AND expiration > now()",
 		l.resource,
 		l.id,
@@ -153,7 +153,7 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 	}
 	l.expiration = time.Time{}
 	l.extendedCount = 0
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	if res.RowsAffected != 0 {
 		logger.Debugf("unlocked: %s, lockID: %s", l.resource, l.id)
 	} else {
@@ -165,7 +165,7 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	var until time.Time
 	var extendedCount int
-	err := lib.InTx(ctx).Raw(
+	err := core.InTx(ctx).Raw(
 		`UPDATE distributed_lock.lock
 				SET expiration = now() + INTERVAL '1 second' * ?,
 				    extended_count = extended_count + 1 
@@ -178,7 +178,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 		l.id,
 	).Row().Scan(&until, &extendedCount)
 
-	logger := lib.GetLoggerFromCtx(ctx)
+	logger := core.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			l.expiration = time.Time{}

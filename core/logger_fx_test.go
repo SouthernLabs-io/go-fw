@@ -11,17 +11,17 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/fx/fxtest"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
 func TestFxLoggerSkipCallers(t *testing.T) {
 	config := test.NewConfig(t.Name())
-	config.Env.Type = lib.EnvTypeSandbox
+	config.Env.Type = core.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
-	logger := lib.NewLoggerWithWriter(config.CoreConfig, "fx_logger", buffer)
-	logger.SetLevel(lib.LogLevelDebug)
-	fxLogger := lib.NewFxLogger(logger)
+	logger := core.NewLoggerWithWriter(config.RootConfig, "fx_logger", buffer)
+	logger.SetLevel(core.LogLevelDebug)
+	fxLogger := core.NewFxLogger(logger)
 
 	fxApp := fxtest.New(t, fx.WithLogger(func() fxevent.Logger { return fxLogger }))
 	fxApp.RequireStart().RequireStop()

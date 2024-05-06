@@ -23,7 +23,7 @@ type AWSSecretsManager struct {
 }
 
 func NewAWSSecretsManager(
-	conf CoreConfig,
+	conf RootConfig,
 	awsConfig *aws.Config,
 	lf *LoggerFactory,
 ) SecretsManager {

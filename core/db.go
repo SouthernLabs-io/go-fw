@@ -257,9 +257,4 @@ func OnDBStop(db Database) error {
 	return sqlDB.Close()
 }
 
-var ModuleDB = fx.Provide(
-	fx.Annotate(
-		NewDatabase,
-		fx.OnStop(OnDBStop),
-	),
-)
+var ModuleDB = fx.Provide(fx.Annotate(NewDatabase, fx.OnStop(OnDBStop)))

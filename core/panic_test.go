@@ -5,13 +5,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 func TestDeferredPanicToError(t *testing.T) {
 	f := func(id int) (err error) {
-		defer lib.DeferredPanicToError(&err, "something bad happened while working: %v", id)
+		defer core.DeferredPanicToError(&err, "something bad happened while working: %v", id)
 		switch {
 		case id == 0:
 			panic("id is zero")

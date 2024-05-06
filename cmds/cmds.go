@@ -7,7 +7,7 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/version"
 )
@@ -38,7 +38,7 @@ type Command interface {
 	//
 	// For example,
 	//  Command{
-	//   Run: func(l lib.Logger) {
+	//   Run: func(l core.Logger) {
 	// 	   l.Info("i am working")
 	// 	 },
 	//  }
@@ -63,11 +63,11 @@ func WrapSubCommand(cmd Command) *cobra.Command {
 		Use:   cmd.Cmd(),
 		Short: cmd.Short(),
 		Run: func(c *cobra.Command, args []string) {
-			logger := lib.GetLoggerForType(new(Command))
+			logger := core.GetLoggerForType(new(Command))
 			logger.Infof("Running %s", cmd.Cmd())
 			opts := fx.Options(
-				lib.Module,
-				fx.WithLogger(func(slackLoggerInterceptor *lib.SlackFxLifecycleLoggerInterceptor) fxevent.Logger {
+				core.Module,
+				fx.WithLogger(func(slackLoggerInterceptor *core.SlackFxLifecycleLoggerInterceptor) fxevent.Logger {
 					return slackLoggerInterceptor
 				}),
 				cmd.GetFXOpts(),
@@ -80,20 +80,20 @@ func WrapSubCommand(cmd Command) *cobra.Command {
 	return wrappedCmd
 }
 
-func startTracer(conf lib.Config, logger lib.Logger) {
+func startTracer(conf core.Config, logger core.Logger) {
 	logger.Info("Starting tracer")
 	tracer.Start(
 		tracer.WithDogstatsdAddress(conf.Datadog.Agent),
 		tracer.WithService(conf.Name),
-		tracer.WithServiceVersion(version.Full),
+		tracer.WithServiceVersion(version.SemVer),
 		tracer.WithRuntimeMetrics(),
 	)
 }
 
-func startProfiler(conf lib.Config, logger lib.Logger) {
+func startProfiler(conf core.Config, logger core.Logger) {
 	logger.Warn("Starting profiler")
 	err := profiler.Start(
-		profiler.WithVersion(version.Full),
+		profiler.WithVersion(version.SemVer),
 		profiler.WithService(conf.Name),
 
 		profiler.WithProfileTypes(

@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -21,8 +21,8 @@ type AuthZMiddleware struct {
 var _ Middleware = new(AuthZMiddleware)
 
 func NewAuthZ(
-	conf lib.Config,
-	lf *lib.LoggerFactory,
+	conf core.Config,
+	lf *core.LoggerFactory,
 	provider AuthZProvider,
 ) *AuthZMiddleware {
 	return &AuthZMiddleware{
@@ -31,7 +31,7 @@ func NewAuthZ(
 	}
 }
 
-func (m *AuthZMiddleware) Setup(lib.HTTPHandler) {
+func (m *AuthZMiddleware) Setup(core.HTTPHandler) {
 }
 
 func (m *AuthZMiddleware) Priority() MiddlewarePriority {

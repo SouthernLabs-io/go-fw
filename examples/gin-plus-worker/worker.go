@@ -6,12 +6,12 @@ import (
 
 	"github.com/google/uuid"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
 type SimpleWorker struct {
-	logger lib.Logger
+	logger core.Logger
 	id     string
 }
 
@@ -44,7 +44,7 @@ func (w *SimpleWorker) Run(ctx context.Context) error {
 
 var _ worker.LongRunningWorker = (*SimpleWorker)(nil)
 
-func NewSimpleWorker(logger lib.Logger) *SimpleWorker {
+func NewSimpleWorker(logger core.Logger) *SimpleWorker {
 	wf := &SimpleWorker{
 		logger: logger,
 		id:     uuid.NewString(),

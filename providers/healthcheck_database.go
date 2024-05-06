@@ -1,17 +1,17 @@
 package providers
 
 import (
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/middlewares"
 )
 
 type DatabaseHealthCheckProvider struct {
-	db lib.Database
+	db core.Database
 }
 
 var _ middlewares.HealthCheckProvider = new(DatabaseHealthCheckProvider)
 
-func NewDatabaseHealthCheckProvider(db lib.Database) *DatabaseHealthCheckProvider {
+func NewDatabaseHealthCheckProvider(db core.Database) *DatabaseHealthCheckProvider {
 	if db.DB == nil {
 		return nil
 	}

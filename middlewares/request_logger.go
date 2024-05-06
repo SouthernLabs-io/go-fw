@@ -12,17 +12,17 @@ import (
 	"golang.org/x/exp/maps"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type RequestLoggerMiddleware struct {
 	BaseMiddleware
 
-	lf         *lib.LoggerFactory
+	lf         *core.LoggerFactory
 	excludeMap map[string]bool
 }
 
-func NewRequestLogger(conf lib.Config, lf *lib.LoggerFactory) *RequestLoggerMiddleware {
+func NewRequestLogger(conf core.Config, lf *core.LoggerFactory) *RequestLoggerMiddleware {
 	excludes := conf.HttpServer.ReqLoggerExcludes
 	excludeMap := make(map[string]bool, len(excludes))
 	for _, exclude := range excludes {
@@ -42,7 +42,7 @@ func NewRequestLogger(conf lib.Config, lf *lib.LoggerFactory) *RequestLoggerMidd
 	}
 }
 
-func (m *RequestLoggerMiddleware) Setup(httpHandler lib.HTTPHandler) {
+func (m *RequestLoggerMiddleware) Setup(httpHandler core.HTTPHandler) {
 	httpHandler.Root.Use(m.Run)
 }
 
@@ -59,7 +59,7 @@ func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
 	if requestID == "" {
 		requestID = uuid.NewString()
 	}
-	ctx.Set(lib.RequestIDCtxKey.(string), requestID)
+	ctx.Set(core.RequestIDCtxKey.(string), requestID)
 
 	// Parse the host and port by using URL struct
 	hostPortURL := url.URL{Host: ctx.Request.Host}
@@ -102,30 +102,30 @@ func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
 			)
 		} else {
 			// Should not happen!
-			logger := lib.GetLoggerFromCtx(ctx).WithAttrs(attrs...)
+			logger := core.GetLoggerFromCtx(ctx).WithAttrs(attrs...)
 			logger.Errorf("tracing is enabled but there is no span in the context!")
 		}
 	}
 
-	lib.CtxAppendLoggerAttrs(ctx, attrs...)
+	core.CtxAppendLoggerAttrs(ctx, attrs...)
 
 	if m.excludeMap[ctx.FullPath()] {
 		return
 	}
 
-	logger := lib.GetLoggerFromCtxForType(ctx, m)
+	logger := core.GetLoggerFromCtxForType(ctx, m)
 	logger.Debugf("Req Start: %s", urlPath)
 
 	ctx.Next()
 
 	latency := time.Since(start)
-	logger = lib.GetLoggerFromCtx(ctx)
+	logger = core.GetLoggerFromCtx(ctx)
 	status := ctx.Writer.Status()
-	level := lib.LogLevelInfo
+	level := core.LogLevelInfo
 	if status >= 500 {
-		level = lib.LogLevelError
+		level = core.LogLevelError
 	} else if status >= 400 {
-		level = lib.LogLevelWarn
+		level = core.LogLevelWarn
 	}
 	logger.Log(level, "Req End: "+urlPath,
 		slog.Int("http.status_code", status),

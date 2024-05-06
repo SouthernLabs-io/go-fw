@@ -5,18 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type MyResource struct {
-	httpHandler lib.HTTPHandler
+	httpHandler core.HTTPHandler
 }
 
-func NewMyResource(httpHandler lib.HTTPHandler) MyResource {
+func NewMyResource(httpHandler core.HTTPHandler) MyResource {
 	return MyResource{httpHandler: httpHandler}
 }
 
-func (r MyResource) Setup(httpHandler lib.HTTPHandler) {
+func (r MyResource) Setup(httpHandler core.HTTPHandler) {
 	router := httpHandler.Root
 	router.GET("check", r.Check)
 	getHandler := r.Get
@@ -56,18 +56,18 @@ func (r MyResource) Setup(httpHandler lib.HTTPHandler) {
 }
 
 func (r MyResource) Middleware(ctx *gin.Context) {
-	lib.GetLoggerFromCtx(ctx).Infof("middleware!!")
+	core.GetLoggerFromCtx(ctx).Infof("middleware!!")
 }
 
 func (r MyResource) Get(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, lib.GetPathMetaFromCtx(ctx))
+	ctx.JSON(http.StatusOK, core.GetPathMetaFromCtx(ctx))
 }
 
 func (r MyResource) Post(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, lib.GetPathMetaFromCtx(ctx))
+	ctx.JSON(http.StatusOK, core.GetPathMetaFromCtx(ctx))
 }
 func (r MyResource) Patch(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, lib.GetPathMetaFromCtx(ctx))
+	ctx.JSON(http.StatusOK, core.GetPathMetaFromCtx(ctx))
 }
 
 func (r MyResource) Check(ctx *gin.Context) {

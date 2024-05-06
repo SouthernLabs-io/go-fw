@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/middlewares"
 	"github.com/southernlabs-io/go-fw/providers"
 	"github.com/southernlabs-io/go-fw/rest"
@@ -37,10 +37,10 @@ func (s *ServeCommand) Run() CommandRunner {
 	return func(dep struct {
 		fx.In
 
-		Conf        lib.Config
-		HTTPHandler lib.HTTPHandler //It is here for the container to initialize it
+		Conf        core.Config
+		HTTPHandler core.HTTPHandler //It is here for the container to initialize it
 	}) {
-		logger := lib.GetLoggerForType(s)
+		logger := core.GetLoggerForType(s)
 		if dep.Conf.Datadog.Tracing {
 			startTracer(dep.Conf, logger)
 		}

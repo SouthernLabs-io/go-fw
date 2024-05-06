@@ -4,22 +4,22 @@ import (
 	"bytes"
 	"testing"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
-func GetTestLogger(tb testing.TB) lib.Logger {
-	return lib.NewLoggerWithWriter(
-		lib.CoreConfig{
-			Env: lib.EnvConfig{Name: "test", Type: lib.EnvTypeTest},
-			Log: lib.LogConfig{Level: lib.LogLevelDebug},
+func GetTestLogger(tb testing.TB) core.Logger {
+	return core.NewLoggerWithWriter(
+		core.RootConfig{
+			Env: core.EnvConfig{Name: "test", Type: core.EnvTypeTest},
+			Log: core.LogConfig{Level: core.LogLevelDebug},
 		},
 		tb.Name(),
 		newTestWriter(tb),
 	)
 }
 
-func NewLoggerFactory(tb testing.TB, conf lib.CoreConfig) *lib.LoggerFactory {
-	return lib.NewLoggerFactoryWithWriter(conf, newTestWriter(tb))
+func NewLoggerFactory(tb testing.TB, conf core.RootConfig) *core.LoggerFactory {
+	return core.NewLoggerFactoryWithWriter(conf, newTestWriter(tb))
 }
 
 // _TestingWriter writes to the testing.TB.Log function.

@@ -1,0 +1,12 @@
+
+httpServer:
+  port: 8080
+  bindAddress:
+  basePath: /api/v1/
+  reqLoggerExcludes: [ "/health", "/ready" ]
+  cors:
+    AllowAllOrigins: true
+
+MapConfig:
+  key1: true
+  key2: false

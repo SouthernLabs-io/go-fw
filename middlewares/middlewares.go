@@ -6,7 +6,7 @@ import (
 
 	"go.uber.org/fx"
 
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type MiddlewarePriority int
@@ -25,22 +25,22 @@ const (
 )
 
 type Middleware interface {
-	Setup(httpHandler lib.HTTPHandler)
+	Setup(httpHandler core.HTTPHandler)
 	Priority() MiddlewarePriority
-	GetLogger() lib.Logger
+	GetLogger() core.Logger
 }
 
 type BaseMiddleware struct {
-	Conf   lib.Config
-	Logger lib.Logger
+	Conf   core.Config
+	Logger core.Logger
 }
 
-func (m *BaseMiddleware) GetLogger() lib.Logger {
+func (m *BaseMiddleware) GetLogger() core.Logger {
 	return m.Logger
 }
 
 func ProvideAsMiddleware(provider any, anns ...fx.Annotation) fx.Option {
-	return lib.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"middlewares"`)})
+	return core.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"middlewares"`)})
 }
 
 type Middlewares []Middleware
@@ -48,9 +48,9 @@ type Middlewares []Middleware
 func NewMiddlewares(deps struct {
 	fx.In
 
-	LF          *lib.LoggerFactory
+	LF          *core.LoggerFactory
 	Middlewares []Middleware `group:"middlewares"`
-	HTTPHandler lib.HTTPHandler
+	HTTPHandler core.HTTPHandler
 }) Middlewares {
 	// We want a stable order
 	slices.SortFunc(deps.Middlewares, func(a, b Middleware) int {
@@ -82,7 +82,7 @@ func NewMiddlewares(deps struct {
 	return deps.Middlewares
 }
 
-func (ms Middlewares) Setup(httpHandler lib.HTTPHandler) {
+func (ms Middlewares) Setup(httpHandler core.HTTPHandler) {
 	for _, middleware := range ms {
 		t := reflect.TypeOf(middleware).Elem()
 		middleware.GetLogger().Debugf("Setting up middleware %s.%s", t.PkgPath(), t.Name())

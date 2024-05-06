@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	lib "github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/core"
 	middlewares "github.com/southernlabs-io/go-fw/middlewares"
 
 	mock "github.com/stretchr/testify/mock"
@@ -23,18 +23,18 @@ func (_m *Middleware) EXPECT() *Middleware_Expecter {
 }
 
 // GetLogger provides a mock function with given fields:
-func (_m *Middleware) GetLogger() lib.Logger {
+func (_m *Middleware) GetLogger() core.Logger {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLogger")
 	}
 
-	var r0 lib.Logger
-	if rf, ok := ret.Get(0).(func() lib.Logger); ok {
+	var r0 core.Logger
+	if rf, ok := ret.Get(0).(func() core.Logger); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(lib.Logger)
+		r0 = ret.Get(0).(core.Logger)
 	}
 
 	return r0
@@ -57,12 +57,12 @@ func (_c *Middleware_GetLogger_Call) Run(run func()) *Middleware_GetLogger_Call 
 	return _c
 }
 
-func (_c *Middleware_GetLogger_Call) Return(_a0 lib.Logger) *Middleware_GetLogger_Call {
+func (_c *Middleware_GetLogger_Call) Return(_a0 core.Logger) *Middleware_GetLogger_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *Middleware_GetLogger_Call) RunAndReturn(run func() lib.Logger) *Middleware_GetLogger_Call {
+func (_c *Middleware_GetLogger_Call) RunAndReturn(run func() core.Logger) *Middleware_GetLogger_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -113,7 +113,7 @@ func (_c *Middleware_Priority_Call) RunAndReturn(run func() middlewares.Middlewa
 }
 
 // Setup provides a mock function with given fields: httpHandler
-func (_m *Middleware) Setup(httpHandler lib.HTTPHandler) {
+func (_m *Middleware) Setup(httpHandler core.HTTPHandler) {
 	_m.Called(httpHandler)
 }
 
@@ -123,14 +123,14 @@ type Middleware_Setup_Call struct {
 }
 
 // Setup is a helper method to define mock.On call
-//   - httpHandler lib.HTTPHandler
+//   - httpHandler core.HTTPHandler
 func (_e *Middleware_Expecter) Setup(httpHandler interface{}) *Middleware_Setup_Call {
 	return &Middleware_Setup_Call{Call: _e.mock.On("Setup", httpHandler)}
 }
 
-func (_c *Middleware_Setup_Call) Run(run func(httpHandler lib.HTTPHandler)) *Middleware_Setup_Call {
+func (_c *Middleware_Setup_Call) Run(run func(httpHandler core.HTTPHandler)) *Middleware_Setup_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(lib.HTTPHandler))
+		run(args[0].(core.HTTPHandler))
 	})
 	return _c
 }
@@ -140,7 +140,7 @@ func (_c *Middleware_Setup_Call) Return() *Middleware_Setup_Call {
 	return _c
 }
 
-func (_c *Middleware_Setup_Call) RunAndReturn(run func(lib.HTTPHandler)) *Middleware_Setup_Call {
+func (_c *Middleware_Setup_Call) RunAndReturn(run func(core.HTTPHandler)) *Middleware_Setup_Call {
 	_c.Call.Return(run)
 	return _c
 }
