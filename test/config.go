@@ -14,10 +14,12 @@ func NewConfig(testName string) core.Config {
 	}
 	coreConfig.Name += "-" + testName
 
+	// Set default test config, it can be overridden in the test config.yaml
 	coreConfig.Env = core.EnvConfig{
 		Name: "test",
 		Type: core.EnvTypeTest,
 	}
+	coreConfig.Log.Level = core.LogLevelDebug
 
 	config := core.Config{RootConfig: coreConfig}
 	core.LoadConfig(coreConfig, &config)
