@@ -166,7 +166,7 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 	l.extendedCount = 0
 	logger := core.GetLoggerFromCtx(ctx)
 	if res.RowsAffected != 0 {
-		logger.Debugf("unlocked: %s, lockID: %s", l.resource, l.id)
+		logger.Debugf("Lock unlocked: %s, lockID: %s", l.resource, l.id)
 	} else {
 		logger.Debugf("it was already expired or unlocked: %s, lockID: %s", l.resource, l.id)
 	}
@@ -192,7 +192,9 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	logger := core.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			logger.Debugf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+			l.expiration = time.Time{}
+			l.extendedCount = 0
+			logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 			return false, nil
 		}
 		return false, err
@@ -200,7 +202,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 
 	l.expiration = until
 	l.extendedCount = extendedCount
-	logger.Debugf(
+	logger.Tracef(
 		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,
 		l.id,

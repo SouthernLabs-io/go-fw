@@ -159,7 +159,7 @@ func (l *LocalLock) Extend(ctx context.Context) (bool, error) {
 
 	l.extendedCount++
 	l.expiration = time.Now().Add(l.ttl)
-	core.GetLoggerFromCtx(ctx).Debugf(
+	core.GetLoggerFromCtx(ctx).Tracef(
 		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,
 		l.id,

@@ -168,7 +168,7 @@ func (l *DistributedRedisLock) Extend(ctx context.Context) (bool, error) {
 		// Lua scripts can't return more than one value, so we pull the ttl in milliseconds separately.
 		pttl := rdb.PTTL(ctx, l.resource).Val()
 		l.expiration = time.Now().Add(pttl)
-		logger.Debugf(
+		logger.Tracef(
 			"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 			l.resource,
 			l.id,
@@ -176,7 +176,9 @@ func (l *DistributedRedisLock) Extend(ctx context.Context) (bool, error) {
 			l.extendedCount,
 		)
 	} else {
-		logger.Debugf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		l.expiration = time.Time{}
+		l.extendedCount = 0
+		logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	}
 
 	return set, nil
