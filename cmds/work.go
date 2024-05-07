@@ -36,7 +36,7 @@ func (w *WorkCommand) Run() CommandRunner {
 		fx.In
 
 		Conf          core.Config
-		WorkerHandler []worker.WorkerHandler `group:"worker_handlers"` //It is here for the container to initialize it
+		WorkerHandler []worker.Handler `group:"worker_handlers"` //It is here for the container to initialize it
 	}) {
 		logger := core.GetLoggerForType(w)
 		if dep.Conf.Datadog.Tracing {

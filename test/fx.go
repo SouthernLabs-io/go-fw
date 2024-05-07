@@ -10,6 +10,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/redis"
 	"github.com/southernlabs-io/go-fw/rest"
 )
@@ -49,9 +50,9 @@ func FxUnit(t *testing.T, opts ...fx.Option) *FxApp {
 			fx.Provide(NewLoggerFactory),
 			fx.Provide(ProvideCoreConfig),
 			fx.WithLogger(func(lf *core.LoggerFactory) fxevent.Logger {
-				return core.NewFxLogger(lf.GetLoggerForType(fx.App{}))
+				return di.NewFxLogger(lf.GetLoggerForType(fx.App{}))
 			}),
-			TestModuleContext,
+			ModuleContext,
 			fx.Options(opts...),
 		),
 	}
@@ -82,7 +83,7 @@ func (a *FxApp) WithDB() *FxApp {
 }
 
 func (a *FxApp) WithRedis() *FxApp {
-	a.opts = fx.Options(a.opts, TestModuleRedis)
+	a.opts = fx.Options(a.opts, ModuleRedis)
 	return a
 }
 

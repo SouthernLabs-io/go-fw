@@ -1,33 +1,36 @@
-package core
+package slack
 
 import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
+
+	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 )
 
-type SlackFxLifecycleLoggerInterceptor struct {
-	conf        Config
+type FxLifecycleLoggerInterceptor struct {
+	conf        core.Config
 	fxLogger    fxevent.Logger
-	logger      Logger
-	slackClient *SlackClient
+	logger      core.Logger
+	slackClient *Client
 }
 
 func NewSlackFxLifecycleLoggerInterceptor(deps struct {
 	fx.In
 
-	Conf        Config
-	LF          *LoggerFactory
-	SlackClient *SlackClient `optional:"true"`
-}) *SlackFxLifecycleLoggerInterceptor {
-	return &SlackFxLifecycleLoggerInterceptor{
+	Conf        core.Config
+	LF          *core.LoggerFactory
+	SlackClient *Client `optional:"true"`
+}) *FxLifecycleLoggerInterceptor {
+	return &FxLifecycleLoggerInterceptor{
 		conf:        deps.Conf,
-		logger:      deps.LF.GetLoggerForType(SlackFxLifecycleLoggerInterceptor{}),
-		fxLogger:    NewFxLogger(deps.LF.GetLoggerForType(fx.App{})),
+		logger:      deps.LF.GetLoggerForType(FxLifecycleLoggerInterceptor{}),
+		fxLogger:    di.NewFxLogger(deps.LF.GetLoggerForType(fx.App{})),
 		slackClient: deps.SlackClient,
 	}
 }
 
-func (l SlackFxLifecycleLoggerInterceptor) LogEvent(event fxevent.Event) {
+func (l FxLifecycleLoggerInterceptor) LogEvent(event fxevent.Event) {
 	// Always send events to fx logger
 	l.fxLogger.LogEvent(event)
 

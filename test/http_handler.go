@@ -10,8 +10,8 @@ import (
 
 func NewTestHTTPHandler(conf core.Config, lf *core.LoggerFactory) rest.HTTPHandler {
 	ginLogger := lf.GetLoggerForType(&gin.Engine{})
-	gin.DefaultWriter = core.NewDefaultGinWriter(ginLogger)
-	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(ginLogger)
+	gin.DefaultWriter = rest.NewDefaultGinWriter(ginLogger)
+	gin.DefaultErrorWriter = rest.NewDefaultErrorGinWriter(ginLogger)
 	gin.SetMode(gin.DebugMode) //There is a TestMode, but it doesn't print logs, so it is not useful
 
 	engine := gin.New()

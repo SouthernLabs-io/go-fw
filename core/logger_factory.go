@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/syncmap"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 var loggerFactoryCtxKey = CtxKey("_fw_logger_factory")
@@ -32,7 +32,7 @@ func GetDefaultLoggerFactory() *LoggerFactory {
 type ValueContext interface{ Value(any) any }
 
 type LoggerFactory struct {
-	loggersByPath *syncmap.Map[string, Logger]
+	loggersByPath *sync.Map[string, Logger]
 	coreConfig    RootConfig
 	writer        io.Writer
 }
@@ -46,7 +46,7 @@ func NewLoggerFactory(coreConfig RootConfig) *LoggerFactory {
 	coreConfig.Log.Levels = normalized
 
 	return &LoggerFactory{
-		loggersByPath: syncmap.New[string, Logger](),
+		loggersByPath: sync.NewMap[string, Logger](),
 		coreConfig:    coreConfig,
 	}
 }
@@ -190,7 +190,7 @@ func GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger {
 
 // GetLoggerFromCtxForPath returns a logger for the given type and adds the context properties (if any)
 func (lf *LoggerFactory) GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
-	var logger = lf.loggersByPath.LoadOrStore(pth, lf.newLogger)
+	var logger = lf.loggersByPath.LoadOrStoreFunc(pth, lf.newLogger)
 
 	attrs := GetLoggerAttrsFromCtx(ctx)
 	if len(attrs) > 0 {

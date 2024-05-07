@@ -29,7 +29,7 @@ func OnTestRedisStop(redis redis.Redis) error {
 	return nil
 }
 
-var TestModuleRedis = fx.Provide(
+var ModuleRedis = fx.Provide(
 	fx.Annotate(
 		NewTestRedis,
 		fx.OnStop(OnTestRedisStop),

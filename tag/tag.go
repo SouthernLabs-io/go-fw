@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/syncmap"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 // FieldName returns the name of the field based on the tag names given, the first match will be returned.
@@ -29,7 +29,7 @@ func FieldName(field reflect.StructField, tagNames ...string) (string, bool) {
 	return "", false
 }
 
-var fieldNamesCache = syncmap.New[string, map[string]string]()
+var fieldNamesCache = sync.NewMap[string, map[string]string]()
 
 // FieldNames returns a map of field names based on the tag names given, the first match will be returned.
 // This function results are cached, so:
@@ -47,7 +47,7 @@ func FieldNames(structType reflect.Type, tagNames ...string) (map[string]string,
 	}
 
 	key := fmt.Sprintf("%s:%s", structType, strings.Join(tagNames, ","))
-	fieldMap := fieldNamesCache.LoadOrStore(key, func(string) (value map[string]string) {
+	fieldMap := fieldNamesCache.LoadOrStoreFunc(key, func(string) (value map[string]string) {
 		return fieldNames(structType, tagNames)
 	})
 

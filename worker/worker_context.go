@@ -1,4 +1,4 @@
-package core
+package worker
 
 import (
 	"context"
@@ -6,9 +6,11 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+
+	"github.com/southernlabs-io/go-fw/core"
 )
 
-var workerInfoKey = CtxKey("_fw_worker")
+var workerInfoKey = core.CtxKey("_fw_worker")
 
 type _WorkerInfo struct {
 	Name string
@@ -16,7 +18,7 @@ type _WorkerInfo struct {
 }
 
 func NewWorkerRandomIDWithHostname() string {
-	return fmt.Sprintf("%s@%s", uuid.NewString(), CachedHostname())
+	return fmt.Sprintf("%s@%s", uuid.NewString(), core.CachedHostname())
 }
 
 // NewWorkerContext creates a new child context with worker info and a configured logger with the worker name and id.
@@ -26,19 +28,19 @@ func NewWorkerContext(
 	name string,
 	id string,
 ) context.Context {
-	ctx := CtxSetValue(parentCtx, workerInfoKey, _WorkerInfo{name, id})
+	ctx := core.CtxSetValue(parentCtx, workerInfoKey, _WorkerInfo{name, id})
 
 	// Add worker info to the context
-	ctx = CtxAppendLoggerAttrs(ctx, slog.Group("worker", slog.String("name", name), slog.String("id", id)))
+	ctx = core.CtxAppendLoggerAttrs(ctx, slog.Group("worker", slog.String("name", name), slog.String("id", id)))
 	return ctx
 }
 
-func GetWorkerName(ctx ValueContext) (string, bool) {
+func GetWorkerName(ctx core.ValueContext) (string, bool) {
 	wCtx, ok := ctx.Value(workerInfoKey).(_WorkerInfo)
 	return wCtx.Name, ok
 }
 
-func GetWorkerID(ctx ValueContext) (string, bool) {
+func GetWorkerID(ctx core.ValueContext) (string, bool) {
 	wCtx, ok := ctx.Value(workerInfoKey).(_WorkerInfo)
 	return wCtx.ID, ok
 }

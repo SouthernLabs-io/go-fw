@@ -9,6 +9,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/slack"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -67,7 +68,7 @@ func WrapSubCommand(cmd Command) *cobra.Command {
 			logger.Infof("Running %s", cmd.Cmd())
 			opts := fx.Options(
 				core.Module,
-				fx.WithLogger(func(slackLoggerInterceptor *core.SlackFxLifecycleLoggerInterceptor) fxevent.Logger {
+				fx.WithLogger(func(slackLoggerInterceptor *slack.FxLifecycleLoggerInterceptor) fxevent.Logger {
 					return slackLoggerInterceptor
 				}),
 				cmd.GetFXOpts(),

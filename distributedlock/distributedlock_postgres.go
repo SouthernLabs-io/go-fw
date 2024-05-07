@@ -17,6 +17,16 @@ import (
 
 var errSchemaAlreadyInitialized = errors.Newf("SCHEMA_ALREADY_INITIALIZED", "schema already initialized by another instance")
 
+type PostgresFactory struct{}
+
+func NewPostgresFactory() *PostgresFactory {
+	return &PostgresFactory{}
+}
+
+func (f *PostgresFactory) NewDistributedLock(resource string, ttl time.Duration) DistributedLock {
+	return NewDistributedPostgresLock(resource, ttl)
+}
+
 type DistributedPostgresLock struct {
 	BaseDistributedLock
 }
@@ -130,11 +140,11 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 	logger := core.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
 		l.expiration = until
-		logger.Debugf("acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, until)
+		logger.Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 		return true, nil
 	}
 
-	logger.Debugf("not acquired: %s, lockID: %s", l.resource, l.id)
+	logger.Debugf("Lock not acquired: %s, lockID: %s", l.resource, l.id)
 	return false, nil
 }
 
@@ -182,8 +192,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	logger := core.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			l.expiration = time.Time{}
-			logger.Debugf("not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+			logger.Debugf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 			return false, nil
 		}
 		return false, err
@@ -192,7 +201,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	l.expiration = until
 	l.extendedCount = extendedCount
 	logger.Debugf(
-		"extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
+		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,
 		l.id,
 		until,

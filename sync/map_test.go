@@ -1,14 +1,13 @@
-package syncmap_test
+package sync_test
 
 import (
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/syncmap"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 func TestConcurrent(t *testing.T) {
@@ -18,7 +17,7 @@ func TestConcurrent(t *testing.T) {
 }
 
 func testConcurrent(t *testing.T) {
-	m := syncmap.New[string, string]()
+	m := sync.NewMap[string, string]()
 	require.NotNil(t, m)
 
 	genCount := &atomic.Int32{}
@@ -30,7 +29,7 @@ func testConcurrent(t *testing.T) {
 		var i = i
 		go func() {
 			key := "key"
-			val := m.LoadOrStore(key, func(key string) string {
+			val := m.LoadOrStoreFunc(key, func(key string) string {
 				currentCount := genCount.Add(1)
 				require.LessOrEqual(t, currentCount, int32(1), "generator called more than once: %d", currentCount)
 				return fmt.Sprintf("%d", i)
@@ -46,7 +45,7 @@ func testConcurrent(t *testing.T) {
 }
 
 func TestAPI(t *testing.T) {
-	m := syncmap.New[string, string]()
+	m := sync.NewMap[string, string]()
 	require.NotNil(t, m)
 
 	key := "key"
@@ -70,7 +69,7 @@ func TestAPI(t *testing.T) {
 	require.False(t, present)
 	require.Equal(t, "", value)
 
-	value = m.LoadOrStore(key, func(key string) (value string) {
+	value = m.LoadOrStoreFunc(key, func(key string) (value string) {
 		return "value"
 	})
 	require.Equal(t, "value", value)

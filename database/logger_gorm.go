@@ -1,4 +1,4 @@
-package core
+package database
 
 import (
 	"context"
@@ -9,18 +9,19 @@ import (
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 type _GormLogger struct {
-	logger Logger
+	logger core.Logger
 	silent bool
 
 	slowThreshold             time.Duration
 	ignoreRecordNotFoundError bool
 }
 
-func NewGormLogger(logger Logger) gormlogger.Interface {
+func NewGormLogger(logger core.Logger) gormlogger.Interface {
 	// Just skip this wrapper
 	logger.SkipCallers += 1
 	return _GormLogger{
@@ -33,17 +34,17 @@ func NewGormLogger(logger Logger) gormlogger.Interface {
 
 func (gl _GormLogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	newGL := gl
-	var logLevel LogLevel
+	var logLevel core.LogLevel
 	switch level {
 	// gorm Info level is used to be verbose and should be treated as trace
 	case gormlogger.Info:
-		logLevel = LogLevelTrace
+		logLevel = core.LogLevelTrace
 	case gormlogger.Warn:
-		logLevel = LogLevelWarn
+		logLevel = core.LogLevelWarn
 	case gormlogger.Error:
-		logLevel = LogLevelError
+		logLevel = core.LogLevelError
 	case gormlogger.Silent:
-		logLevel = LogLevelError
+		logLevel = core.LogLevelError
 		newGL.silent = true
 	default:
 		panic(errors.Newf(errors.ErrCodeBadArgument, "unknown gorm log level: %v", level))
@@ -52,8 +53,8 @@ func (gl _GormLogger) LogMode(level gormlogger.LogLevel) gormlogger.Interface {
 	return newGL
 }
 
-func (gl _GormLogger) configureLogger(ctx context.Context) Logger {
-	attrs := GetLoggerAttrsFromCtx(ctx)
+func (gl _GormLogger) configureLogger(ctx context.Context) core.Logger {
+	attrs := core.GetLoggerAttrsFromCtx(ctx)
 	if len(attrs) > 0 {
 		return gl.logger.WithAttrs(attrs...)
 	}
@@ -93,7 +94,7 @@ func (gl _GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql
 		logger.SkipCallers += 2
 		logger.Error("Failed to run query", attrs...)
 
-	case elapsed > gl.slowThreshold && gl.slowThreshold != 0 && gl.logger.Enabled(LogLevelWarn):
+	case elapsed > gl.slowThreshold && gl.slowThreshold != 0 && gl.logger.Enabled(core.LogLevelWarn):
 		sql, rows := fc()
 
 		// Append context attributes
@@ -108,7 +109,7 @@ func (gl _GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql
 		logger.SkipCallers += 2
 		logger.Warn(fmt.Sprintf("Slow sql executed: %s", elapsed), attrs...)
 
-	case gl.logger.Enabled(LogLevelTrace):
+	case gl.logger.Enabled(core.LogLevelTrace):
 		sql, rows := fc()
 
 		attrs := []any{

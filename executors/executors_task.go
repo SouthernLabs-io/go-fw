@@ -10,6 +10,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/queue"
+	"github.com/southernlabs-io/go-fw/worker"
 )
 
 /*
@@ -184,7 +185,7 @@ func (t *_Task) Value() any {
 }
 
 func (t *_Task) configureContext(parentCtx context.Context, name string) {
-	t.ctx, t.ctxCancel = context.WithCancel(core.NewWorkerContext(
+	t.ctx, t.ctxCancel = context.WithCancel(worker.NewWorkerContext(
 		parentCtx, name, fmt.Sprintf("%d@%s", t.id, core.CachedHostname()),
 	))
 }

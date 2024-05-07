@@ -1,17 +1,19 @@
-package core
+package di
 
 import (
 	"log/slog"
 	"strings"
 
 	"go.uber.org/fx/fxevent"
+
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type _FxLogger struct {
-	libLogger Logger
+	libLogger core.Logger
 }
 
-func NewFxLogger(logger Logger) fxevent.Logger {
+func NewFxLogger(logger core.Logger) fxevent.Logger {
 	// As of fx v1.20, the direct caller is "go.uber.org/fx.(*logBuffer)", which is not useful, so we skip it.
 	logger.SkipCallers += 2
 	return _FxLogger{logger}
@@ -188,7 +190,7 @@ func (l _FxLogger) LogEvent(event fxevent.Event) {
 
 func maybeModuleField(name string) slog.Attr {
 	if len(name) == 0 {
-		return skipAttr
+		return core.SkipAttr
 	}
 	return slog.String("module", name)
 }
@@ -197,5 +199,5 @@ func maybeBool(name string, b bool) slog.Attr {
 	if b {
 		return slog.Bool(name, true)
 	}
-	return skipAttr
+	return core.SkipAttr
 }

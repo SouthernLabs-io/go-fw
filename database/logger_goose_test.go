@@ -1,4 +1,4 @@
-package core_test
+package database_test
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -25,7 +26,7 @@ func TestGooseLoggerSkipCallers(t *testing.T) {
 	logger := core.NewLoggerWithWriter(config.RootConfig, "goose_logger", buffer)
 	logger.SetLevel(core.LogLevelDebug)
 
-	gooseLogger := core.NewGooseLogger(logger)
+	gooseLogger := database.NewGooseLogger(logger)
 	goose.SetLogger(gooseLogger)
 	sqlDB, err := sql.Open(
 		"pgx",

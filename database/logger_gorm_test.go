@@ -1,4 +1,4 @@
-package core_test
+package database_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -25,14 +26,14 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 	logger.SetLevel(core.LogLevelTrace)
 
 	_, err := gorm.Open(postgres.Open(""), &gorm.Config{
-		Logger: core.NewGormLogger(logger),
+		Logger: database.NewGormLogger(logger),
 	})
 	require.Error(t, err)
 
 	gormDB, err := gorm.Open(
 		postgres.Open("user=postgres password=postgres dbname=postgres host=localhost"),
 		&gorm.Config{
-			Logger: core.NewGormLogger(logger),
+			Logger: database.NewGormLogger(logger),
 		},
 	)
 	require.NoError(t, err)
@@ -57,7 +58,7 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 		loggerName := loggerMap["method_name"].(string)
 		require.True(t,
 			strings.HasPrefix(loggerName, "gorm.io/gorm") ||
-				strings.HasPrefix(loggerName, "github.com/southernlabs-io/go-fw/core_test"),
+				strings.HasPrefix(loggerName, "github.com/southernlabs-io/go-fw/database_test"),
 			logMsgStr,
 		)
 	}
@@ -75,7 +76,7 @@ func TestGormLoggerLogMode(t *testing.T) {
 	gormDB, err := gorm.Open(
 		postgres.Open("user=postgres password=postgres dbname=postgres host=localhost sslmode=disable"),
 		&gorm.Config{
-			Logger: core.NewGormLogger(logger),
+			Logger: database.NewGormLogger(logger),
 		},
 	)
 	require.NoError(t, err)

@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/rest"
-	"github.com/southernlabs-io/go-fw/syncmap"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 var ErrInvalidToken = errors.Newf("AUTHN_TOKEN_NOT_VALID", "token is not valid")
@@ -76,7 +76,7 @@ type AuthNMiddleware struct {
 	BaseMiddleware
 	provider      AuthNProvider
 	excludes      map[string][]string
-	excludesCache *syncmap.Map[_PathMethod, bool]
+	excludesCache *sync.Map[_PathMethod, bool]
 }
 
 func NewAuthN(
@@ -90,7 +90,7 @@ func NewAuthN(
 		},
 		provider,
 		map[string][]string{},
-		syncmap.New[_PathMethod, bool](),
+		sync.NewMap[_PathMethod, bool](),
 	}
 }
 
@@ -125,7 +125,7 @@ func (m *AuthNMiddleware) ExcludePrefixAndMethods(pathPrefix string, methods ...
 }
 
 func (m *AuthNMiddleware) Require(ctx *gin.Context) {
-	excluded := m.excludesCache.LoadOrStore(_PathMethod{path: ctx.FullPath(), method: ctx.Request.Method}, func(pathMethod _PathMethod) bool {
+	excluded := m.excludesCache.LoadOrStoreFunc(_PathMethod{path: ctx.FullPath(), method: ctx.Request.Method}, func(pathMethod _PathMethod) bool {
 		// exclude paths that are not under the base path, like /health
 		if !strings.HasPrefix(pathMethod.path, m.Conf.HttpServer.BasePath) {
 			core.GetLoggerFromCtx(ctx).Infof("Excluded path: %s", pathMethod.path)

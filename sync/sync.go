@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -18,3 +19,19 @@ func Sleep(ctx context.Context, duration time.Duration) error {
 		return context.Cause(ctx)
 	}
 }
+
+// # region copy of sync go std package
+
+type WaitGroup = sync.WaitGroup
+
+type Once = sync.Once
+
+type Mutex = sync.Mutex
+
+type RWMutex = sync.RWMutex
+
+type Cond = sync.Cond
+
+type Pool = sync.Pool
+
+// # endregion

@@ -1,4 +1,4 @@
-package core_test
+package di_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 	"go.uber.org/fx/fxtest"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -21,7 +22,7 @@ func TestFxLoggerSkipCallers(t *testing.T) {
 	buffer := new(bytes.Buffer)
 	logger := core.NewLoggerWithWriter(config.RootConfig, "fx_logger", buffer)
 	logger.SetLevel(core.LogLevelDebug)
-	fxLogger := core.NewFxLogger(logger)
+	fxLogger := di.NewFxLogger(logger)
 
 	fxApp := fxtest.New(t, fx.WithLogger(func() fxevent.Logger { return fxLogger }))
 	fxApp.RequireStart().RequireStop()

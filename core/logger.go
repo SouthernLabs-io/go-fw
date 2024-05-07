@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	skipAttr       = slog.Attr{}
+	SkipAttr = slog.Attr{}
+
 	traceAsSlogStr = slog.Level(LogLevelTrace).String()
 )
 

@@ -1,4 +1,4 @@
-package core
+package slack
 
 import (
 	"bytes"
@@ -13,25 +13,26 @@ import (
 
 	"github.com/iancoleman/strcase"
 
+	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
-type SlackWebhookChannelType string
+type WebhookChannelType string
 
 const (
-	SlackWebhookChannelTypeInfo  SlackWebhookChannelType = "ℹ️ Info"
-	SlackWebhookChannelTypeWarn  SlackWebhookChannelType = "⚠️ Warn"
-	SlackWebhookChannelTypeError SlackWebhookChannelType = "❗️Error"
+	WebhookChannelTypeInfo  WebhookChannelType = "ℹ️ Info"
+	WebhookChannelTypeWarn  WebhookChannelType = "⚠️ Warn"
+	WebhookChannelTypeError WebhookChannelType = "❗️Error"
 )
 
-type SlackClient struct {
-	conf            Config
+type Client struct {
+	conf            core.Config
 	httpClient      *http.Client
 	fullMsgTemplate *template.Template
 }
 
-func NewSlackClient(conf Config, lf *LoggerFactory) *SlackClient {
+func NewSlackClient(conf core.Config, lf *core.LoggerFactory) *Client {
 	if !conf.Slack.Enabled {
 		lf.GetLogger().Infof("Slack notifications are disabled")
 		return nil
@@ -52,7 +53,7 @@ func NewSlackClient(conf Config, lf *LoggerFactory) *SlackClient {
 	err = contextSectionTemplate.Execute(&buf, map[string]any{
 		"env_type":   strcase.ToCamel(string(conf.Env.Type)),
 		"env_name":   strcase.ToCamel(conf.Env.Name),
-		"host":       CachedHostname(),
+		"host":       core.CachedHostname(),
 		"release":    version.Release,
 		"commit":     version.Commit,
 		"build_time": version.BuildTime,
@@ -69,7 +70,7 @@ func NewSlackClient(conf Config, lf *LoggerFactory) *SlackClient {
 		panic(errors.Newf(errors.ErrCodeBadState, "failed to parse Slack message template: %w", err))
 	}
 
-	return &SlackClient{
+	return &Client{
 		conf:            conf,
 		fullMsgTemplate: fullMsgTemplate,
 		httpClient: &http.Client{
@@ -78,31 +79,31 @@ func NewSlackClient(conf Config, lf *LoggerFactory) *SlackClient {
 	}
 }
 
-func (s *SlackClient) Infof(message string, args ...any) error {
-	return s.Send(SlackWebhookChannelTypeInfo, message, args)
+func (s *Client) Infof(message string, args ...any) error {
+	return s.Send(WebhookChannelTypeInfo, message, args)
 }
 
-func (s *SlackClient) Infob(blocks []map[string]any) error {
-	return s.SendWithBlocks(SlackWebhookChannelTypeInfo, blocks)
+func (s *Client) Infob(blocks []map[string]any) error {
+	return s.SendWithBlocks(WebhookChannelTypeInfo, blocks)
 }
 
-func (s *SlackClient) Warnf(message string, args ...any) error {
-	return s.Send(SlackWebhookChannelTypeWarn, message, args)
+func (s *Client) Warnf(message string, args ...any) error {
+	return s.Send(WebhookChannelTypeWarn, message, args)
 }
 
-func (s *SlackClient) Warnb(blocks []map[string]any) error {
-	return s.SendWithBlocks(SlackWebhookChannelTypeWarn, blocks)
+func (s *Client) Warnb(blocks []map[string]any) error {
+	return s.SendWithBlocks(WebhookChannelTypeWarn, blocks)
 }
 
-func (s *SlackClient) Errorf(message string, args ...any) error {
-	return s.Send(SlackWebhookChannelTypeError, message, args)
+func (s *Client) Errorf(message string, args ...any) error {
+	return s.Send(WebhookChannelTypeError, message, args)
 }
 
-func (s *SlackClient) Errorb(blocks []map[string]any) error {
-	return s.SendWithBlocks(SlackWebhookChannelTypeError, blocks)
+func (s *Client) Errorb(blocks []map[string]any) error {
+	return s.SendWithBlocks(WebhookChannelTypeError, blocks)
 }
 
-func (s *SlackClient) Send(channelType SlackWebhookChannelType, message string, args []any) error {
+func (s *Client) Send(channelType WebhookChannelType, message string, args []any) error {
 	buf := bytes.Buffer{}
 	err := s.fullMsgTemplate.Execute(&buf, map[string]any{
 		"service_name": s.conf.Name,
@@ -110,7 +111,7 @@ func (s *SlackClient) Send(channelType SlackWebhookChannelType, message string, 
 		"main_msg":     fmt.Sprintf(message, args...),
 		"env_type":     s.conf.Env.Type,
 		"env_name":     s.conf.Env.Name,
-		"host":         CachedHostname(),
+		"host":         core.CachedHostname(),
 		"release":      version.Release,
 		"commit":       version.Commit,
 		"build_time":   version.BuildTime,
@@ -121,13 +122,13 @@ func (s *SlackClient) Send(channelType SlackWebhookChannelType, message string, 
 	return s.sendRaw(channelType, buf.Bytes())
 }
 
-func (s *SlackClient) SendWithBlocks(channelType SlackWebhookChannelType, blocks []map[string]any) error {
+func (s *Client) SendWithBlocks(channelType WebhookChannelType, blocks []map[string]any) error {
 	return s.send(channelType, map[string]any{
 		"blocks": blocks,
 	})
 }
 
-func (s *SlackClient) send(channelType SlackWebhookChannelType, payload map[string]any) error {
+func (s *Client) send(channelType WebhookChannelType, payload map[string]any) error {
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
 		return errors.NewUnknownf("error building payload: %w", err)
@@ -135,7 +136,7 @@ func (s *SlackClient) send(channelType SlackWebhookChannelType, payload map[stri
 	return s.sendRaw(channelType, bodyBytes)
 }
 
-func (s *SlackClient) sendRaw(channelType SlackWebhookChannelType, bodyBytes []byte) error {
+func (s *Client) sendRaw(channelType WebhookChannelType, bodyBytes []byte) error {
 	// Check if the channel type is enabled
 	webhookURL := s.getWebhookURL(channelType)
 	if webhookURL == "" {
@@ -169,14 +170,14 @@ func (s *SlackClient) sendRaw(channelType SlackWebhookChannelType, bodyBytes []b
 // getWebhookURL returns the webhook URL for the given channel type. If the URL is not configured, it will return the
 // URL for the next channel type in the order of Error -> Warn -> Info. If none of the URLs are configured, it will
 // panic.
-func (s *SlackClient) getWebhookURL(channelType SlackWebhookChannelType) string {
+func (s *Client) getWebhookURL(channelType WebhookChannelType) string {
 	urls := s.conf.Slack.WebhookURLS
 	switch channelType {
-	case SlackWebhookChannelTypeInfo:
+	case WebhookChannelTypeInfo:
 		return urls.Info
-	case SlackWebhookChannelTypeWarn:
+	case WebhookChannelTypeWarn:
 		return firstNonEmpty(urls.Warn, urls.Info)
-	case SlackWebhookChannelTypeError:
+	case WebhookChannelTypeError:
 		return firstNonEmpty(urls.Error, urls.Warn, urls.Info)
 	default:
 		panic(errors.Newf(errors.ErrCodeBadState, "invalid SlackWebhookChannelType: %s", channelType))

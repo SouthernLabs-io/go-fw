@@ -17,4 +17,4 @@ func NewContext(db database.DB, lf *core.LoggerFactory) context.Context {
 	return ctx
 }
 
-var TestModuleContext = fx.Provide(NewContext)
+var ModuleContext = fx.Provide(fx.Annotate(NewContext, fx.ParamTags(`optional:"true"`)))

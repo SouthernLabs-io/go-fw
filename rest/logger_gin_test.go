@@ -1,4 +1,4 @@
-package core_test
+package rest_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -21,8 +22,8 @@ func TestGinLoggerSkipCallers(t *testing.T) {
 	logger := core.NewLoggerWithWriter(config.RootConfig, "gin_logger", buffer)
 	logger.SetLevel(core.LogLevelDebug)
 
-	gin.DefaultWriter = core.NewDefaultGinWriter(logger)
-	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(logger)
+	gin.DefaultWriter = rest.NewDefaultGinWriter(logger)
+	gin.DefaultErrorWriter = rest.NewDefaultErrorGinWriter(logger)
 	gin.SetMode(gin.DebugMode)
 
 	ginEngine := gin.New()

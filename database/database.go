@@ -226,7 +226,7 @@ func MustOpenGORM(conf core.Config, dbName string, lf *core.LoggerFactory) *gorm
 		dbName,
 		dbConf.Port)
 	gormConf := gorm.Config{
-		Logger: core.NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
+		Logger: NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
 		NowFunc: func() time.Time {
 			// Return time with microsecond precision. Postgres timestamp type has microsecond precision.
 			return time.UnixMicro(time.Now().UnixMicro())

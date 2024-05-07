@@ -1,13 +1,14 @@
-package syncmap
+package sync
 
 import "sync"
 
+// Map is a thread-safe generic map implementation on top of sync.Map
 type Map[K comparable, V any] struct {
 	syncMap *sync.Map
 	mutex   *sync.Mutex
 }
 
-func New[K comparable, V any]() *Map[K, V] {
+func NewMap[K comparable, V any]() *Map[K, V] {
 	return &Map[K, V]{
 		syncMap: &sync.Map{},
 		mutex:   &sync.Mutex{},
@@ -18,7 +19,10 @@ func (m *Map[K, V]) Store(key K, value V) {
 	m.syncMap.Store(key, value)
 }
 
-func (m *Map[K, V]) LoadOrStore(key K, generator func(key K) (value V)) (value V) {
+// LoadOrStoreFunc loads the value for the given key, if it exists. If the key does not exist,
+// it calls the generator function to create the value and stores it in the map.
+// The generator function is guaranteed to be called synchronously and only once for the same key.
+func (m *Map[K, V]) LoadOrStoreFunc(key K, generator func(key K) (value V)) (value V) {
 	var present bool
 	if value, present = m.Load(key); present {
 		return value
@@ -36,12 +40,18 @@ func (m *Map[K, V]) LoadOrStore(key K, generator func(key K) (value V)) (value V
 	return value
 }
 
-func (m *Map[K, V]) Load(key K) (value V, present bool) {
-	var v any
-	if v, present = m.syncMap.Load(key); present {
-		return v.(V), true
+func (m *Map[K, V]) LoadOrStore(key K, store V) (V, bool) {
+	value, loaded := m.syncMap.LoadOrStore(key, store)
+	return value.(V), loaded
+}
+
+func (m *Map[K, V]) Load(key K) (V, bool) {
+	value, present := m.syncMap.Load(key)
+	if !present {
+		var zero V
+		return zero, present
 	}
-	return value, false
+	return value.(V), present
 }
 
 func (m *Map[K, V]) Delete(key K) {

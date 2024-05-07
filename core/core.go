@@ -19,6 +19,4 @@ var Module = fx.Options(
 	fx.Provide(NewConfig),
 	fx.Provide(NewCoreConfig),
 	fx.Provide(NewLoggerFactory),
-	fx.Provide(NewSlackClient),
-	fx.Provide(NewSlackFxLifecycleLoggerInterceptor),
 )

@@ -1,17 +1,19 @@
-package core
+package database
 
 import (
 	"os"
 	"strings"
 
 	"github.com/pressly/goose/v3"
+
+	"github.com/southernlabs-io/go-fw/core"
 )
 
 type _GooseLogger struct {
-	libLogger Logger
+	libLogger core.Logger
 }
 
-func NewGooseLogger(logger Logger) goose.Logger {
+func NewGooseLogger(logger core.Logger) goose.Logger {
 	// just skip this wrapper
 	logger.SkipCallers += 1
 	return _GooseLogger{logger}

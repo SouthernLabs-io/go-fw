@@ -4,10 +4,15 @@ import (
 	"context"
 	"time"
 
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
 var ErrCodeLockNotAutoExtended = "LOCK_NOT_AUTO_EXTENDED"
+
+type Factory interface {
+	NewDistributedLock(resource string, ttl time.Duration) DistributedLock
+}
 
 /*
 DistributedLock should be used to lock a resource across multiple processes.
@@ -136,3 +141,9 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 
 	return ctx, nil
 }
+
+var ModuleRedis = di.FxProvideAs[Factory](NewRedisFactory, nil, nil)
+
+var ModulePostgres = di.FxProvideAs[Factory](NewPostgresFactory, nil, nil)
+
+var ModuleLocal = di.FxProvideAs[Factory](NewLocalFactory, nil, nil)

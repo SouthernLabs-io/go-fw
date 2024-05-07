@@ -29,8 +29,8 @@ func NewHTTPHandler(
 ) HTTPHandler {
 	logger := lf.GetLoggerForType(HTTPHandler{})
 	ginLogger := lf.GetLoggerForType(gin.Engine{})
-	gin.DefaultWriter = core.NewDefaultGinWriter(ginLogger)
-	gin.DefaultErrorWriter = core.NewDefaultErrorGinWriter(ginLogger)
+	gin.DefaultWriter = NewDefaultGinWriter(ginLogger)
+	gin.DefaultErrorWriter = NewDefaultErrorGinWriter(ginLogger)
 	if conf.Env.Type == core.EnvTypeProd {
 		gin.SetMode(gin.ReleaseMode)
 	} else {

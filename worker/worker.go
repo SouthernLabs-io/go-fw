@@ -18,7 +18,7 @@ var errWorkerHandlerStopped = errors.Newf("WORKER_HANDLER_STOPPED", "worker hand
 
 var ErrCodeWorkerError = "WORKER_ERROR"
 
-type WorkerHandler interface {
+type Handler interface {
 }
 
 //go:generate stringer -type=ConcurrencyMode
@@ -41,18 +41,14 @@ type LongRunningWorker interface {
 	Run(ctx context.Context) error
 }
 
-//type WorkerFunc func(ctx context.Context, cancelCauseFunc context.CancelCauseFunc)
-
-type ContextProvider interface {
-	ProvideContext() context.Context
-}
-
 type LongRunningWorkerHandler struct {
-	conf    core.Config
-	logger  core.Logger
-	db      database.DB
-	workers []LongRunningWorker
-	sd      fx.Shutdowner
+	conf   core.Config
+	logger core.Logger
+	db     database.DB
+	sd     fx.Shutdowner
+
+	dlFactory distributedlock.Factory
+	workers   []LongRunningWorker
 
 	// these are the context and cancelCauseFunc for the workerHandler
 	ctx             context.Context
@@ -63,7 +59,8 @@ type LongRunningWorkerHandler struct {
 
 type LongRunningWorkerHandlerParams struct {
 	di.BaseParams
-	Workers []LongRunningWorker `group:"long_running_workers"`
+	DLFactory distributedlock.Factory
+	Workers   []LongRunningWorker `group:"long_running_workers"`
 }
 
 func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongRunningWorkerHandler {
@@ -73,6 +70,7 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 		params.DB,
 		params.FxLifecycle,
 		params.FxShutdowner,
+		params.DLFactory,
 		params.Workers,
 	)
 }
@@ -83,14 +81,16 @@ func NewLongRunningWorkerHandler(
 	db database.DB,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,
+	dlFactory distributedlock.Factory,
 	workers []LongRunningWorker,
 ) *LongRunningWorkerHandler {
 	wHandler := &LongRunningWorkerHandler{
 		conf:      conf,
 		logger:    lf.GetLoggerForType(LongRunningWorkerHandler{}),
-		workers:   workers,
-		db:        db,
 		sd:        fxShutdowner,
+		db:        db,
+		dlFactory: dlFactory,
+		workers:   workers,
 		closedChn: make(chan any),
 	}
 	fxLifecycle.Append(fx.StartStopHook(
@@ -133,7 +133,7 @@ func (h *LongRunningWorkerHandler) Run() error {
 	handlerErrChn := make(chan error, len(h.workers))
 	for _, worker := range h.workers {
 		grWorker := worker
-		grCtx := core.NewWorkerContext(h.ctx, grWorker.GetName(), grWorker.GetID())
+		grCtx := NewWorkerContext(h.ctx, grWorker.GetName(), grWorker.GetID())
 		go func() {
 			var err error
 			logger := core.GetLoggerFromCtx(grCtx)
@@ -187,9 +187,7 @@ func (h *LongRunningWorkerHandler) Run() error {
 
 func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worker LongRunningWorker) error {
 	logger := core.GetLoggerFromCtx(ctx)
-	ttl := worker.GetConcurrency().SingleLockTTL
-	// FIXME: the distributed lock implementation should be configurable
-	dl := distributedlock.NewDistributedPostgresLock(worker.GetName(), ttl)
+	dl := h.dlFactory.NewDistributedLock(worker.GetName(), worker.GetConcurrency().SingleLockTTL)
 	for {
 		// Use a function closure to use defer to unlock the lock
 		err := func() (err error) {
@@ -206,7 +204,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 
 			// Defer unlock
 			ndcCtx := core.NoDeadlineAndNotCancellableContext(ctx)
-			defer func(dl *distributedlock.DistributedPostgresLock, ctx context.Context) {
+			defer func(dl distributedlock.DistributedLock, ctx context.Context) {
 				err := dl.Unlock(ctx)
 				if err != nil {
 					logger.Warnf("Failed to unlock worker: %s error: %s", worker.GetName(), err)
@@ -292,7 +290,7 @@ func ProvideAsLongRunningWorker(provider any, anns ...fx.Annotation) fx.Option {
 	return di.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
 }
 
-var ModuleWorkerHandler = di.FxProvideAs[WorkerHandler](
+var ModuleWorkerHandler = di.FxProvideAs[Handler](
 	NewLongRunningWorkerHandlerFx,
 	nil,
 	[]fx.Annotation{fx.ResultTags(`group:"worker_handlers"`)},

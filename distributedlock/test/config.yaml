@@ -1,3 +1,10 @@
+env:
+  name: local
+  type: test
+
+log:
+  level: debug
+
 database:
   user: postgres
   pass: postgres

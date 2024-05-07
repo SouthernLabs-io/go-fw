@@ -5,9 +5,9 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
-	"github.com/southernlabs-io/go-fw/providers"
 	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/rest/middlewares"
+	"github.com/southernlabs-io/go-fw/rest/providers"
 )
 
 type ServeCommand struct {

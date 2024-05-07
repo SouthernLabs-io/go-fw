@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/test"
 	"github.com/southernlabs-io/go-fw/worker"
 )
@@ -18,6 +19,7 @@ func TestLongRunningWorkerHandlerWithGoodAndBrokenWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
+		distributedlock.ModuleLocal,
 		worker.ModuleWorkerHandler,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
 			return NewTestLongRunningWorker("good worker")
@@ -38,6 +40,7 @@ func TestLongRunningWorkerHandlerWithBrokenWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
+		distributedlock.ModuleLocal,
 		worker.ModuleWorkerHandler,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorkerBroken {
 			return NewTestLongRunningWorkerBroken("bad worker")
@@ -55,8 +58,9 @@ func TestLongRunningWorkerHandlerStartStop(t *testing.T) {
 	var target test.TargetBase
 	var sd fx.Shutdowner
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
-	// Requires a DB to run the distributed lock
-	fxApp := test.FxIntegration(t,
+	fxApp := test.FxIntegration(
+		t,
+		distributedlock.ModulePostgres,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
 			return NewTestLongRunningWorker("good worker")
 		}),
@@ -81,6 +85,7 @@ func TestLongRunningWorkerNoWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
+		distributedlock.ModuleLocal,
 		worker.ModuleWorkerHandler,
 	).Populate(
 		&longRunningWorkerHandler,
