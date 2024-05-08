@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/gin-contrib/cors"
@@ -79,9 +80,28 @@ const EnvTypeSandbox EnvType = "sandbox"
 const EnvTypeLocal EnvType = "local"
 const EnvTypeTest EnvType = "test"
 
+type Host string
+
+func (h *Host) MarshalText() ([]byte, error) {
+	return []byte(*h), nil
+}
+
+func (h *Host) UnmarshalText(text []byte) error {
+	*h = Host(text)
+	if *h == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return errors.NewUnknownf("failed to get hostname: %w", err)
+		}
+		*h = Host(hostname)
+	}
+	return nil
+}
+
 type EnvConfig struct {
 	Name string
 	Type EnvType
+	Host Host
 }
 
 type LogConfigWriter string

@@ -1,12 +1,11 @@
-package config_test
+package context_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	context2 "github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -15,7 +14,7 @@ func TestNoDeadlineContext(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
 	defer cancel(myErr)
 
-	ndCtx := context2.NoDeadlineAndNotCancellableContext(ctx)
+	ndCtx := context.NoDeadlineAndNotCancellableContext(ctx)
 	require.NotNil(t, ndCtx)
 
 	// Check it is not done

@@ -19,6 +19,7 @@ func TestLoadConfig(t *testing.T) {
 	var conf Config
 	config.LoadConfig(config.NewCoreConfig(), &conf, nil)
 	require.Equal(t, 8080, conf.HttpServer.Port)
+	require.NotEmpty(t, conf.Env.Host)
 	require.True(t, conf.MapConfig["key1"])
 	val, present := conf.MapConfig["key2"]
 	require.True(t, present)

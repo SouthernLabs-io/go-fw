@@ -54,7 +54,7 @@ func NewSlackClient(conf config.Config, lf *log.LoggerFactory) *Client {
 	err = contextSectionTemplate.Execute(&buf, map[string]any{
 		"env_type":   strcase.ToCamel(string(conf.Env.Type)),
 		"env_name":   strcase.ToCamel(conf.Env.Name),
-		"host":       config.CachedHostname(),
+		"host":       conf.Env.Host,
 		"release":    version.Release,
 		"commit":     version.Commit,
 		"build_time": version.BuildTime,
@@ -112,7 +112,7 @@ func (s *Client) Send(channelType WebhookChannelType, message string, args []any
 		"main_msg":     fmt.Sprintf(message, args...),
 		"env_type":     s.conf.Env.Type,
 		"env_name":     s.conf.Env.Name,
-		"host":         config.CachedHostname(),
+		"host":         s.conf.Env.Host,
 		"release":      version.Release,
 		"commit":       version.Commit,
 		"build_time":   version.BuildTime,

@@ -1,13 +1,12 @@
 package worker
 
 import (
-	"context"
 	"time"
 
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
-	context2 "github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/distributedlock"
@@ -206,7 +205,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			}
 
 			// Defer unlock
-			ndcCtx := context2.NoDeadlineAndNotCancellableContext(ctx)
+			ndcCtx := context.NoDeadlineAndNotCancellableContext(ctx)
 			defer func(dl distributedlock.DistributedLock, ctx context.Context) {
 				err := dl.Unlock(ctx)
 				if err != nil {

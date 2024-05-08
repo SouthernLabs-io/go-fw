@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"math/rand"
@@ -17,14 +16,14 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/config"
-	context2 "github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 )
 
 var (
-	DBCtxKey   = context2.CtxKey("_fw_db")
-	DBTxCtxKey = context2.CtxKey("_fw_db_tx")
+	DBCtxKey   = context.CtxKey("_fw_db")
+	DBTxCtxKey = context.CtxKey("_fw_db_tx")
 )
 
 const (
@@ -64,7 +63,7 @@ func (d DB) SetCtx(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	return context2.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
+	return context.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
 }
 
 func GetDBFromCtx(ctx context.Context) *gorm.DB {
@@ -214,7 +213,7 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	}
 
 	tx = &DBTx{DB: db.Begin(txOptions...)}
-	ctx = context2.CtxSetValue(ctx, DBTxCtxKey, tx)
+	ctx = context.CtxSetValue(ctx, DBTxCtxKey, tx)
 
 	return tx, ctx
 }

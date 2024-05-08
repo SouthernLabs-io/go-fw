@@ -50,3 +50,36 @@ func CtxSetValue(ctx context.Context, key any, value any) context.Context {
 	}
 	return context.WithValue(ctx, key, value)
 }
+
+//#region copy from context package
+
+// Types
+type (
+	Context         = context.Context
+	CancelFunc      = context.CancelFunc
+	CancelCauseFunc = context.CancelCauseFunc
+)
+
+// Functions
+var (
+	Background        = context.Background
+	TODO              = context.TODO
+	WithCancel        = context.WithCancel
+	WithCancelCause   = context.WithCancelCause
+	Cause             = context.Cause
+	AfterFunc         = context.AfterFunc
+	WithoutCancel     = context.WithoutCancel
+	WithDeadline      = context.WithDeadline
+	WithDeadlineCause = context.WithDeadlineCause
+	WithTimeout       = context.WithTimeout
+	WithTimeoutCause  = context.WithTimeoutCause
+	WithValue         = context.WithValue
+)
+
+// Vars
+var (
+	Canceled         = context.Canceled
+	DeadlineExceeded = context.DeadlineExceeded
+)
+
+//#endregion

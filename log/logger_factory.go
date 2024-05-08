@@ -2,7 +2,6 @@ package log
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"path"
@@ -11,12 +10,12 @@ import (
 	"strings"
 
 	"github.com/southernlabs-io/go-fw/config"
-	context2 "github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/sync"
 )
 
-var loggerFactoryCtxKey = context2.CtxKey("_fw_logger_factory")
+var loggerFactoryCtxKey = context.CtxKey("_fw_logger_factory")
 
 // defaultLoggerFactory is the default logger factory used by the package-level functions.
 var defaultLoggerFactory = NewLoggerFactory(config.NewCoreConfig())
@@ -61,7 +60,7 @@ func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) 
 }
 
 func (lf *LoggerFactory) SetCtx(ctx context.Context) context.Context {
-	return context2.CtxSetValue(ctx, loggerFactoryCtxKey, lf)
+	return context.CtxSetValue(ctx, loggerFactoryCtxKey, lf)
 }
 
 // GetRootLogger returns the root logger. This is a shortcut for GetLoggerForPath("/").
