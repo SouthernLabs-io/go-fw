@@ -4,8 +4,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
+	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/panics"
 	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
@@ -21,6 +24,7 @@ func main() {
 	)
 
 	var workerDeps = fx.Options(
+		distributedlock.ModuleLocal,
 		worker.ProvideAsLongRunningWorker(NewSimpleWorker),
 	)
 	err := bootstrap.NewAppWithServeAndWork(commonDeps, serverDeps, workerDeps).Execute()
