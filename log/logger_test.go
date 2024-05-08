@@ -13,6 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/log"
+	"github.com/southernlabs-io/go-fw/secrets"
 )
 
 type TheStruct struct {
@@ -42,7 +43,7 @@ func TestLevels(t *testing.T) {
 			"github.com/southernlabs-io/go-fw":                                       config.LogLevelInfo,
 			"github.com/southernlabs-io/go-fw/database":                              config.LogLevelDebug,
 			"github.com/southernlabs-io/go-fw/log":                                   config.LogLevelDebug,
-			"github.com/southernlabs-io/go-fw/secret.AWSSecretsManager":              config.LogLevelTrace,
+			"github.com/southernlabs-io/go-fw/secrets.AWSSecretsManager":             config.LogLevelTrace,
 			"github.com/southernlabs-io/go-fw/log_test":                              config.LogLevelDebug,
 			"github.com/southernlabs-io/go-fw/log_test.TestLevels":                   config.LogLevelTrace,
 			"github.com/southernlabs-io/go-fw/log_test.CustomSlice":                  config.LogLevelTrace,

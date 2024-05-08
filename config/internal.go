@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,12 +182,15 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 		panic(errors.NewUnknownf("failed to unmarshal struct to map, error: %w", err))
 	}
 
+	// We use slog because config can't depend on log
+	logger := slog.Default()
+
 	// Parse current Environment variables
 	envMap := make(map[string]string)
 	for _, envPair := range os.Environ() {
 		key, val, found := strings.Cut(envPair, "=")
 		if !found {
-			fmt.Printf("[%T] Failed to parse env pair: %s, skipping it", *conf, envPair)
+			logger.Warn(fmt.Sprintf("[%T] Failed to parse env pair: %s, skipping it", *conf, envPair))
 			continue
 		}
 		envMap[strings.ToLower(key)] = val
@@ -202,7 +206,7 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 			default:
 				envKey := acc + strings.ToLower(key)
 				if envVal, ok := envMap[envKey]; ok {
-					fmt.Printf("[%T] Using env key: %s\n", *conf, envKey)
+					logger.Info(fmt.Sprintf("[%T] Using env key: %s", *conf, envKey))
 					m[key] = envVal
 				}
 			}

@@ -65,7 +65,7 @@ func (lf *LoggerFactory) SetCtx(ctx context.Context) context.Context {
 
 // GetRootLogger returns the root logger. This is a shortcut for GetLoggerForPath("/").
 func (lf *LoggerFactory) GetRootLogger() Logger {
-	return lf.GetLoggerForPath("/")
+	return lf.GetLoggerForPath("root")
 }
 
 // GetRootLogger returns the root logger using the default logger factory.

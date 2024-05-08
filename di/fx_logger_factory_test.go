@@ -37,9 +37,9 @@ func TestFxLoggerSkipCallers(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(logMsgStr), &logMsg))
 		loggerMap, isMap := logMsg["logger"].(map[string]any)
 		require.True(t, isMap)
-		loggerName := loggerMap["method_name"].(string)
-		require.True(t, strings.HasPrefix(loggerName, "go.uber.org/fx."), loggerName)
+		methodName := loggerMap["method_name"].(string)
+		require.True(t, strings.HasPrefix(methodName, "go.uber.org/fx."), methodName)
 		// The logBuffer is a private type that wraps the logger, so it should not be considered a caller
-		require.False(t, strings.HasPrefix(loggerName, "go.uber.org/fx.(*logBuffer)"), loggerName)
+		require.False(t, strings.HasPrefix(methodName, "go.uber.org/fx.(*logBuffer)"), methodName)
 	}
 }

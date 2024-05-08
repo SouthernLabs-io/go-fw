@@ -184,9 +184,9 @@ func (t *_Task) Value() any {
 	return t.value
 }
 
-func (t *_Task) configureContext(parentCtx context.Context, name string) {
+func (t *_Task) configureContext(parentCtx context.Context, rootConf config.RootConfig, name string) {
 	t.ctx, t.ctxCancel = context.WithCancel(worker.NewWorkerContext(
-		parentCtx, name, fmt.Sprintf("%d@%s", t.id, config.CachedHostname()),
+		parentCtx, name, fmt.Sprintf("%d@%s", t.id, rootConf.Env.Host),
 	))
 }
 

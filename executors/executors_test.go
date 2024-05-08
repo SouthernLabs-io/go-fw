@@ -15,9 +15,10 @@ import (
 )
 
 func TestDefaultExecutor_Submit(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	exec := executors.NewDefaultExecutor(ctx, 1, 1)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 1, exec.Concurrency())
 	require.EqualValues(t, 1, exec.QueueCapacity())
@@ -123,9 +124,10 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 }
 
 func TestDefaultExecutor_SubmitProducer(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 0)
+	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
 	require.NotNil(t, executor)
 	require.EqualValues(t, 1, executor.Concurrency())
 	require.EqualValues(t, 0, executor.QueueCapacity())
@@ -167,9 +169,10 @@ func TestDefaultExecutor_SubmitProducer(t *testing.T) {
 }
 
 func TestDefaultExecutor_Schedule(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 1, exec.Concurrency())
 	require.EqualValues(t, 0, exec.QueueCapacity())
@@ -216,9 +219,10 @@ func TestDefaultExecutor_Schedule(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 1, exec.Concurrency())
 	require.EqualValues(t, 0, exec.QueueCapacity())
@@ -287,9 +291,10 @@ func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 1, exec.Concurrency())
 	require.EqualValues(t, 0, exec.QueueCapacity())
@@ -354,9 +359,10 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 1)
+	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
 	require.NotNil(t, executor)
 	require.EqualValues(t, 1, executor.Concurrency())
 	require.EqualValues(t, 1, executor.QueueCapacity())
@@ -413,9 +419,10 @@ func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
 }
 
 func TestDefaultExecutor_CancelTask(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 1)
+	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
 	require.NotNil(t, executor)
 	require.EqualValues(t, 1, executor.Concurrency())
 	require.EqualValues(t, 1, executor.QueueCapacity())
@@ -456,9 +463,10 @@ func TestDefaultExecutor_CancelTask(t *testing.T) {
 }
 
 func TestDefaultExecutor_Cancel(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	exec := executors.NewDefaultExecutor(ctx, 1, 100)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 100)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 1, exec.Concurrency())
 	require.EqualValues(t, 100, exec.QueueCapacity())
@@ -542,10 +550,11 @@ func TestDefaultExecutor_Cancel(t *testing.T) {
 }
 
 func TestDefaultExecutor_ContextCanceled(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	exec := executors.NewDefaultExecutor(ctx, 1, 100)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 100)
 	require.NotNil(t, exec)
 
 	// Submit a task and check it was executed
@@ -567,13 +576,14 @@ func TestDefaultExecutor_ContextCanceled(t *testing.T) {
 }
 
 func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 
 	// Start with a constrained executor
 	concurrency := 0
 	capacity := 0
-	exec := executors.NewDefaultExecutor(ctx, concurrency, capacity)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, concurrency, capacity)
 	require.NotNil(t, exec)
 	require.EqualValues(t, concurrency, exec.Concurrency())
 	require.EqualValues(t, capacity, exec.QueueCapacity())
@@ -660,10 +670,11 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 }
 
 func TestDefaultExecutor_Unbound(t *testing.T) {
+	conf := test.NewConfig(t.Name())
 	ctx := context.Background()
 
 	// Start with zero concurrency and capacity unbounded
-	exec := executors.NewDefaultExecutor(ctx, 0, -1)
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 0, -1)
 	require.NotNil(t, exec)
 	require.EqualValues(t, 0, exec.Concurrency())
 	require.EqualValues(t, -1, exec.QueueCapacity())
@@ -717,12 +728,13 @@ func TestDefaultExecutor_Unbound(t *testing.T) {
 
 func BenchmarkTest10K(b *testing.B) {
 	b.StopTimer()
+	conf := test.NewConfig(b.Name())
 	total := 10_000
 
 	// Create as many executors as needed
 	executorsList := make([]*executors.DefaultExecutor, b.N)
 	for i := 0; i < b.N; i++ {
-		executorsList[i] = executors.NewDefaultExecutor(context.Background(), 100, -1)
+		executorsList[i] = executors.NewDefaultExecutor(context.Background(), conf.RootConfig, 100, -1)
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {

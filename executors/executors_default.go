@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/queue"
 )
@@ -67,6 +68,8 @@ type _CancelNowEvent struct {
 }
 
 type DefaultExecutor struct {
+	rootConf config.RootConfig
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -105,11 +108,12 @@ Implementation notes:
 - The executor uses a linked list to store tasks that are ready to run but there is no room to execute them.
 - Tasks are removed from the queue when they are started or canceled.
 */
-func NewDefaultExecutor(ctx context.Context, concurrency int, queueCapacity int) *DefaultExecutor {
+func NewDefaultExecutor(ctx context.Context, rootConf config.RootConfig, concurrency int, queueCapacity int) *DefaultExecutor {
 	ctx, cancel := context.WithCancel(ctx)
 	e := &DefaultExecutor{
-		ctx:    ctx,
-		cancel: cancel,
+		ctx:      ctx,
+		rootConf: rootConf,
+		cancel:   cancel,
 
 		queue:                list.New(),
 		scheduledQueue:       queue.NewPriorityQueue[*_Task](),
@@ -222,7 +226,7 @@ func (e *DefaultExecutor) schedule(
 	taskID := e.taskCount.Add(1)
 	task := newTask(taskID, taskType, initialDelay, delay, e.eventChn)
 	task.execute = callable
-	task.configureContext(e.ctx, "default-executor-task")
+	task.configureContext(e.ctx, e.rootConf, "default-executor-task")
 	e.eventChn <- _TaskSubmittedEvent{Task: task}
 	return task, nil
 }
@@ -313,7 +317,7 @@ func (e *DefaultExecutor) eventLoop() {
 						task.setDone(nil, context.Canceled)
 					} else if task.Periodic() {
 						task.configureNextRun()
-						task.configureContext(e.ctx, "default-executor-task")
+						task.configureContext(e.ctx, e.rootConf, "default-executor-task")
 						if task.Delay() > 0 {
 							e.scheduledQueue.Push(task, task.nextRun.UnixNano())
 							e.configureSchedulerTimer()

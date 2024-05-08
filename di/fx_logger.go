@@ -13,8 +13,10 @@ type _FxLogger struct {
 	logger log.Logger
 }
 
-func NewFxLogger(libLogger log.Logger) fxevent.Logger {
-	return _FxLogger{libLogger}
+func NewFxLogger(logger log.Logger) fxevent.Logger {
+	// skip internal not usable callers in fx
+	logger.SkipCallers += 2
+	return _FxLogger{logger}
 
 }
 
