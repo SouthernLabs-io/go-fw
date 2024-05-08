@@ -221,15 +221,7 @@ type Config struct {
 	Slack SlackConfig
 }
 
-func NewConfig(root RootConfig) Config {
-	conf := Config{
-		RootConfig: root,
-	}
-	LoadConfig(root, &conf, nil)
-	return conf
-}
-
-func NewConfigWithSecrets(root RootConfig, secretsMgr SecretsManager) Config {
+func NewConfig(root RootConfig, secretsMgr SecretsManager) Config {
 	conf := Config{
 		RootConfig: root,
 	}
@@ -237,10 +229,14 @@ func NewConfigWithSecrets(root RootConfig, secretsMgr SecretsManager) Config {
 	return conf
 }
 
-func NewCoreConfig() RootConfig {
-	var conf RootConfig
-	loadConfig(&conf, nil)
-	return conf
+var rootConfig RootConfig
+
+func init() {
+	loadConfig(&rootConfig, nil)
+}
+
+func GetCoreConfig() RootConfig {
+	return rootConfig
 }
 
 func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
@@ -252,6 +248,6 @@ func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
 
 // Module exports dependency
 var Module = fx.Options(
-	fx.Provide(NewConfig),
-	fx.Provide(NewCoreConfig),
+	fx.Provide(fx.Annotate(NewConfig, fx.ParamTags("", `optional:"true"`))),
+	fx.Provide(GetCoreConfig),
 )

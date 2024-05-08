@@ -4,10 +4,12 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
+	"github.com/southernlabs-io/go-fw/config/aws"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/panics"
 	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
+	"github.com/southernlabs-io/go-fw/secrets"
 	"github.com/southernlabs-io/go-fw/slack"
 )
 
@@ -17,6 +19,12 @@ func main() {
 
 		// Service configuration
 		fx.Provide(NewConfig),
+
+		// AWS Config
+		fx.Provide(aws.NewAWSConfig),
+
+		// Secrets with AWS
+		secrets.ModuleAWS,
 
 		// Middlewares
 		middleware.RequestLoggerModule,

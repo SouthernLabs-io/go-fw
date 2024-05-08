@@ -40,7 +40,6 @@ func NewHTTPHandler(
 	engine := gin.New()
 	engine.ContextWithFallback = true
 
-	fmt.Printf("conf.HttpServer.CORS: %#v\n", conf.HttpServer.CORS)
 	modules := []gin.HandlerFunc{
 		// CORS
 		cors.New(conf.HttpServer.CORS.Config),

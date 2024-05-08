@@ -22,16 +22,28 @@ func Sleep(ctx context.Context, duration time.Duration) error {
 
 // # region copy of sync go std package
 
-type WaitGroup = sync.WaitGroup
+// Types
+type (
+	WaitGroup = sync.WaitGroup
+	Once      = sync.Once
+	Mutex     = sync.Mutex
+	RWMutex   = sync.RWMutex
+	Cond      = sync.Cond
+	Pool      = sync.Pool
+)
 
-type Once = sync.Once
+// Functions
+var (
+	NewCond  = sync.NewCond
+	OnceFunc = sync.OnceFunc
+)
 
-type Mutex = sync.Mutex
+func OnceValue[T any](f func() T) func() T {
+	return sync.OnceValue(f)
+}
 
-type RWMutex = sync.RWMutex
-
-type Cond = sync.Cond
-
-type Pool = sync.Pool
+func OnceValues[T1, T2 any](f func() (T1, T2)) func() (T1, T2) {
+	return sync.OnceValues(f)
+}
 
 // # endregion

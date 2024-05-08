@@ -13,7 +13,6 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/secret"
 )
 
 type TheStruct struct {
@@ -99,7 +98,7 @@ func TestLevels(t *testing.T) {
 	require.Equal(t, config.LogLevelDebug, l.Level())
 
 	// Test level by type exact match
-	l = lf.GetLoggerForType(secret.AWSSecretsManager{})
+	l = lf.GetLoggerForType(secrets.AWSSecretsManager{})
 	require.NotZero(t, l)
 	require.Equal(t, config.LogLevelTrace, l.Level())
 

@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 // findConfigFile calls the recursiveFileFinder, to find a config file in Test model.
@@ -22,11 +23,16 @@ func findConfigFile(fileName string) (string, error) {
 	if testing.Testing() {
 		return recursiveFileFinder(fileName, "")
 	}
-	err := statFile(fileName)
+
+	abs, err := filepath.Abs(fileName)
 	if err != nil {
 		return "", err
 	}
-	return fileName, err
+	err = statFile(abs)
+	if err != nil {
+		return "", err
+	}
+	return abs, err
 }
 
 // statFile will check if the file exists.
@@ -104,36 +110,44 @@ func recursiveFileFinder(fileName string, prefix string) (string, error) {
 	return filePath, nil
 }
 
-// FIXME: document the process of loading the config
-func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
+var loadDotEnv = sync.OnceFunc(func() {
 	dotEnvPath, err := findConfigFile(".env")
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			panic(errors.NewUnknownf("failed to find dot env file, error: %w", err))
 		}
 	} else {
-		fmt.Printf("[%T] Loading dot env file: %s\n", *conf, dotEnvPath)
+		println("Loading dot env file: ", dotEnvPath)
 		err = godotenv.Load(dotEnvPath)
 		if err != nil {
 			panic(errors.NewUnknownf("failed to load dot env file: %s, error: %w", dotEnvPath, err))
 		}
 	}
+})
 
+var loadConfigYaml = sync.OnceValue(func() []byte {
 	yamlConfPath, err := findConfigFile("config.yaml")
 	if err != nil {
 		panic(errors.NewUnknownf("failed to read config.yaml, error: %w", err))
 	}
 
-	fmt.Printf("[%T] Loading config file: %s\n", *conf, yamlConfPath)
+	println("Loading config file: ", yamlConfPath)
 	yamlBytes, err := os.ReadFile(yamlConfPath)
 	if err != nil {
 		panic(errors.NewUnknownf("failed to read config.yaml, error: %w", err))
 	}
+	return yamlBytes
+})
+
+// FIXME: document the process of loading the config
+func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
+	loadDotEnv()
+	yamlBytes := loadConfigYaml()
 
 	// Unmarshal to the config struct
 	// We use yaml -> map -> struct, because mapstructure will compare key names using strings.SameFold, which is case insensitive.
 	confMap := make(map[string]any)
-	err = yaml.Unmarshal(yamlBytes, &confMap)
+	err := yaml.Unmarshal(yamlBytes, &confMap)
 	if err != nil {
 		panic(errors.NewUnknownf("failed to unmarshal config to map, error: %w", err))
 	}

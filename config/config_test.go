@@ -17,7 +17,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	var conf Config
-	config.LoadConfig(config.NewCoreConfig(), &conf, nil)
+	config.LoadConfig(config.GetCoreConfig(), &conf, nil)
 	require.Equal(t, 8080, conf.HttpServer.Port)
 	require.NotEmpty(t, conf.Env.Host)
 	require.True(t, conf.MapConfig["key1"])
@@ -32,7 +32,7 @@ func TestLoadConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	conf = Config{}
-	config.LoadConfig(config.NewCoreConfig(), &conf, nil)
+	config.LoadConfig(config.GetCoreConfig(), &conf, nil)
 	require.Equal(t, 9090, conf.HttpServer.Port)
 	require.True(t, conf.MapConfig["key1"])
 	require.True(t, conf.MapConfig["key2"])

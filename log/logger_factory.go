@@ -18,7 +18,7 @@ import (
 var loggerFactoryCtxKey = context.CtxKey("_fw_logger_factory")
 
 // defaultLoggerFactory is the default logger factory used by the package-level functions.
-var defaultLoggerFactory = NewLoggerFactory(config.NewCoreConfig())
+var defaultLoggerFactory = NewLoggerFactory(config.GetCoreConfig())
 
 // SetDefaultLoggerFactory sets the default logger factory to use for the package-level functions.
 func SetDefaultLoggerFactory(f *LoggerFactory) {

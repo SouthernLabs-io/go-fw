@@ -8,7 +8,7 @@ import (
 )
 
 func NewConfig(testName string) config.Config {
-	coreConfig := config.NewCoreConfig()
+	coreConfig := config.GetCoreConfig()
 	if coreConfig.Name == "" {
 		coreConfig.Name = fmt.Sprintf("no_service_name_%d", time.Now().UnixMicro())
 	}

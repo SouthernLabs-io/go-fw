@@ -8,7 +8,7 @@ import (
 
 // SecretsManager is a minimal interface needed to process config secrets
 type SecretsManager interface {
-	GetSecret(ctx context.Context, name string) (string, error)
+	GetSecret(ctx context.Context, key string) (string, error)
 	GetSecretVerbatim(ctx context.Context, id string) (string, error)
 }
 
