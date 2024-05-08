@@ -38,16 +38,16 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
-	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/middlewares"
+	"github.com/southernlabs-io/go-fw/panich"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
 func main() {
-	defer core.DeferredPanicToLogAndExit()
+	defer panich.DeferredPanicToLogAndExit()
 	var deps = fx.Options(
 		// middlewares
-		middlewares.RequestLoggerModule,
+		middleware.RequestLoggerModule,
 	)
 	err := bootstrap.NewAppWithServe(deps).Execute()
 	if err != nil {

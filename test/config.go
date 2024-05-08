@@ -4,28 +4,28 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 )
 
-func NewConfig(testName string) core.Config {
-	coreConfig := core.NewCoreConfig()
+func NewConfig(testName string) config.Config {
+	coreConfig := config.NewCoreConfig()
 	if coreConfig.Name == "" {
 		coreConfig.Name = fmt.Sprintf("no_service_name_%d", time.Now().UnixMicro())
 	}
 	coreConfig.Name += "-" + testName
 
 	// Set default test config, it can be overridden in the test config.yaml
-	coreConfig.Env = core.EnvConfig{
+	coreConfig.Env = config.EnvConfig{
 		Name: "test",
-		Type: core.EnvTypeTest,
+		Type: config.EnvTypeTest,
 	}
-	coreConfig.Log.Level = core.LogLevelDebug
+	coreConfig.Log.Level = config.LogLevelDebug
 
-	config := core.Config{RootConfig: coreConfig}
-	core.LoadConfig(coreConfig, &config)
-	return config
+	conf := config.Config{RootConfig: coreConfig}
+	config.LoadConfig(coreConfig, &conf, nil)
+	return conf
 }
 
-func ProvideCoreConfig(config core.Config) core.RootConfig {
+func ProvideCoreConfig(config config.Config) config.RootConfig {
 	return config.RootConfig
 }

@@ -4,11 +4,11 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/di"
-	"github.com/southernlabs-io/go-fw/rest/middlewares"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
 func ProvideAsHealthCheck(provider any, anns ...fx.Annotation) fx.Option {
-	return di.FxProvideAs[middlewares.HealthCheckProvider](
+	return di.FxProvideAs[middleware.HealthCheckProvider](
 		provider,
 		anns,
 		[]fx.Annotation{fx.ResultTags(`group:"health_checks"`)},
@@ -16,7 +16,7 @@ func ProvideAsHealthCheck(provider any, anns ...fx.Annotation) fx.Option {
 }
 
 func ProvideAsAuthN(provider any, anns ...fx.Annotation) fx.Option {
-	return di.FxProvideAs[middlewares.AuthNProvider](
+	return di.FxProvideAs[middleware.AuthNProvider](
 		provider,
 		anns,
 		nil,
@@ -24,7 +24,7 @@ func ProvideAsAuthN(provider any, anns ...fx.Annotation) fx.Option {
 }
 
 func ProvideAsAuthZ(provider any, anns ...fx.Annotation) fx.Option {
-	return di.FxProvideAs[middlewares.AuthZProvider](
+	return di.FxProvideAs[middleware.AuthZProvider](
 		provider,
 		anns,
 		nil,

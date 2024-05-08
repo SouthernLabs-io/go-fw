@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
@@ -16,14 +17,14 @@ func TestDBTx(t *testing.T) {
 
 	conf := test.NewConfig("dbtx-/asd")
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
-	conf.Database = core.DatabaseConfig{
+	conf.Database = config.DatabaseConfig{
 		Host: "localhost",
 		Port: 5432,
 		User: "postgres",
 		Pass: "postgres",
 	}
 	db := test.NewTestDatabase(conf, lf)
-	defer func(conf core.Config, lf *core.LoggerFactory, db database.DB) {
+	defer func(conf config.Config, lf *log.LoggerFactory, db database.DB) {
 		err := test.OnTestDBStop(conf, db, lf)
 		require.NoError(t, err)
 	}(conf, lf, db)

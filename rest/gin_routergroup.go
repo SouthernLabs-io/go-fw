@@ -3,7 +3,7 @@ package rest
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/context"
 )
 
 type HTTPMethod string
@@ -82,7 +82,7 @@ func NewGinRouterGroup(routerGroup *gin.RouterGroup) GinRouterGroup {
 	return g
 }
 
-var routeMetadataCtxKey = core.CtxKey("_fw_route_metadata")
+var routeMetadataCtxKey = context.CtxKey("_fw_route_metadata")
 
 func GetPathMetaFromCtx(ctx *gin.Context) []any {
 	if meta, exists := ctx.Get(routeMetadataCtxKey.(string)); exists {

@@ -4,14 +4,14 @@ import (
 	"io"
 	"strings"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 type _GinWriter struct {
 	write func(nsg string)
 }
 
-func NewDefaultGinWriter(logger core.Logger) io.Writer {
+func NewDefaultGinWriter(logger log.Logger) io.Writer {
 	// As of gin v1.9, the stack is not helpful until the 4th caller
 	logger.SkipCallers += 4
 	return &_GinWriter{
@@ -23,7 +23,7 @@ func NewDefaultGinWriter(logger core.Logger) io.Writer {
 	}
 }
 
-func NewDefaultErrorGinWriter(logger core.Logger) io.Writer {
+func NewDefaultErrorGinWriter(logger log.Logger) io.Writer {
 	logger.SkipCallers += 3
 	return &_GinWriter{
 		write: func(msg string) {

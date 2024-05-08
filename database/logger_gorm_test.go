@@ -11,19 +11,20 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
 func TestGormLoggerSkipCallers(t *testing.T) {
 	test.IntegrationTest(t)
 
-	config := test.NewConfig(t.Name())
-	config.Env.Type = core.EnvTypeSandbox
+	conf := test.NewConfig(t.Name())
+	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
-	logger := core.NewLoggerWithWriter(config.RootConfig, "gorm_test", buffer)
-	logger.SetLevel(core.LogLevelTrace)
+	logger := log.NewLoggerWithWriter(conf.RootConfig, "gorm_test", buffer)
+	logger.SetLevel(config.LogLevelTrace)
 
 	_, err := gorm.Open(postgres.Open(""), &gorm.Config{
 		Logger: database.NewGormLogger(logger),
@@ -67,11 +68,11 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 func TestGormLoggerLogMode(t *testing.T) {
 	test.IntegrationTest(t)
 
-	config := test.NewConfig(t.Name())
-	config.Env.Type = core.EnvTypeSandbox
+	conf := test.NewConfig(t.Name())
+	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
-	logger := core.NewLoggerWithWriter(config.RootConfig, "gorm_test", buffer)
-	logger.SetLevel(core.LogLevelWarn)
+	logger := log.NewLoggerWithWriter(conf.RootConfig, "gorm_test", buffer)
+	logger.SetLevel(config.LogLevelWarn)
 
 	gormDB, err := gorm.Open(
 		postgres.Open("user=postgres password=postgres dbname=postgres host=localhost sslmode=disable"),

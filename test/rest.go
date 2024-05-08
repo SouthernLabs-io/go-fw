@@ -7,18 +7,18 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/rest"
-	"github.com/southernlabs-io/go-fw/rest/middlewares"
-	middlewaresmocks "github.com/southernlabs-io/go-fw/rest/middlewares/mocks"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
+	middlewaremocks "github.com/southernlabs-io/go-fw/rest/middleware/mocks"
 )
 
-func NewMockAuthN(t *testing.T, principal middlewares.Principal) fx.Option {
-	mockAuthNProvider := middlewaresmocks.NewAuthNProvider(t)
+func NewMockAuthN(t *testing.T, principal middleware.Principal) fx.Option {
+	mockAuthNProvider := middlewaremocks.NewAuthNProvider(t)
 	if principal != nil {
 		mockAuthNProvider.EXPECT().Authenticate(mock.Anything).Return(principal, nil)
 	} else {
-		mockAuthNProvider.EXPECT().Authenticate(mock.Anything).Return(nil, middlewares.ErrInvalidToken).Maybe()
+		mockAuthNProvider.EXPECT().Authenticate(mock.Anything).Return(nil, middleware.ErrInvalidToken).Maybe()
 	}
-	return fx.Supply(fx.Annotate(mockAuthNProvider, fx.As(new(middlewares.AuthNProvider))))
+	return fx.Supply(fx.Annotate(mockAuthNProvider, fx.As(new(middleware.AuthNProvider))))
 }
 
 var TestModuleRest = rest.Module

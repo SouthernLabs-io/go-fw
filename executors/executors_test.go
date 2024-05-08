@@ -17,14 +17,14 @@ import (
 func TestDefaultExecutor_Submit(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 1)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 1, executor.Concurrency())
-	require.EqualValues(t, 1, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 1, 1)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 1, exec.Concurrency())
+	require.EqualValues(t, 1, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submit a task
-	future, err := executor.Submit(func(ctx context.Context) error {
+	future, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run")
 		return nil
 	})
@@ -38,10 +38,10 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.NoError(t, future.Err())
 	require.False(t, future.Cancel())
 	require.False(t, future.Canceled())
-	require.EqualValues(t, 0, executor.QueueLength())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submit a task that returns an error
-	future, err = executor.Submit(func(ctx context.Context) error {
+	future, err = exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 2")
 		return errors.Newf("TASK_ERROR", "run 2")
 	})
@@ -56,10 +56,10 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.True(t, errors.IsCode(future.Err(), "TASK_ERROR"))
 	require.False(t, future.Cancel())
 	require.False(t, future.Canceled())
-	require.EqualValues(t, 0, executor.QueueLength())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submit a task that panics, it should be wrapped in an error
-	future, err = executor.Submit(func(ctx context.Context) error {
+	future, err = exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 3")
 		panic("run 3")
 	})
@@ -74,7 +74,7 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.True(t, errors.IsCode(future.Err(), executors.ErrCodeTaskPanic))
 
 	// Test cancelling a task by submitting a long-running one
-	future, err = executor.Submit(func(ctx context.Context) error {
+	future, err = exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 4")
 		time.Sleep(time.Hour)
 		return nil
@@ -83,10 +83,10 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.NotNil(t, future)
 	require.False(t, future.Done())
 	require.False(t, future.Canceled())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second, time.Millisecond)
 
 	// This task will never run
-	future, err = executor.Submit(func(ctx context.Context) error {
+	future, err = exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 5")
 		return nil
 	})
@@ -94,10 +94,10 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.NotNil(t, future)
 	require.False(t, future.Done())
 	require.False(t, future.Canceled())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Second, time.Millisecond)
 
 	// Check submitting a new task fails with ErrExecutorQueueFull
-	nilFuture, err := executor.Submit(func(ctx context.Context) error {
+	nilFuture, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 6")
 		return nil
 	})
@@ -112,14 +112,14 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 	require.True(t, future.Done())
 	require.Error(t, future.Err())
 	require.ErrorIs(t, future.Err(), context.Canceled)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second, time.Millisecond)
 
 	// Cancel the executor will never terminate
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.Never(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second/2, 1)
-	require.False(t, executor.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.Never(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second/2, 1)
+	require.False(t, exec.Terminated())
 }
 
 func TestDefaultExecutor_SubmitProducer(t *testing.T) {
@@ -169,15 +169,15 @@ func TestDefaultExecutor_SubmitProducer(t *testing.T) {
 func TestDefaultExecutor_Schedule(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 0)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 1, executor.Concurrency())
-	require.EqualValues(t, 0, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 1, exec.Concurrency())
+	require.EqualValues(t, 0, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	start := time.Now()
 	delay := time.Millisecond * 100
-	future, err := executor.Schedule(func(ctx context.Context) error {
+	future, err := exec.Schedule(func(ctx context.Context) error {
 		logger.Debugf("run: %s", time.Since(start))
 		require.GreaterOrEqual(t, time.Since(start), delay)
 		return nil
@@ -186,12 +186,12 @@ func TestDefaultExecutor_Schedule(t *testing.T) {
 	require.NotNil(t, future)
 	require.False(t, future.Done())
 	require.False(t, future.Periodic())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Second, time.Millisecond)
 	require.Greater(t, future.Delay(), time.Duration(0))
 	require.LessOrEqual(t, future.Delay(), delay)
 
 	// Check scheduling a new task fails with ErrExecutorQueueFull
-	nilFuture, err := executor.Schedule(func(ctx context.Context) error {
+	nilFuture, err := exec.Schedule(func(ctx context.Context) error {
 		logger.Debug("run 2")
 		return nil
 	}, delay)
@@ -205,31 +205,31 @@ func TestDefaultExecutor_Schedule(t *testing.T) {
 	require.NoError(t, future.Err())
 	require.False(t, future.Cancel())
 	require.False(t, future.Canceled())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second, time.Millisecond)
 
 	// Cancel the executor
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.Eventually(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
-	require.True(t, executor.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.Eventually(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
+	require.True(t, exec.Terminated())
 }
 
 func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 0)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 1, executor.Concurrency())
-	require.EqualValues(t, 0, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 1, exec.Concurrency())
+	require.EqualValues(t, 0, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	start := atomic.Value{}
 	start.Store(time.Now())
 	count := atomic.Int32{}
 	initialDelay := time.Millisecond * 50
 	delay := initialDelay * 2
-	future, err := executor.ScheduleWithFixedDelay(func(ctx context.Context) error {
+	future, err := exec.ScheduleWithFixedDelay(func(ctx context.Context) error {
 		st := start.Load().(time.Time)
 		logger.Debugf("run: %s", time.Since(st))
 		if count.Load() == 0 {
@@ -245,12 +245,12 @@ func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
 	require.NotNil(t, future)
 	require.True(t, future.Periodic())
 	require.False(t, future.Done())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Second, time.Millisecond)
 	require.Greater(t, future.Delay(), time.Duration(0))
 	require.LessOrEqual(t, future.Delay(), delay)
 
 	// Check scheduling a new task fails with ErrExecutorQueueFull
-	nilFuture, err := executor.ScheduleWithFixedDelay(func(ctx context.Context) error {
+	nilFuture, err := exec.ScheduleWithFixedDelay(func(ctx context.Context) error {
 		logger.Debug("run 2")
 		return nil
 	}, initialDelay, delay)
@@ -276,31 +276,31 @@ func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
 	require.True(t, future.Done())
 	require.Error(t, future.Err())
 	require.ErrorIs(t, future.Err(), context.Canceled)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second, time.Millisecond)
 
 	// Cancel the executor
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.Eventually(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
-	require.True(t, executor.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.Eventually(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
+	require.True(t, exec.Terminated())
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 0)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 1, executor.Concurrency())
-	require.EqualValues(t, 0, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 1, 0)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 1, exec.Concurrency())
+	require.EqualValues(t, 0, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// We only modify them from a single goroutine, so we don't need to use atomic
 	start := time.Now()
 	count := 0
 	initialDelay := time.Millisecond * 50
 	period := initialDelay * 2
-	future, err := executor.ScheduleWithFixedRate(func(ctx context.Context) error {
+	future, err := exec.ScheduleWithFixedRate(func(ctx context.Context) error {
 		if count == 0 {
 			require.GreaterOrEqual(t, time.Since(start), initialDelay)
 			start = start.Add(initialDelay)
@@ -314,12 +314,12 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 	}, initialDelay, period)
 	require.NoError(t, err)
 	require.NotNil(t, future)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Second, time.Millisecond)
 	require.Greater(t, future.Delay(), time.Duration(0))
 	require.LessOrEqual(t, future.Delay(), period)
 
 	// Check scheduling a new task fails with ErrExecutorQueueFull
-	nilFuture, err := executor.ScheduleWithFixedRate(func(ctx context.Context) error {
+	nilFuture, err := exec.ScheduleWithFixedRate(func(ctx context.Context) error {
 		logger.Debug("run 6")
 		return nil
 	}, initialDelay, period)
@@ -343,14 +343,14 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 	require.True(t, future.Canceled())
 	require.Error(t, future.Err())
 	require.ErrorIs(t, future.Err(), context.Canceled)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second, time.Millisecond)
 
 	// Cancel the executor
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.Eventually(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
-	require.True(t, executor.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.Eventually(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
+	require.True(t, exec.Terminated())
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
@@ -458,14 +458,14 @@ func TestDefaultExecutor_CancelTask(t *testing.T) {
 func TestDefaultExecutor_Cancel(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
-	executor := executors.NewDefaultExecutor(ctx, 1, 100)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 1, executor.Concurrency())
-	require.EqualValues(t, 100, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 1, 100)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 1, exec.Concurrency())
+	require.EqualValues(t, 100, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	running := atomic.Bool{}
-	longRunningFuture, err := executor.Submit(func(ctx context.Context) error {
+	longRunningFuture, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run")
 		running.Store(true)
 		for running.Load() {
@@ -478,36 +478,36 @@ func TestDefaultExecutor_Cancel(t *testing.T) {
 	require.NotNil(t, longRunningFuture)
 	require.Eventually(t, func() bool { return running.Load() }, time.Millisecond*100, time.Millisecond)
 
-	future, err := executor.Submit(func(ctx context.Context) error {
+	future, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run 2")
 		return nil
 	})
 	require.NoError(t, err)
 	require.NotNil(t, future)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Millisecond*100, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Millisecond*100, time.Millisecond)
 
-	scheduledFuture, err := executor.Schedule(func(ctx context.Context) error {
+	scheduledFuture, err := exec.Schedule(func(ctx context.Context) error {
 		logger.Debug("run 3")
 		return nil
 	}, time.Millisecond*10)
 	require.NoError(t, err)
 	require.NotNil(t, scheduledFuture)
-	require.Eventually(t, func() bool { return executor.QueueLength() == 2 }, time.Millisecond*100, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 2 }, time.Millisecond*100, time.Millisecond)
 	time.Sleep(scheduledFuture.Delay())
-	require.Eventually(t, func() bool { return executor.QueueLength() == 2 }, time.Millisecond*100, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 2 }, time.Millisecond*100, time.Millisecond)
 	require.LessOrEqual(t, scheduledFuture.Delay(), time.Duration(0))
 
 	// Cancel the executor
-	require.False(t, executor.Canceled())
-	require.False(t, executor.Terminated())
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.False(t, executor.Terminated())
-	require.EqualValues(t, 2, executor.QueueLength())
+	require.False(t, exec.Canceled())
+	require.False(t, exec.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.False(t, exec.Terminated())
+	require.EqualValues(t, 2, exec.QueueLength())
 
 	// Check scheduling a new task fails with ErrExecutorCanceled
-	nilFuture, err := executor.Schedule(func(ctx context.Context) error {
+	nilFuture, err := exec.Schedule(func(ctx context.Context) error {
 		logger.Debug("run 4")
 		return nil
 	}, time.Second)
@@ -516,23 +516,23 @@ func TestDefaultExecutor_Cancel(t *testing.T) {
 	require.Nil(t, nilFuture)
 
 	// CancelNow should return all tasks
-	tasks := executor.CancelNow()
+	tasks := exec.CancelNow()
 	require.EqualValues(t, 2, len(tasks))
-	require.EqualValues(t, 0, executor.QueueLength())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// CancelNow again should return an empty list
-	require.Empty(t, executor.CancelNow())
+	require.Empty(t, exec.CancelNow())
 
 	// Await should fail with timeout
-	require.Never(t, func() bool { return executor.AwaitTermination(time.Millisecond * 10) }, time.Millisecond*100, 1)
+	require.Never(t, func() bool { return exec.AwaitTermination(time.Millisecond * 10) }, time.Millisecond*100, 1)
 
 	// Instruct the task to stop running
 	running.Store(false)
-	require.Eventually(t, func() bool { return executor.AwaitTermination(time.Millisecond * 10) }, time.Second/2, 1)
-	require.True(t, executor.Terminated())
+	require.Eventually(t, func() bool { return exec.AwaitTermination(time.Millisecond * 10) }, time.Second/2, 1)
+	require.True(t, exec.Terminated())
 
 	// Check scheduling a new task fails with ErrExecutorCanceled after termination
-	nilFuture, err = executor.Schedule(func(ctx context.Context) error {
+	nilFuture, err = exec.Schedule(func(ctx context.Context) error {
 		logger.Debug("run 5")
 		return nil
 	}, time.Second)
@@ -545,11 +545,11 @@ func TestDefaultExecutor_ContextCanceled(t *testing.T) {
 	logger := test.GetTestLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	executor := executors.NewDefaultExecutor(ctx, 1, 100)
-	require.NotNil(t, executor)
+	exec := executors.NewDefaultExecutor(ctx, 1, 100)
+	require.NotNil(t, exec)
 
 	// Submit a task and check it was executed
-	future, err := executor.Submit(func(ctx context.Context) error {
+	future, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run")
 		return nil
 	})
@@ -559,11 +559,11 @@ func TestDefaultExecutor_ContextCanceled(t *testing.T) {
 	require.NoError(t, future.Err())
 
 	// Cancel de ctx should close the executor
-	require.False(t, executor.Canceled())
-	require.False(t, executor.Terminated())
+	require.False(t, exec.Canceled())
+	require.False(t, exec.Terminated())
 	cancel()
-	require.Eventually(t, func() bool { return executor.Canceled() }, time.Second, time.Millisecond)
-	require.Eventually(t, func() bool { return executor.Terminated() }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.Canceled() }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.Terminated() }, time.Second, time.Millisecond)
 }
 
 func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
@@ -573,14 +573,14 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 	// Start with a constrained executor
 	concurrency := 0
 	capacity := 0
-	executor := executors.NewDefaultExecutor(ctx, concurrency, capacity)
-	require.NotNil(t, executor)
-	require.EqualValues(t, concurrency, executor.Concurrency())
-	require.EqualValues(t, capacity, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, concurrency, capacity)
+	require.NotNil(t, exec)
+	require.EqualValues(t, concurrency, exec.Concurrency())
+	require.EqualValues(t, capacity, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submitting a task should fail with ErrExecutorQueueFull
-	_, err := executor.Submit(func(ctx context.Context) error {
+	_, err := exec.Submit(func(ctx context.Context) error {
 		logger.Debug("run")
 		return nil
 	})
@@ -588,7 +588,7 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 	require.ErrorIs(t, err, executors.ErrExecutorQueueFull)
 
 	// Scheduling a task should fail with ErrExecutorQueueFull
-	_, err = executor.Schedule(func(ctx context.Context) error {
+	_, err = exec.Schedule(func(ctx context.Context) error {
 		logger.Debug("run 2")
 		return nil
 	}, time.Second)
@@ -597,13 +597,13 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 
 	// Increase concurrency so tasks can be executed
 	concurrency = 10
-	executor.SetConcurrency(concurrency)
-	require.EqualValues(t, concurrency, executor.Concurrency())
+	exec.SetConcurrency(concurrency)
+	require.EqualValues(t, concurrency, exec.Concurrency())
 
 	// Submit concurrency long running tasks, all of them should start execution
 	started := atomic.Int32{}
 	for i := 0; i < concurrency; i++ {
-		_, err := executor.Submit(func(ctx context.Context) error {
+		_, err := exec.Submit(func(ctx context.Context) error {
 			started.Add(1)
 			time.Sleep(time.Hour)
 			return nil
@@ -613,10 +613,10 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 
 	// Wait till all tasks are executing
 	require.Eventually(t, func() bool { return started.Load() == int32(concurrency) }, time.Second, time.Millisecond)
-	require.EqualValues(t, 0, executor.QueueLength())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submit one more task should fail with ErrExecutorQueueFull
-	_, err = executor.Submit(func(ctx context.Context) error {
+	_, err = exec.Submit(func(ctx context.Context) error {
 		started.Add(1)
 		return nil
 	})
@@ -625,11 +625,11 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 
 	// Increase capacity so a task can be queued
 	capacity += 1
-	executor.SetQueueCapacity(capacity)
-	require.EqualValues(t, capacity, executor.QueueCapacity())
+	exec.SetQueueCapacity(capacity)
+	require.EqualValues(t, capacity, exec.QueueCapacity())
 
 	// Submit again
-	_, err = executor.Submit(func(ctx context.Context) error {
+	_, err = exec.Submit(func(ctx context.Context) error {
 		started.Add(1)
 		time.Sleep(time.Hour)
 		return nil
@@ -637,44 +637,44 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Wait till the task shows in the queue
-	require.Eventually(t, func() bool { return executor.QueueLength() == 1 }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 1 }, time.Second, time.Millisecond)
 	require.EqualValues(t, concurrency, started.Load())
 
 	// Increase concurrency so the task is started
 	concurrency += 1
-	executor.SetConcurrency(concurrency)
-	require.EqualValues(t, concurrency, executor.Concurrency())
+	exec.SetConcurrency(concurrency)
+	require.EqualValues(t, concurrency, exec.Concurrency())
 
 	// Wait till the task is started
-	require.Eventually(t, func() bool { return executor.QueueLength() == 0 }, time.Second/2, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == 0 }, time.Second/2, time.Millisecond)
 	require.EqualValues(t, concurrency, started.Load())
 
 	// Cancel the executor
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
 
 	// Long running tasks will never finish
-	require.Never(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second/2, 1)
-	require.False(t, executor.Terminated())
+	require.Never(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second/2, 1)
+	require.False(t, exec.Terminated())
 }
 
 func TestDefaultExecutor_Unbound(t *testing.T) {
 	ctx := context.Background()
 
 	// Start with zero concurrency and capacity unbounded
-	executor := executors.NewDefaultExecutor(ctx, 0, -1)
-	require.NotNil(t, executor)
-	require.EqualValues(t, 0, executor.Concurrency())
-	require.EqualValues(t, -1, executor.QueueCapacity())
-	require.EqualValues(t, 0, executor.QueueLength())
+	exec := executors.NewDefaultExecutor(ctx, 0, -1)
+	require.NotNil(t, exec)
+	require.EqualValues(t, 0, exec.Concurrency())
+	require.EqualValues(t, -1, exec.QueueCapacity())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Submit a large number of simple tasks
 	largeNumber := 1_000
 	futures := make([]executors.Future, largeNumber)
 	for i := 0; i < largeNumber; i++ {
 		var err error
-		futures[i], err = executor.Submit(func(ctx context.Context) error {
+		futures[i], err = exec.Submit(func(ctx context.Context) error {
 			return nil
 		})
 		require.NoError(t, err)
@@ -682,18 +682,18 @@ func TestDefaultExecutor_Unbound(t *testing.T) {
 	}
 
 	// Check all tasks are in the queue
-	require.Eventually(t, func() bool { return executor.QueueLength() == largeNumber }, time.Second, time.Millisecond)
+	require.Eventually(t, func() bool { return exec.QueueLength() == largeNumber }, time.Second, time.Millisecond)
 
 	// Change the concurrency to Unbounded
-	executor.SetConcurrency(-1)
-	require.EqualValues(t, -1, executor.Concurrency())
+	exec.SetConcurrency(-1)
+	require.EqualValues(t, -1, exec.Concurrency())
 
 	// Change the capacity to zero
-	executor.SetQueueCapacity(0)
-	require.EqualValues(t, 0, executor.QueueCapacity())
+	exec.SetQueueCapacity(0)
+	require.EqualValues(t, 0, exec.QueueCapacity())
 
 	// Submitting a new task should not fail because concurrency is unbounded
-	future, err := executor.Submit(func(ctx context.Context) error {
+	future, err := exec.Submit(func(ctx context.Context) error {
 		return nil
 	})
 	require.NoError(t, err)
@@ -705,14 +705,14 @@ func TestDefaultExecutor_Unbound(t *testing.T) {
 		require.Eventually(t, func() bool { <-future.Await(); return true }, time.Second, 1)
 		require.NoError(t, future.Err())
 	}
-	require.EqualValues(t, 0, executor.QueueLength())
+	require.EqualValues(t, 0, exec.QueueLength())
 
 	// Cancel the executor
-	require.True(t, executor.Cancel())
-	require.False(t, executor.Cancel())
-	require.True(t, executor.Canceled())
-	require.Eventually(t, func() bool { return executor.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
-	require.True(t, executor.Terminated())
+	require.True(t, exec.Cancel())
+	require.False(t, exec.Cancel())
+	require.True(t, exec.Canceled())
+	require.Eventually(t, func() bool { return exec.AwaitTermination(time.Millisecond * 100) }, time.Second, 1)
+	require.True(t, exec.Terminated())
 }
 
 func BenchmarkTest10K(b *testing.B) {

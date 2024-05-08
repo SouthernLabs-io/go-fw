@@ -12,8 +12,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 type LocalFactory struct {
@@ -70,7 +70,7 @@ func (l *LocalLock) Lock(ctx context.Context) error {
 		return errors.NewUnknownf("failed to lock file: %s, error: %w", l.path, err)
 	}
 	l.doLock(ctx)
-	core.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+	log.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	return nil
 }
 
@@ -89,14 +89,14 @@ func (l *LocalLock) doLock(ctx context.Context) {
 			}
 			err := l.Unlock(ctx)
 			if err != nil {
-				core.GetLoggerFromCtx(ctx).Errorf("Failed to unlock file: %s, error: %s", l.path, err)
+				log.GetLoggerFromCtx(ctx).Errorf("Failed to unlock file: %s, error: %s", l.path, err)
 			}
 		}
 	}()
 }
 
 func (l *LocalLock) TryLock(ctx context.Context) (bool, error) {
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 
 	if !l.mu.TryLock() {
 		logger.Debugf("Lock not acquired: %s, lockID: %s", l.resource, l.id)
@@ -118,7 +118,7 @@ func (l *LocalLock) TryLock(ctx context.Context) (bool, error) {
 		return false, errors.NewUnknownf("failed to lock: %s file: %s, error: %w", l.resource, l.path, err)
 	}
 	l.doLock(ctx)
-	core.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+	log.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	return true, nil
 }
 
@@ -140,7 +140,7 @@ func (l *LocalLock) Unlock(ctx context.Context) error {
 	l.expiration = time.Time{}
 	l.locked = false
 
-	core.GetLoggerFromCtx(ctx).Debugf("Lock unlocked: %s, lockID: %s, file: %s", l.resource, l.id, l.path)
+	log.GetLoggerFromCtx(ctx).Debugf("Lock unlocked: %s, lockID: %s, file: %s", l.resource, l.id, l.path)
 	return nil
 }
 
@@ -159,7 +159,7 @@ func (l *LocalLock) Extend(ctx context.Context) (bool, error) {
 
 	l.extendedCount++
 	l.expiration = time.Now().Add(l.ttl)
-	core.GetLoggerFromCtx(ctx).Tracef(
+	log.GetLoggerFromCtx(ctx).Tracef(
 		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,
 		l.id,

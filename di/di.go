@@ -5,18 +5,19 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 type BaseParams struct {
 	fx.In
-	LF           *core.LoggerFactory
+	LF           *log.LoggerFactory
 	FxLifecycle  fx.Lifecycle
 	FxShutdowner fx.Shutdowner
 
-	Conf core.Config
+	Conf config.Config
 	DB   database.DB `optional:"true"`
 }
 
@@ -45,3 +46,5 @@ func FxProvideAs[I any](provider any, tAnns []fx.Annotation, iAnns []fx.Annotati
 		),
 	)
 }
+
+var Module = fx.Provide(NewFxLoggerFactory)

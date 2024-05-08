@@ -4,7 +4,7 @@ env:
   name: local
   type: local
 log:
-  rootLevel: debug
+  level: info
 
 httpServer:
   port: 8080
@@ -17,3 +17,12 @@ httpServer:
     allowHeaders: ["Origin", "Content-Length", "Content-Type", "Authorization"]
     allowCredentials: false
     allowWildcard: true
+
+slack:
+  enabled: true
+#  webhookURLs:
+#    info: https://hooks.slack.com/services/T01B2JZQZ6V/B01B2JZQZ6V/1B2JZQZ6V
+
+mapping:
+  integer: int64
+  float: float64

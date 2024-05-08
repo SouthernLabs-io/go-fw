@@ -13,8 +13,9 @@ import (
 
 	"github.com/iancoleman/strcase"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -27,19 +28,19 @@ const (
 )
 
 type Client struct {
-	conf            core.Config
+	conf            config.Config
 	httpClient      *http.Client
 	fullMsgTemplate *template.Template
 }
 
-func NewSlackClient(conf core.Config, lf *core.LoggerFactory) *Client {
+func NewSlackClient(conf config.Config, lf *log.LoggerFactory) *Client {
 	if !conf.Slack.Enabled {
-		lf.GetLogger().Infof("Slack notifications are disabled")
+		lf.GetLogger().Warn("Slack notifications are disabled")
 		return nil
 	}
 
 	// Check we have at least one webhook configured
-	if len(conf.Slack.WebhookURLS.Error) == 0 && len(conf.Slack.WebhookURLS.Warn) == 0 && len(conf.Slack.WebhookURLS.Info) == 0 {
+	if len(conf.Slack.WebhookURLs.Error) == 0 && len(conf.Slack.WebhookURLs.Warn) == 0 && len(conf.Slack.WebhookURLs.Info) == 0 {
 		panic(errors.Newf(errors.ErrCodeBadState, "no Slack Webhook URLs configured, but it was explicitly enabled"))
 	}
 
@@ -53,7 +54,7 @@ func NewSlackClient(conf core.Config, lf *core.LoggerFactory) *Client {
 	err = contextSectionTemplate.Execute(&buf, map[string]any{
 		"env_type":   strcase.ToCamel(string(conf.Env.Type)),
 		"env_name":   strcase.ToCamel(conf.Env.Name),
-		"host":       core.CachedHostname(),
+		"host":       config.CachedHostname(),
 		"release":    version.Release,
 		"commit":     version.Commit,
 		"build_time": version.BuildTime,
@@ -111,7 +112,7 @@ func (s *Client) Send(channelType WebhookChannelType, message string, args []any
 		"main_msg":     fmt.Sprintf(message, args...),
 		"env_type":     s.conf.Env.Type,
 		"env_name":     s.conf.Env.Name,
-		"host":         core.CachedHostname(),
+		"host":         config.CachedHostname(),
 		"release":      version.Release,
 		"commit":       version.Commit,
 		"build_time":   version.BuildTime,
@@ -171,7 +172,7 @@ func (s *Client) sendRaw(channelType WebhookChannelType, bodyBytes []byte) error
 // URL for the next channel type in the order of Error -> Warn -> Info. If none of the URLs are configured, it will
 // panic.
 func (s *Client) getWebhookURL(channelType WebhookChannelType) string {
-	urls := s.conf.Slack.WebhookURLS
+	urls := s.conf.Slack.WebhookURLs
 	switch channelType {
 	case WebhookChannelTypeInfo:
 		return urls.Info

@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"
 	fwsync "github.com/southernlabs-io/go-fw/sync"
 )
@@ -79,7 +79,7 @@ var setNXAndExtendedCountScript = `
 
 // TryLock will attempt to acquire the lock and return true if successful.
 func (l *DistributedRedisLock) TryLock(ctx context.Context) (bool, error) {
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	rdb := l.redis.Client
 
 	setInt, err := rdb.Eval(ctx, setNXAndExtendedCountScript, []string{l.resource, l.extendedCountKey()}, l.id, l.ttl.Milliseconds()).Result()
@@ -111,7 +111,7 @@ var deleteKeysScript = `
 `
 
 func (l *DistributedRedisLock) Unlock(ctx context.Context) error {
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	rdb := l.redis.Client
 
 	deletedCount, err := rdb.Eval(ctx, deleteKeysScript, []string{l.resource, l.extendedCountKey()}, l.id).Result()
@@ -152,7 +152,7 @@ var extendSetsAndIncrExtendedCountScript = `
 `
 
 func (l *DistributedRedisLock) Extend(ctx context.Context) (bool, error) {
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	rdb := l.redis.Client
 
 	extendedCount, err := rdb.Eval(ctx, extendSetsAndIncrExtendedCountScript, []string{l.resource, l.extendedCountKey()}, l.id, l.ttl.Milliseconds()).Result()

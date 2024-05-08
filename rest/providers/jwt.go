@@ -9,7 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -20,7 +20,7 @@ type JWTProvider struct {
 	parser *jwt.Parser
 }
 
-func NewJWTProvider(conf core.Config) JWTProvider {
+func NewJWTProvider(conf config.Config) JWTProvider {
 	if conf.JWT.SigningKey == "" {
 		panic(errors.Newf(errors.ErrCodeBadState, "JWT signing key not set in config"))
 	}

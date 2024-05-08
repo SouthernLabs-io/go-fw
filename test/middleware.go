@@ -3,14 +3,14 @@ package test
 import (
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/rest/middlewares"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
-var TestModuleMiddlewares = fx.Options(
-	fx.Invoke(middlewares.NewMiddlewares),
-	middlewares.RequestLoggerModule,
+var ModuleMiddlewares = fx.Options(
+	fx.Invoke(middleware.NewMiddlewares),
+	middleware.RequestLoggerModule,
 
 	//Default providers
-	middlewares.ProvideAsMiddleware(middlewares.NewPanicRecovery),
-	middlewares.ProvideAsMiddleware(middlewares.NewErrorHandlerFx),
+	middleware.ProvideAsMiddleware(middleware.NewPanicRecovery),
+	middleware.ProvideAsMiddleware(middleware.NewErrorHandlerFx),
 )

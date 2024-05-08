@@ -4,11 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/rest"
 )
 
-func NewTestHTTPHandler(conf core.Config, lf *core.LoggerFactory) rest.HTTPHandler {
+func NewTestHTTPHandler(conf config.Config, lf *log.LoggerFactory) rest.HTTPHandler {
 	ginLogger := lf.GetLoggerForType(&gin.Engine{})
 	gin.DefaultWriter = rest.NewDefaultGinWriter(ginLogger)
 	gin.DefaultErrorWriter = rest.NewDefaultErrorGinWriter(ginLogger)

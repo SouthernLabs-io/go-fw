@@ -8,9 +8,10 @@ import (
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/di"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"
 	"github.com/southernlabs-io/go-fw/rest"
 )
@@ -23,7 +24,7 @@ type TargetBase struct {
 	fx.In
 
 	Ctx  context.Context
-	Conf core.Config
+	Conf config.Config
 
 	DB    database.DB `optional:"true"`
 	Redis redis.Redis `optional:"true"`
@@ -49,7 +50,7 @@ func FxUnit(t *testing.T, opts ...fx.Option) *FxApp {
 			fx.Supply(NewConfig(t.Name())),
 			fx.Provide(NewLoggerFactory),
 			fx.Provide(ProvideCoreConfig),
-			fx.WithLogger(func(lf *core.LoggerFactory) fxevent.Logger {
+			fx.WithLogger(func(lf *log.LoggerFactory) fxevent.Logger {
 				return di.NewFxLogger(lf.GetLoggerForType(fx.App{}))
 			}),
 			ModuleContext,
@@ -91,7 +92,7 @@ func (a *FxApp) WithHTTPHandler() *FxApp {
 	a.opts = fx.Options(
 		a.opts,
 		TestModuleHTTPHandler,
-		TestModuleMiddlewares,
+		ModuleMiddlewares,
 		TestModuleRest,
 	)
 	return a

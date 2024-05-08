@@ -6,11 +6,14 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
+	context2 "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
+	"github.com/southernlabs-io/go-fw/panics"
 )
 
 var ErrWorkerHandlerNoWorkers = errors.Newf("WORKER_HANDLER_NO_WORKERS", "worker handler has no workers")
@@ -42,8 +45,8 @@ type LongRunningWorker interface {
 }
 
 type LongRunningWorkerHandler struct {
-	conf   core.Config
-	logger core.Logger
+	conf   config.Config
+	logger log.Logger
 	db     database.DB
 	sd     fx.Shutdowner
 
@@ -76,8 +79,8 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 }
 
 func NewLongRunningWorkerHandler(
-	conf core.Config,
-	lf *core.LoggerFactory,
+	conf config.Config,
+	lf *log.LoggerFactory,
 	db database.DB,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,
@@ -136,7 +139,7 @@ func (h *LongRunningWorkerHandler) Run() error {
 		grCtx := NewWorkerContext(h.ctx, grWorker.GetName(), grWorker.GetID())
 		go func() {
 			var err error
-			logger := core.GetLoggerFromCtx(grCtx)
+			logger := log.GetLoggerFromCtx(grCtx)
 			switch grWorker.GetConcurrency().Mode {
 			case ConcurrencyModeMulti:
 				err = h.multiWorkerRunner(grCtx, grWorker)
@@ -186,12 +189,12 @@ func (h *LongRunningWorkerHandler) Run() error {
 }
 
 func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worker LongRunningWorker) error {
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	dl := h.dlFactory.NewDistributedLock(worker.GetName(), worker.GetConcurrency().SingleLockTTL)
 	for {
 		// Use a function closure to use defer to unlock the lock
 		err := func() (err error) {
-			defer core.DeferredPanicToError(
+			defer panics.DeferredPanicToError(
 				&err,
 				"long running worker handler panicked while managing lock for single worker: %s",
 				worker.GetName(),
@@ -203,7 +206,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			}
 
 			// Defer unlock
-			ndcCtx := core.NoDeadlineAndNotCancellableContext(ctx)
+			ndcCtx := context2.NoDeadlineAndNotCancellableContext(ctx)
 			defer func(dl distributedlock.DistributedLock, ctx context.Context) {
 				err := dl.Unlock(ctx)
 				if err != nil {
@@ -241,8 +244,8 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 			err = errors.Newf(ErrCodeWorkerError, "multi worker: %s error: %w", worker.GetName(), err)
 		}
 	}()
-	defer core.DeferredPanicToError(&err, "worker: %s panicked", worker.GetName())
-	logger := core.GetLoggerFromCtx(ctx)
+	defer panics.DeferredPanicToError(&err, "worker: %s panicked", worker.GetName())
+	logger := log.GetLoggerFromCtx(ctx)
 	logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 	err = worker.Run(ctx)
 	return

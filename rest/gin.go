@@ -8,7 +8,7 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
@@ -108,7 +108,7 @@ func BindDeepObjectQuery(ctx *gin.Context, dst any) error {
 	return nil
 }
 
-func HandleError(ctx *gin.Context, conf core.Config, err error, nonFWFormat string, args ...any) {
+func HandleError(ctx *gin.Context, conf config.Config, err error, nonFWFormat string, args ...any) {
 	var fwErr *errors.Error
 	if errors.As(err, &fwErr) {
 		_ = ctx.Error(err)
@@ -116,7 +116,7 @@ func HandleError(ctx *gin.Context, conf core.Config, err error, nonFWFormat stri
 		args = append(args, err)
 		ginErr := ctx.Error(errors.NewUnknownf(nonFWFormat+": %w", args...))
 		// Make error public on non prod envs
-		if conf.Env.Type != core.EnvTypeProd {
+		if conf.Env.Type != config.EnvTypeProd {
 			_ = ginErr.SetType(gin.ErrorTypePublic)
 		}
 	}

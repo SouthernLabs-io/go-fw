@@ -5,21 +5,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type MyResource struct {
-	httpHandler rest.HTTPHandler
+	conf Config
 }
 
-func NewMyResource(httpHandler rest.HTTPHandler) MyResource {
-	return MyResource{httpHandler: httpHandler}
+func NewMyResource(conf Config) MyResource {
+	return MyResource{conf: conf}
 }
 
 func (r MyResource) Setup(httpHandler rest.HTTPHandler) {
 	router := httpHandler.Root
-	router.GET("check", r.Check)
 	getHandler := r.Get
 	postHandler := r.Post
 	patchHandler := r.Patch
@@ -57,7 +56,7 @@ func (r MyResource) Setup(httpHandler rest.HTTPHandler) {
 }
 
 func (r MyResource) Middleware(ctx *gin.Context) {
-	core.GetLoggerFromCtx(ctx).Infof("middleware!!")
+	log.GetLoggerFromCtx(ctx).Infof("middleware!!")
 }
 
 func (r MyResource) Get(ctx *gin.Context) {
@@ -69,8 +68,4 @@ func (r MyResource) Post(ctx *gin.Context) {
 }
 func (r MyResource) Patch(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, rest.GetPathMetaFromCtx(ctx))
-}
-
-func (r MyResource) Check(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, r.httpHandler.Root.MetaMapping())
 }

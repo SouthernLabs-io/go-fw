@@ -16,13 +16,15 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
+	context2 "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 var (
-	DBCtxKey   = core.CtxKey("_fw_db")
-	DBTxCtxKey = core.CtxKey("_fw_db_tx")
+	DBCtxKey   = context2.CtxKey("_fw_db")
+	DBTxCtxKey = context2.CtxKey("_fw_db_tx")
 )
 
 const (
@@ -35,7 +37,7 @@ type DB struct {
 	DbName string
 }
 
-func CreateDBName(conf core.Config) string {
+func CreateDBName(conf config.Config) string {
 	return strings.ReplaceAll(
 		strings.ToLower(fmt.Sprintf("%s_%s", conf.Name, conf.Env.Name)),
 		"-",
@@ -44,8 +46,8 @@ func CreateDBName(conf core.Config) string {
 }
 
 // NewDB creates a new database instance
-func NewDB(conf core.Config, lf *core.LoggerFactory) DB {
-	if conf.Env.Type == core.EnvTypeTest {
+func NewDB(conf config.Config, lf *log.LoggerFactory) DB {
+	if conf.Env.Type == config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 
@@ -62,7 +64,7 @@ func (d DB) SetCtx(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	return core.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
+	return context2.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
 }
 
 func GetDBFromCtx(ctx context.Context) *gorm.DB {
@@ -104,11 +106,11 @@ func (t *DBTx) DeferredCommitOrRollback(err *error) {
 		*err = errors.Newf(errors.ErrCodePanic, "panic in transaction: %v", r)
 		// FIXME: a panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
 		// log it here and kill the app, because it will leak memory otherwise
-		var logger core.Logger
+		var logger log.Logger
 		if t.Statement != nil && t.Statement.Context != nil {
-			logger = core.GetLoggerFromCtx(t.Statement.Context)
+			logger = log.GetLoggerFromCtx(t.Statement.Context)
 		} else {
-			logger = core.GetLogger()
+			logger = log.GetLogger()
 		}
 		logger.Errorf(
 			`A panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
@@ -120,11 +122,11 @@ Killing the process, because it will leak memory otherwise
 	}
 	if *err != nil {
 		if rollbackErr := t.Rollback().Error; rollbackErr != nil {
-			var logger core.Logger
+			var logger log.Logger
 			if t.Statement != nil && t.Statement.Context != nil {
-				logger = core.GetLoggerFromCtx(t.Statement.Context)
+				logger = log.GetLoggerFromCtx(t.Statement.Context)
 			} else {
-				logger = core.GetLoggerFromCtx(context.Background())
+				logger = log.GetLoggerFromCtx(context.Background())
 			}
 			logger.ErrorE(errors.Newf(ErrCodeRollbackFailed, "failed to rollback on error: %w,\n rollback error: %w", *err, rollbackErr))
 		}
@@ -141,7 +143,7 @@ func (t *DBTx) Commit() *gorm.DB {
 		t.DB = &gorm.DB{Error: sql.ErrTxDone}
 	}()
 	if t.parentTx != nil {
-		core.GetLoggerFromCtx(t.DB.Statement.Context).Debugf("SubTx: release savepoint: %s", t.savePoint)
+		log.GetLoggerFromCtx(t.DB.Statement.Context).Debugf("SubTx: release savepoint: %s", t.savePoint)
 		return t.DB.Exec("RELEASE SAVEPOINT " + t.savePoint)
 	}
 	return t.DB.Commit()
@@ -154,7 +156,7 @@ func (t *DBTx) Rollback() *gorm.DB {
 		t.DB = &gorm.DB{Error: sql.ErrTxDone}
 	}()
 	if t.parentTx != nil {
-		core.GetLoggerFromCtx(t.DB.Statement.Context).Infof("SubTx: rollback to savepoint: %s", t.savePoint)
+		log.GetLoggerFromCtx(t.DB.Statement.Context).Infof("SubTx: rollback to savepoint: %s", t.savePoint)
 		return t.parentTx.RollbackTo(t.savePoint)
 	}
 	return t.DB.Rollback()
@@ -175,7 +177,7 @@ func InTx(ctx context.Context) *DBTx {
 	// check if there is one already
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {
-		core.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, returning it!")
+		log.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, returning it!")
 		return tx
 	}
 
@@ -192,7 +194,7 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {
 		savePoint := fmt.Sprintf("sub_%d_%d", time.Now().UnixNano(), rand.Uint32())
-		core.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, creating a sub tx with savepoint: %s", savePoint)
+		log.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, creating a sub tx with savepoint: %s", savePoint)
 		err := tx.DB.Exec("SAVEPOINT " + savePoint).Error
 		if err != nil {
 			panic(errors.NewUnknownf("failed to create a save point in the db transaction: %w", err))
@@ -212,12 +214,12 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	}
 
 	tx = &DBTx{DB: db.Begin(txOptions...)}
-	ctx = core.CtxSetValue(ctx, DBTxCtxKey, tx)
+	ctx = context2.CtxSetValue(ctx, DBTxCtxKey, tx)
 
 	return tx, ctx
 }
 
-func MustOpenGORM(conf core.Config, dbName string, lf *core.LoggerFactory) *gorm.DB {
+func MustOpenGORM(conf config.Config, dbName string, lf *log.LoggerFactory) *gorm.DB {
 	dbConf := conf.Database
 	dsn := fmt.Sprintf("host='%s' user='%s' password='%s' dbname='%s' port=%d",
 		dbConf.Host,

@@ -7,13 +7,14 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
-func NewTestDatabase(conf core.Config, lf *core.LoggerFactory) database.DB {
-	if conf.Env.Type != core.EnvTypeTest {
+func NewTestDatabase(conf config.Config, lf *log.LoggerFactory) database.DB {
+	if conf.Env.Type != config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 
@@ -39,7 +40,7 @@ var dbNameReplacer = strings.NewReplacer(
 	"test", "",
 )
 
-func CreateTestDBName(conf core.Config) string {
+func CreateTestDBName(conf config.Config) string {
 	// Postgres max length for db name is 63
 	const maxLen = 63
 	s := dbNameReplacer.Replace(strings.ToLower(conf.Name))
@@ -67,7 +68,7 @@ func CreateTestDBName(conf core.Config) string {
 	)
 }
 
-func OnTestDBStop(conf core.Config, db database.DB, lf *core.LoggerFactory) error {
+func OnTestDBStop(conf config.Config, db database.DB, lf *log.LoggerFactory) error {
 	err := database.OnDBStop(db)
 	if err != nil {
 		return err

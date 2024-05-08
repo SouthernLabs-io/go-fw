@@ -6,16 +6,17 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 type Redis struct {
 	Client *redis.Client
 }
 
-func NewRedis(conf core.Config, lf *core.LoggerFactory) *Redis {
-	if conf.Env.Type == core.EnvTypeTest {
+func NewRedis(conf config.Config, lf *log.LoggerFactory) *Redis {
+	if conf.Env.Type == config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 
@@ -26,7 +27,7 @@ func NewRedis(conf core.Config, lf *core.LoggerFactory) *Redis {
 	}
 }
 
-func MustOpenRedis(conf core.Config, lf *core.LoggerFactory) *redis.Client {
+func MustOpenRedis(conf config.Config, lf *log.LoggerFactory) *redis.Client {
 	rdsConf := conf.Redis
 
 	opt, err := redis.ParseURL(rdsConf.URL)

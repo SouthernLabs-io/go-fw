@@ -6,14 +6,14 @@ import (
 
 	"github.com/pressly/goose/v3"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 type _GooseLogger struct {
-	libLogger core.Logger
+	libLogger log.Logger
 }
 
-func NewGooseLogger(logger core.Logger) goose.Logger {
+func NewGooseLogger(logger log.Logger) goose.Logger {
 	// just skip this wrapper
 	logger.SkipCallers += 1
 	return _GooseLogger{logger}

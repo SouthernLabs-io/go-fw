@@ -6,12 +6,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
 type SimpleWorker struct {
-	logger core.Logger
+	logger config.Logger
 	id     string
 }
 
@@ -44,7 +44,7 @@ func (w *SimpleWorker) Run(ctx context.Context) error {
 
 var _ worker.LongRunningWorker = (*SimpleWorker)(nil)
 
-func NewSimpleWorker(lf *core.LoggerFactory) *SimpleWorker {
+func NewSimpleWorker(lf *config.LoggerFactory) *SimpleWorker {
 	wf := &SimpleWorker{
 		logger: lf.GetLoggerForType(SimpleWorker{}),
 		id:     uuid.NewString(),

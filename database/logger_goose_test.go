@@ -12,19 +12,20 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/test"
 )
 
 func TestGooseLoggerSkipCallers(t *testing.T) {
 	test.IntegrationTest(t)
 
-	config := test.NewConfig(t.Name())
-	config.Env.Type = core.EnvTypeSandbox
+	conf := test.NewConfig(t.Name())
+	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
-	logger := core.NewLoggerWithWriter(config.RootConfig, "goose_logger", buffer)
-	logger.SetLevel(core.LogLevelDebug)
+	logger := log.NewLoggerWithWriter(conf.RootConfig, "goose_logger", buffer)
+	logger.SetLevel(config.LogLevelDebug)
 
 	gooseLogger := database.NewGooseLogger(logger)
 	goose.SetLogger(gooseLogger)

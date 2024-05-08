@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/southernlabs-io/go-fw/core"
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 	fwsync "github.com/southernlabs-io/go-fw/sync"
 )
 
@@ -95,7 +95,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 	err = setupDB(tx)
 	if err != nil {
 		if errors.Is(err, errSchemaAlreadyInitialized) {
-			core.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
+			log.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
 			// The transaction is dead. We need to roll it back and create a new one
 			if err = tx.Rollback().Error; err != nil {
 				return false, err
@@ -137,7 +137,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 		return false, err
 	}
 
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
 		l.expiration = until
 		logger.Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
@@ -164,7 +164,7 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 	}
 	l.expiration = time.Time{}
 	l.extendedCount = 0
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	if res.RowsAffected != 0 {
 		logger.Debugf("Lock unlocked: %s, lockID: %s", l.resource, l.id)
 	} else {
@@ -189,7 +189,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 		l.id,
 	).Row().Scan(&until, &extendedCount)
 
-	logger := core.GetLoggerFromCtx(ctx)
+	logger := log.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			l.expiration = time.Time{}

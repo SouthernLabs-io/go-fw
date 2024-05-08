@@ -5,13 +5,14 @@ import (
 
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/core"
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"
 )
 
-func NewTestRedis(conf core.Config, lf *core.LoggerFactory) redis.Redis {
-	if conf.Env.Type != core.EnvTypeTest {
+func NewTestRedis(conf config.Config, lf *log.LoggerFactory) redis.Redis {
+	if conf.Env.Type != config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 
