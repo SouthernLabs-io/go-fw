@@ -32,12 +32,34 @@ type Error struct {
 
 // Default keys for the JSON and slog.Value representations of the error.
 // The current values are compatible with DataDog.
-// Change them if you want to use a different format. Only errors that are created after the change will be affected.
+// Change them if you want to use a different format.
+// Only errors that are created after the change will be affected.
 var (
-	DefaultCodeKey    = "kind"
-	DefaultMessageKey = "message"
-	DefaultStackKey   = "stack"
+	defaultCodeKey    = "kind"
+	defaultMessageKey = "message"
+	defaultStackKey   = "stack"
 )
+
+// SetDefaultCodeKey sets the default key used to represent the error code in the JSON and slog.Value representations of the error.
+// Empty value is not allowed
+func SetDefaultCodeKey(key string) {
+	if key == "" {
+		panic("code key cannot be empty")
+	}
+	defaultCodeKey = key
+}
+
+// SetDefaultMessageKey sets the default key used to represent the error message in the JSON and slog.Value representations of the error.
+// Empty value means do not include the message in the JSON and slog.Value representations.
+func SetDefaultMessageKey(key string) {
+	defaultMessageKey = key
+}
+
+// SetDefaultStackKey sets the default key used to represent the error stacktrace in the JSON and slog.Value representations of the error.
+// Empty value means do not include the stacktrace in the JSON and slog.Value representations.
+func SetDefaultStackKey(key string) {
+	defaultStackKey = key
+}
 
 // Newf creates a new error with the given code and message format/args.
 // The error will have a stacktrace attached to it.
@@ -75,9 +97,9 @@ func Newf(code string, format string, args ...any) *Error {
 		wrappedErrs: wrappedErrs,
 		stack:       currStack(),
 
-		codeKey:    DefaultCodeKey,
-		messageKey: DefaultMessageKey,
-		stackKey:   DefaultStackKey,
+		codeKey:    defaultCodeKey,
+		messageKey: defaultMessageKey,
+		stackKey:   defaultStackKey,
 	}
 	fwErr.shortErrorString = fmt.Sprintf("{%s} %s", fwErr.Code, fwErr.Message)
 	return fwErr
@@ -164,14 +186,23 @@ func (e *Error) WriteSelfStacktrace(w io.Writer) error {
 	return nil
 }
 
+// SetCodeKey sets the key used to represent the error code in the JSON and slog.Value representations of the error.
+// Empty value is not allowed
 func (e *Error) SetCodeKey(key string) {
+	if key == "" {
+		panic("code key cannot be empty")
+	}
 	e.codeKey = key
 }
 
+// SetMessageKey sets the key used to represent the error message in the JSON and slog.Value representations of the error.
+// Empty value means do not include the message in the JSON and slog.Value representations.
 func (e *Error) SetMessageKey(key string) {
 	e.messageKey = key
 }
 
+// SetStackKey sets the key used to represent the error stacktrace in the JSON and slog.Value representations of the error.
+// Empty value means do not include the stacktrace in the JSON and slog.Value representations.
 func (e *Error) SetStackKey(key string) {
 	e.stackKey = key
 }
@@ -179,22 +210,44 @@ func (e *Error) SetStackKey(key string) {
 // LogValue returns a slog.Value that can be used to log the error.
 // The default format is compatible with DataDog.
 func (e *Error) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String(e.codeKey, e.Code),
-		slog.String(e.messageKey, e.Message),
-		slog.String(e.stackKey, e.Stacktrace()),
-	)
+	items := make([]slog.Attr, 0, 3)
+	items = append(items, slog.String(e.codeKey, e.Code))
+	if len(e.messageKey) > 0 {
+		items = append(items, slog.String(e.messageKey, e.Message))
+	}
+	if len(e.stackKey) > 0 {
+		items = append(items, slog.String(e.stackKey, e.Stacktrace()))
+	}
+	return slog.GroupValue(items...)
 }
 
 // MarshalJSON implements the json.Marshaler interface.
 // The default format is compatible with DataDog.
 func (e *Error) MarshalJSON() ([]byte, error) {
 	mapping := map[string]string{
-		e.codeKey:    e.Code,
-		e.messageKey: e.Message,
-		e.stackKey:   e.Stacktrace(),
+		e.codeKey: e.Code,
+	}
+	if len(e.messageKey) > 0 {
+		mapping[e.messageKey] = e.Message
+	}
+	if len(e.stackKey) > 0 {
+		mapping[e.stackKey] = e.Stacktrace()
 	}
 	return json.Marshal(mapping)
+}
+
+// Copy creates a deep copy of the error.
+func (e *Error) Copy() *Error {
+	return &Error{
+		Code:        e.Code,
+		Message:     e.Message,
+		wrappedErrs: e.wrappedErrs,
+		stack:       e.stack,
+
+		codeKey:    e.codeKey,
+		messageKey: e.messageKey,
+		stackKey:   e.stackKey,
+	}
 }
 
 // NewUnknownf creates a new error with the ErrCodeUnknown code and the given message format/args.

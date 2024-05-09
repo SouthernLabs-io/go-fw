@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/gin-gonic/gin"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
@@ -140,7 +139,7 @@ func (m *ErrorHandlerMiddleware) handleErrors(ctx *gin.Context, brokenPipe bool)
 				continue
 			}
 			if status == 0 {
-				defaultHandler(ctx, errBody, shouldWrite)
+				defaultHandler(ctx, m.Conf.Env.Type, errBody, shouldWrite)
 			} else if shouldWrite {
 				if errBody != nil {
 					ctx.JSON(status, errBody)
@@ -160,7 +159,7 @@ func (m *ErrorHandlerMiddleware) handleErrors(ctx *gin.Context, brokenPipe bool)
 
 	// Check if there was a mapped error. If not, we use the first error
 	if mappedErr == nil {
-		defaultHandler(ctx, nil, shouldWrite)
+		defaultHandler(ctx, m.Conf.Env.Type, nil, shouldWrite)
 		mappedErr = otherErrs[0]
 		otherErrs = otherErrs[1:]
 	}
@@ -189,22 +188,52 @@ func (m *ErrorHandlerMiddleware) handleErrors(ctx *gin.Context, brokenPipe bool)
 	}
 }
 
-func defaultHandler(ctx *gin.Context, body any, shouldWrite bool) int {
-	var valErrs validation.Errors
+var errorCodesToStatus = map[string]int{
+	errors.ErrCodeUnknown:  http.StatusInternalServerError,
+	errors.ErrCodeBadState: http.StatusInternalServerError,
+	errors.ErrCodePanic:    http.StatusInternalServerError,
+
+	errors.ErrCodeNotAuthenticated: http.StatusUnauthorized,
+	errors.ErrCodeNotAllowed:       http.StatusForbidden,
+	errors.ErrCodeNotFound:         http.StatusNotFound,
+	errors.ErrCodeConflict:         http.StatusConflict,
+	errors.ErrCodeBadArgument:      http.StatusUnprocessableEntity,
+	errors.ErrCodeValidationFailed: http.StatusUnprocessableEntity,
+}
+
+func defaultHandler(ctx *gin.Context, envType config.EnvType, body any, shouldWrite bool) int {
 	ginErr := ctx.Errors[0]
 	var status int
-	if ginErr != nil && ginErr.Type == gin.ErrorTypeBind && errors.As(ginErr.Err, &valErrs) {
-		status = http.StatusUnprocessableEntity
-	} else {
+	var fwErr *errors.Error
+	switch {
+	case ginErr == nil:
 		status = http.StatusInternalServerError
+	case ginErr.IsType(gin.ErrorTypeBind):
+		status = http.StatusUnprocessableEntity
+	case errors.As(ginErr.Err, &fwErr):
+		status = errorCodesToStatus[fwErr.Code]
+		if status == 0 {
+			status = http.StatusInternalServerError
+		}
 	}
+
 	if shouldWrite {
+		if body == nil && fwErr != nil {
+			type ErrWrapper struct {
+				Error any `json:"error"`
+			}
+			if envType == config.EnvTypeProd {
+				// Use a copy, so we don't affect other uses of this error
+				fwErr = fwErr.Copy()
+				fwErr.SetStackKey("")
+			}
+			body = ErrWrapper{Error: fwErr}
+		}
 		if body != nil {
 			ctx.JSON(status, body)
 		} else {
 			ctx.Status(status)
 		}
-
 	}
 	return status
 }
