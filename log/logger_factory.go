@@ -96,10 +96,10 @@ func GetLoggerForType(forType any) Logger {
 }
 
 var skipPathPrefixes = []string{
-	"github.com/southernlabs-io/go-fw/core.(*LoggerFactory).",
-	"github.com/southernlabs-io/go-fw/core.Logger.",
-	"github.com/southernlabs-io/go-fw/core.GetLogger",
-	"github.com/southernlabs-io/go-fw/core.NewWorkerContext",
+	"github.com/southernlabs-io/go-fw/log.(*LoggerFactory).",
+	"github.com/southernlabs-io/go-fw/log.Logger.",
+	"github.com/southernlabs-io/go-fw/log.GetLogger",
+	"github.com/southernlabs-io/go-fw/worker.NewWorkerContext",
 }
 
 func findCallerPath() string {
