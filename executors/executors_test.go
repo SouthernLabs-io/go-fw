@@ -15,7 +15,7 @@ import (
 )
 
 func TestDefaultExecutor_Submit(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
@@ -124,7 +124,7 @@ func TestDefaultExecutor_Submit(t *testing.T) {
 }
 
 func TestDefaultExecutor_SubmitProducer(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
@@ -169,7 +169,7 @@ func TestDefaultExecutor_SubmitProducer(t *testing.T) {
 }
 
 func TestDefaultExecutor_Schedule(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
@@ -219,7 +219,7 @@ func TestDefaultExecutor_Schedule(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
@@ -291,7 +291,7 @@ func TestDefaultExecutor_ScheduleWithFixedDelay(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
@@ -359,7 +359,7 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 }
 
 func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
@@ -419,7 +419,7 @@ func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
 }
 
 func TestDefaultExecutor_CancelTask(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	executor := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 1)
@@ -463,7 +463,7 @@ func TestDefaultExecutor_CancelTask(t *testing.T) {
 }
 
 func TestDefaultExecutor_Cancel(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 100)
@@ -550,7 +550,7 @@ func TestDefaultExecutor_Cancel(t *testing.T) {
 }
 
 func TestDefaultExecutor_ContextCanceled(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -576,7 +576,7 @@ func TestDefaultExecutor_ContextCanceled(t *testing.T) {
 }
 
 func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)
 	ctx := context.Background()
 
@@ -670,7 +670,7 @@ func TestDefaultExecutor_CapacityAndConcurrency(t *testing.T) {
 }
 
 func TestDefaultExecutor_Unbound(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	ctx := context.Background()
 
 	// Start with zero concurrency and capacity unbounded
@@ -728,7 +728,7 @@ func TestDefaultExecutor_Unbound(t *testing.T) {
 
 func BenchmarkTest10K(b *testing.B) {
 	b.StopTimer()
-	conf := test.NewConfig(b.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(b))
 	total := 10_000
 
 	// Create as many executors as needed

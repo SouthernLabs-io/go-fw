@@ -15,7 +15,7 @@ import (
 func TestDBTx(t *testing.T) {
 	test.IntegrationTest(t)
 
-	conf := test.NewConfig("dbtx-/asd")
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
 	conf.Database = config.DatabaseConfig{
 		Host: "localhost",

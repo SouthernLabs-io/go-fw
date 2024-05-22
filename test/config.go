@@ -1,31 +1,49 @@
 package test
 
 import (
-	"fmt"
-	"time"
+	"testing"
+
+	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
 )
 
-func NewConfig(testName string) config.Config {
-	coreConfig := config.GetCoreConfig()
-	if coreConfig.Name == "" {
-		coreConfig.Name = fmt.Sprintf("no_service_name_%d", time.Now().UnixMicro())
-	}
-	coreConfig.Name += "-" + testName
-
-	// Set default test config, it can be overridden in the test config.yaml
-	coreConfig.Env = config.EnvConfig{
-		Name: "test",
-		Type: config.EnvTypeTest,
-	}
-	coreConfig.Log.Level = config.LogLevelDebug
-
-	conf := config.Config{RootConfig: coreConfig}
-	config.LoadConfig(coreConfig, &conf, nil)
+func NewTestConfig(rootConf config.RootConfig) config.Config {
+	conf := config.Config{RootConfig: rootConf}
+	config.LoadConfig(rootConf, &conf, nil)
 	return conf
 }
 
-func ProvideCoreConfig(config config.Config) config.RootConfig {
-	return config.RootConfig
+func NewTestRootConfig(tb testing.TB) config.RootConfig {
+	rootConf := config.GetRootConfig()
+
+	// Set a name if not set
+	if rootConf.Name == "" {
+		rootConf.Name = "test-service"
+	}
+	rootConf.Name += "-" + tb.Name()
+
+	// Force test environment
+	rootConf.Env = config.EnvConfig{
+		Name: "test",
+		Type: config.EnvTypeTest,
+	}
+
+	// Force default log level to debug
+	rootConf.Log.Level = config.LogLevelDebug
+
+	if rootConf.Log.Levels == nil {
+		rootConf.Log.Levels = make(map[string]config.LogLevel)
+	}
+	// Set fx logger to info if not set
+	if _, ok := rootConf.Log.Levels["go.uber.org/fx"]; !ok {
+		rootConf.Log.Levels["go.uber.org/fx"] = config.LogLevelInfo
+	}
+
+	return rootConf
 }
+
+var ModuleTestConfig = fx.Options(
+	fx.Provide(NewTestConfig),
+	fx.Provide(NewTestRootConfig),
+)

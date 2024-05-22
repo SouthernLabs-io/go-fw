@@ -21,7 +21,7 @@ import (
 func TestGooseLoggerSkipCallers(t *testing.T) {
 	test.IntegrationTest(t)
 
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
 	logger := log.NewLoggerWithWriter(conf.RootConfig, "goose_logger", buffer)

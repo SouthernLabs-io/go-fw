@@ -19,7 +19,7 @@ import (
 )
 
 func TestErrorHandler(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
 	ctx := test.NewContext(database.DB{}, lf)
 

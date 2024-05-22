@@ -235,7 +235,7 @@ func init() {
 	loadConfig(&rootConfig, nil)
 }
 
-func GetCoreConfig() RootConfig {
+func GetRootConfig() RootConfig {
 	return rootConfig
 }
 
@@ -249,5 +249,5 @@ func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
 // Module exports dependency
 var Module = fx.Options(
 	fx.Provide(fx.Annotate(NewConfig, fx.ParamTags("", `optional:"true"`))),
-	fx.Provide(GetCoreConfig),
+	fx.Provide(GetRootConfig),
 )

@@ -18,7 +18,7 @@ import (
 )
 
 func TestFxLoggerSkipCallers(t *testing.T) {
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
 	logger := log.NewLoggerWithWriter(conf.RootConfig, "fx_logger", buffer)

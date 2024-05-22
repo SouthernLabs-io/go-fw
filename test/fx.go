@@ -47,9 +47,8 @@ func FxUnit(t *testing.T, opts ...fx.Option) *FxApp {
 		t: t,
 		opts: fx.Options(
 			fx.Supply(t, fx.Annotate(t, fx.As(new(testing.TB)))),
-			fx.Supply(NewConfig(t.Name())),
+			ModuleTestConfig,
 			fx.Provide(NewLoggerFactory),
-			fx.Provide(ProvideCoreConfig),
 			fx.WithLogger(func(lf *log.LoggerFactory) fxevent.Logger {
 				return di.NewFxLogger(lf.GetLoggerForType(fx.App{}))
 			}),

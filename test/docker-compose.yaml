@@ -7,63 +7,57 @@ x-common-variables: &common-variables
 
 services:
 
-  ########################### External Services ################################
   # ----------------------------------------------------------------------------
   # Setup the local postgres database.
   #
   postgres:
     image: postgres:15-alpine
-    container_name: postgres
+    container_name: fw_postgres
     command: ["postgres", "-c", "log_statement=all"]
     ports:
       - "5432:5432"
     volumes:
-      - "pg_data:/data"
+      - "fw_pg_data:/data"
     environment: *common-variables
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      close:
-        aliases:
-          - postgres
-
 
   # ----------------------------------------------------------------------------
   # Setup the local redis server.
   #
   redis:
     image: redis:alpine
-    container_name: redis
-    hostname: redis
+    container_name: fw_redis
     ports:
       - "6379:6379"
     volumes:
-      - "redis_data:/data"
+      - "fw_redis_data:/data"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 1s
       timeout: 3s
       retries: 30
-    networks:
-      close:
-        aliases:
-          - redis
 
-# ----------------------------------------------------------------------------
-# Networking
-#
-networks:
-  open:
-    driver: bridge
-  close:
-    driver: bridge
+  # ----------------------------------------------------------------------------
+  # AWS local test environment
+  #
+  localstack:
+    container_name: fw_localstack
+    image: localstack/localstack
+    ports:
+      - "4566:4566"            # LocalStack Gateway
+    environment: *common-variables
+    volumes:
+      - "fw_localstack_data:/var/lib/localstack"
+
 
 # ----------------------------------------------------------------------------
 # Volume Mounts
 #
 volumes:
-  redis_data:
-  pg_data:
+  fw_redis_data:
+  fw_localstack_data:
+  fw_pg_data:

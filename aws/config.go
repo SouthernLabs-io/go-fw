@@ -12,16 +12,16 @@ import (
 	"github.com/southernlabs-io/go-fw/errors"
 )
 
-func NewAWSConfig(rootConf config.RootConfig) *aws.Config {
+func NewAWSConfig(rootConf config.RootConfig) (aws.Config, error) {
 	awsConfig, err := awsconfig.LoadDefaultConfig(context.Background())
 	if err != nil {
-		panic(errors.NewUnknownf("failed to build default AWS config, error: %w", err))
+		return aws.Config{}, errors.NewUnknownf("failed to build default AWS config, error: %w", err)
 	}
 
 	if rootConf.Datadog.Tracing {
 		awstrace.AppendMiddleware(&awsConfig)
 	}
-	return &awsConfig
+	return awsConfig, nil
 }
 
 var Module = fx.Provide(NewAWSConfig)

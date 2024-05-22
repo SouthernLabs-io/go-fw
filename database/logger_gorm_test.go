@@ -20,7 +20,7 @@ import (
 func TestGormLoggerSkipCallers(t *testing.T) {
 	test.IntegrationTest(t)
 
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
 	logger := log.NewLoggerWithWriter(conf.RootConfig, "gorm_test", buffer)
@@ -68,7 +68,7 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 func TestGormLoggerLogMode(t *testing.T) {
 	test.IntegrationTest(t)
 
-	conf := test.NewConfig(t.Name())
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	conf.Env.Type = config.EnvTypeSandbox
 	buffer := new(bytes.Buffer)
 	logger := log.NewLoggerWithWriter(conf.RootConfig, "gorm_test", buffer)
