@@ -21,7 +21,7 @@ services:
     environment: *common-variables
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
-      interval: 10s
+      interval: 2s
       timeout: 5s
       retries: 5
 
@@ -37,7 +37,7 @@ services:
       - "fw_redis_data:/data"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
-      interval: 1s
+      interval: 2s
       timeout: 3s
       retries: 30
 

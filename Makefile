@@ -14,7 +14,7 @@ test_short_coverage:
 	@go tool cover -html=coverage.out -o coverage.html
 
 docker_up:
-	@docker compose -f test/docker-compose.yaml up -d
+	@docker compose -f test/docker-compose.yaml up -d --wait
 
 docker_down:
 	@docker compose -f test/docker-compose.yaml down
