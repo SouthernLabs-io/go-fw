@@ -2,7 +2,6 @@ package test
 
 import (
 	"github.com/gin-gonic/gin"
-	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
@@ -27,5 +26,3 @@ func NewTestHTTPHandler(conf config.Config, lf *log.LoggerFactory) rest.HTTPHand
 		BasePath: "",
 	}
 }
-
-var TestModuleHTTPHandler = fx.Provide(NewTestHTTPHandler)
