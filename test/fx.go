@@ -90,9 +90,8 @@ func (a *FxApp) WithRedis() *FxApp {
 func (a *FxApp) WithHTTPHandler() *FxApp {
 	a.opts = fx.Options(
 		a.opts,
-		TestModuleHTTPHandler,
 		ModuleMiddlewares,
-		TestModuleRest,
+		ModuleRest,
 	)
 	return a
 }
