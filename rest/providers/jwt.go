@@ -47,7 +47,7 @@ func (s JWTProvider) EncodeWithExp(ctx context.Context, claims jwt.Claims, ttl t
 	}:
 		v.SetExpiresAt(exp)
 	default:
-		return "", errors.Newf(errors.ErrCodeBadArgument, "could not set expires on type: "+reflect.TypeOf(claims).String())
+		return "", errors.Newf(errors.ErrCodeBadArgument, "could not set expires on type: %s", reflect.TypeOf(claims).String())
 	}
 
 	return s.Encode(ctx, claims)

@@ -131,6 +131,12 @@ func (l _FxLogger) LogEvent(event fxevent.Event) {
 				"error", e.Err,
 			)
 		}
+	case *fxevent.BeforeRun:
+		l.logger.Debug("Run",
+			"name", e.Name,
+			"kind", e.Kind,
+			maybeModuleField(e.ModuleName),
+		)
 	case *fxevent.Run:
 		if e.Err != nil {
 			l.logger.Error("Error returned",

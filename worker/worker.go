@@ -228,7 +228,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			}
 			var fwErr *errors.Error
 			if errors.AsCode(err, &fwErr, distributedlock.ErrCodeLockNotAutoExtended) {
-				logger.Infof(fwErr.Message)
+				logger.Info(fwErr.Message)
 				continue
 			}
 			return errors.Newf(ErrCodeWorkerError, "single worker: %s error: %w", worker.GetName(), err)
