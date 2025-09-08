@@ -5,7 +5,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 func NewTestHTTPHandler(conf config.Config, lf *log.LoggerFactory) rest.HTTPHandler {

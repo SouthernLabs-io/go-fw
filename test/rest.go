@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/rest"
-	"github.com/southernlabs-io/go-fw/rest/middleware"
-	middlewaremocks "github.com/southernlabs-io/go-fw/rest/middleware/mocks"
+	"github.com/southernlabs-io/go-fw/rest_gin"
+	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
+	middlewaremocks "github.com/southernlabs-io/go-fw/rest_gin/middleware/mocks"
 )
 
 func NewMockAuthN(t *testing.T, principal middleware.Principal) fx.Option {

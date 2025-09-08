@@ -2,12 +2,14 @@ package middleware
 
 import (
 	"log/slog"
+	"net"
+	"net/http"
 	"net/url"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/exp/maps"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -15,7 +17,6 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type RequestLoggerMiddleware struct {
@@ -45,96 +46,124 @@ func NewRequestLogger(conf config.Config, lf *log.LoggerFactory) *RequestLoggerM
 	}
 }
 
-func (m *RequestLoggerMiddleware) Setup(httpHandler rest.HTTPHandler) {
-	httpHandler.Root.Use(m.Run)
-}
-
 func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 	return MiddlewarePriorityHighest
 }
 
-func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
-	m.lf.SetCtx(ctx)
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	ctx        context.Context
+}
 
-	urlPath := ctx.Request.URL.Path
-	start := time.Now()
-	requestID := ctx.GetHeader("Request-ID")
-	if requestID == "" {
-		requestID = uuid.NewString()
-	}
-	ctx.Set(context.RequestIDCtxKey.(string), requestID)
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
 
-	// Parse the host and port by using URL struct
-	hostPortURL := url.URL{Host: ctx.Request.Host}
-	hostname := hostPortURL.Hostname()
-	portStr := hostPortURL.Port()
-	portAttr := slog.Attr{}
-	if portStr != "" {
-		port, err := strconv.Atoi(portStr)
-		if err == nil {
-			portAttr = slog.Int("port", port)
+func (rw *responseWriter) Context() context.Context {
+	return rw.ctx
+}
+
+func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		headers := r.Header
+
+		urlPath := r.URL.Path
+		start := time.Now()
+		requestID := headers.Get("Request-ID")
+		if requestID == "" {
+			requestID = uuid.NewString()
 		}
-	}
+		ctx = context.CtxSetValue(ctx, context.RequestIDCtxKey.(string), requestID)
 
-	attrs := []slog.Attr{
-		slog.Group("http",
-			slog.String("method", ctx.Request.Method),
-			slog.String("url", ctx.Request.RequestURI),
-			slog.String("request_id", requestID),
-			slog.String("referer", ctx.Request.Referer()),
-			slog.String("useragent", ctx.Request.UserAgent()),
-			slog.String("version", ctx.Request.Proto),
-			slog.Group("url_details",
-				slog.String("host", hostname),
-				portAttr,
-				slog.String("path", urlPath),
-				slog.Any("queryString", ctx.Request.URL.Query()),
+		// Parse the host and port by using URL struct
+		hostPortURL := url.URL{Host: r.Host}
+		hostname := hostPortURL.Hostname()
+		portStr := hostPortURL.Port()
+		portAttr := slog.Attr{}
+		if portStr != "" {
+			port, err := strconv.Atoi(portStr)
+			if err == nil {
+				portAttr = slog.Int("port", port)
+			}
+		}
+
+		clientIP := headers.Get("X-Forwarded-Id")
+		if clientIP == "" {
+			clientIP = headers.Get("X-Real-Ip")
+		}
+		if clientIP == "" {
+			addr, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
+			if err == nil {
+				clientIP = addr
+			}
+		}
+
+		attrs := []slog.Attr{
+			slog.Group("http",
+				slog.String("method", r.Method),
+				slog.String("url", r.RequestURI),
+				slog.String("request_id", requestID),
+				slog.String("referer", r.Referer()),
+				slog.String("useragent", r.UserAgent()),
+				slog.String("version", r.Proto),
+				slog.Group("url_details",
+					slog.String("host", hostname),
+					portAttr,
+					slog.String("path", urlPath),
+					slog.String("pattern", r.Pattern),
+					slog.Any("queryString", r.URL.Query()),
+				),
 			),
-		),
-		slog.String("network.client.ip", ctx.ClientIP()),
-	}
-
-	if m.Conf.Datadog.Tracing {
-		span, spanFound := tracer.SpanFromContext(ctx)
-		if spanFound {
-			spanCtx := span.Context()
-			attrs = append(attrs,
-				// Use flat dd to avoid classing with previous/later dd groups.
-				slog.Uint64("dd.trace_id", spanCtx.TraceID()),
-				slog.Uint64("dd.span_id", spanCtx.SpanID()),
-			)
-		} else {
-			// Should not happen!
-			logger := log.GetLoggerFromCtx(ctx).WithAttrs(attrs...)
-			logger.Errorf("tracing is enabled but there is no span in the context!")
+			slog.String("network.client.ip", clientIP),
 		}
-	}
 
-	log.CtxAppendLoggerAttrs(ctx, attrs...)
+		if m.Conf.Datadog.Tracing {
+			span, spanFound := tracer.SpanFromContext(ctx)
+			if spanFound {
+				spanCtx := span.Context()
+				attrs = append(attrs,
+					// Use flat dd to avoid classing with previous/later dd groups.
+					slog.Uint64("dd.trace_id", spanCtx.TraceID()),
+					slog.Uint64("dd.span_id", spanCtx.SpanID()),
+				)
+			} else {
+				// Should not happen!
+				logger := log.GetLoggerFromCtx(ctx).WithAttrs(attrs...)
+				logger.Errorf("tracing is enabled but there is no span in the context!")
+			}
+		}
 
-	if m.excludeMap[ctx.FullPath()] {
-		return
-	}
+		ctx = log.CtxAppendLoggerAttrs(ctx, attrs...)
 
-	logger := log.GetLoggerFromCtxForType(ctx, m)
-	logger.Debugf("Req Start: %s", urlPath)
+		if m.excludeMap[r.Pattern] {
+			return
+		}
 
-	ctx.Next()
+		logger := log.GetLoggerFromCtxForType(ctx, m)
+		logger.Debugf("Req Start: %s", urlPath)
 
-	latency := time.Since(start)
-	logger = log.GetLoggerFromCtx(ctx)
-	status := ctx.Writer.Status()
-	level := config.LogLevelInfo
-	if status >= 500 {
-		level = config.LogLevelError
-	} else if status >= 400 {
-		level = config.LogLevelWarn
-	}
-	logger.Log(level, "Req End: "+urlPath,
-		slog.Int("http.status_code", status),
-		// Using "duration" to follow DataDog expectations
-		slog.Duration("duration", latency),
-	)
+		rw := &responseWriter{w, 0, ctx}
+		next.ServeHTTP(rw, r)
+
+		latency := time.Since(start)
+		logger = log.GetLoggerFromCtx(ctx)
+		status := rw.statusCode
+		level := config.LogLevelInfo
+		if status >= 500 {
+			level = config.LogLevelError
+		} else if status >= 400 {
+			level = config.LogLevelWarn
+		}
+		logger.Log(level, "Req End: "+urlPath,
+			slog.Int("http.status_code", status),
+			// Using "duration" to follow DataDog expectations
+			slog.Duration("duration", latency),
+		)
+
+	})
 }
 
 var RequestLoggerModule = ProvideAsMiddleware(NewRequestLogger)

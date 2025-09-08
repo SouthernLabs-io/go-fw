@@ -4,7 +4,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/di"
-	"github.com/southernlabs-io/go-fw/rest/middleware"
+	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
 )
 
 func ProvideAsHealthCheck(provider any, anns ...fx.Annotation) fx.Option {

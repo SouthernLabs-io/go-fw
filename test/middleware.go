@@ -3,7 +3,7 @@ package test
 import (
 	"go.uber.org/fx"
 
-	"github.com/southernlabs-io/go-fw/rest/middleware"
+	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
 )
 
 var ModuleMiddlewares = fx.Options(

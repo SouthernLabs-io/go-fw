@@ -3,7 +3,7 @@
 package mocks
 
 import (
-	middleware "github.com/southernlabs-io/go-fw/rest/middleware"
+	middleware "github.com/southernlabs-io/go-fw/rest_gin/middleware"
 	mock "github.com/stretchr/testify/mock"
 )
 

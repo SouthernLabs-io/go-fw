@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 // HTTPHandlerClient is a client for testing HTTPHandler implementations.

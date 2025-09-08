@@ -3,7 +3,6 @@ package middleware
 //go:generate mockery --all --with-expecter=true --keeptree=false --case=underscore
 
 import (
-	"net/http"
 	"reflect"
 	"slices"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/log"
+	"github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type MiddlewarePriority int
@@ -30,9 +30,9 @@ const (
 )
 
 type Middleware interface {
+	Setup(httpHandler rest.HTTPHandler)
 	Priority() MiddlewarePriority
 	GetLogger() log.Logger
-	Handle(http.Handler) http.Handler
 }
 
 type BaseMiddleware struct {
@@ -55,6 +55,7 @@ func NewMiddlewares(deps struct {
 
 	LF          *log.LoggerFactory
 	Middlewares []Middleware `group:"middlewares"`
+	HTTPHandler rest.HTTPHandler
 }) Middlewares {
 	// We want a stable order
 	slices.SortFunc(deps.Middlewares, func(a, b Middleware) int {
@@ -82,15 +83,24 @@ func NewMiddlewares(deps struct {
 		}
 		return 1
 	})
+	Middlewares(deps.Middlewares).Setup(deps.HTTPHandler)
 	return deps.Middlewares
 }
 
+func (ms Middlewares) Setup(httpHandler rest.HTTPHandler) {
+	for _, middleware := range ms {
+		t := reflect.TypeOf(middleware).Elem()
+		middleware.GetLogger().Debugf("Setting up middleware %s.%s", t.PkgPath(), t.Name())
+		middleware.Setup(httpHandler)
+	}
+}
+
 var Module = fx.Options(
-	fx.Provide(NewMiddlewares),
+	fx.Invoke(NewMiddlewares),
 
 	//Default providers
-	//ProvideAsMiddleware(NewHealthCheckFx),
-	//ProvideAsMiddleware(NewReadyCheckFx),
-	//ProvideAsMiddleware(NewPanicRecovery),
-	//ProvideAsMiddleware(NewErrorHandlerFx),
+	ProvideAsMiddleware(NewHealthCheckFx),
+	ProvideAsMiddleware(NewReadyCheckFx),
+	ProvideAsMiddleware(NewPanicRecovery),
+	ProvideAsMiddleware(NewErrorHandlerFx),
 )

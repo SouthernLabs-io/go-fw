@@ -6,7 +6,6 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest"
 	"github.com/southernlabs-io/go-fw/worker"
 )
 
@@ -44,7 +43,6 @@ func (w *ServeWorkCommand) Run() CommandRunner {
 		fx.In
 
 		Conf          config.Config
-		HTTPHandler   rest.HTTPHandler //It is here for the container to initialize it
 		WorkerHandler []worker.Handler `group:"worker_handlers"` //It is here for the container to initialize it
 	}) {
 		logger := log.GetLoggerForType(w)

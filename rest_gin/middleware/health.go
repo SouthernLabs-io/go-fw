@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest_gin"
 	"github.com/southernlabs-io/go-fw/version"
 )
 

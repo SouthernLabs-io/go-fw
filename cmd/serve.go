@@ -6,9 +6,6 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest"
-	"github.com/southernlabs-io/go-fw/rest/middleware"
-	"github.com/southernlabs-io/go-fw/rest/providers"
 )
 
 type ServeCommand struct {
@@ -16,7 +13,7 @@ type ServeCommand struct {
 }
 
 func NewServeCommand(fxOpts fx.Option) *ServeCommand {
-	return &ServeCommand{fxOpts: fx.Options(fxOpts, providers.Module, middleware.Module, rest.Module)}
+	return &ServeCommand{fxOpts: fx.Options(fxOpts)}
 }
 
 func (s *ServeCommand) Cmd() string {
@@ -38,8 +35,7 @@ func (s *ServeCommand) Run() CommandRunner {
 	return func(dep struct {
 		fx.In
 
-		Conf        config.Config
-		HTTPHandler rest.HTTPHandler //It is here for the container to initialize it
+		Conf config.Config
 	}) {
 		logger := log.GetLoggerForType(s)
 		if dep.Conf.Datadog.Tracing {

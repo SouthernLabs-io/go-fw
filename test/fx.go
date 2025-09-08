@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"
-	"github.com/southernlabs-io/go-fw/rest"
+	"github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type Target interface {
