@@ -6,11 +6,13 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"testing"
 
 	"github.com/gin-contrib/cors"
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 type DatabaseConfig struct {
@@ -229,14 +231,19 @@ func NewConfig(root RootConfig, secretsMgr SecretsManager) Config {
 	return conf
 }
 
-var rootConfig RootConfig
-
-func init() {
+func loadRootConfig() RootConfig {
+	var rootConfig RootConfig
 	loadConfig(&rootConfig, nil)
+	return rootConfig
 }
 
+var loadRootConfigOnce = sync.OnceValue(loadRootConfig)
+
 func GetRootConfig() RootConfig {
-	return rootConfig
+	if testing.Testing() {
+		return loadRootConfig()
+	}
+	return loadRootConfigOnce()
 }
 
 func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
