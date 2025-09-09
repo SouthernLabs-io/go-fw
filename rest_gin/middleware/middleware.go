@@ -11,7 +11,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type MiddlewarePriority int
@@ -53,7 +53,7 @@ type Middlewares []Middleware
 func NewMiddlewares(deps struct {
 	fx.In
 
-	LF          *log.LoggerFactory
+	LF          log.LoggerFactory
 	Middlewares []Middleware `group:"middlewares"`
 	HTTPHandler rest.HTTPHandler
 }) Middlewares {

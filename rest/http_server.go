@@ -24,7 +24,7 @@ type HTTPServer struct {
 // NewHTTPServer creates a new http server with an empty Mux.
 func NewHTTPServer(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	lc fx.Lifecycle,
 ) HTTPServer {
 	logger := lf.GetLoggerForType(HTTPServer{})

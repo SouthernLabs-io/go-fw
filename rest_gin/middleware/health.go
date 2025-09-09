@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -49,7 +49,7 @@ func NewHealthCheckFx(params HealthCheckMiddlewareParams) *HealthCheckMiddleware
 	return NewHealthCheck(params.Conf, params.LF, params.HealthChecks)
 }
 
-func NewHealthCheck(conf config.Config, lf *log.LoggerFactory, healthChecks []HealthCheckProvider) *HealthCheckMiddleware {
+func NewHealthCheck(conf config.Config, lf log.LoggerFactory, healthChecks []HealthCheckProvider) *HealthCheckMiddleware {
 	return &HealthCheckMiddleware{
 		BaseMiddleware{conf, lf.GetLoggerForType(HealthCheckMiddleware{})},
 		slices.Filter(healthChecks, predicates.Not(predicates.Nil[HealthCheckProvider])),

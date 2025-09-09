@@ -13,7 +13,7 @@ import (
 
 type BaseParams struct {
 	fx.In
-	LF           *log.LoggerFactory
+	LF           log.LoggerFactory
 	FxLifecycle  fx.Lifecycle
 	FxShutdowner fx.Shutdowner
 

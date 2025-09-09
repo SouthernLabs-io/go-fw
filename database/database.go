@@ -45,7 +45,7 @@ func CreateDBName(conf config.Config) string {
 }
 
 // NewDB creates a new database instance
-func NewDB(conf config.Config, lf *log.LoggerFactory) DB {
+func NewDB(conf config.Config, lf log.LoggerFactory) DB {
 	if conf.Env.Type == config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
@@ -218,7 +218,7 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	return tx, ctx
 }
 
-func MustOpenGORM(conf config.Config, dbName string, lf *log.LoggerFactory) *gorm.DB {
+func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm.DB {
 	dbConf := conf.Database
 	dsn := fmt.Sprintf("host='%s' user='%s' password='%s' dbname='%s' port=%d",
 		dbConf.Host,

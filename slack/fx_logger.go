@@ -13,7 +13,7 @@ type _FxLoggerFactory struct {
 	logger      log.Logger
 }
 
-func NewFxLoggerFactory(fxLF di.FxLoggerFactory, slackClient *Client, lf *log.LoggerFactory) di.FxLoggerFactory {
+func NewFxLoggerFactory(fxLF di.FxLoggerFactory, slackClient *Client, lf log.LoggerFactory) di.FxLoggerFactory {
 	// If the client is nil, it means it is disabled by configuration
 	if slackClient == nil {
 		return fxLF

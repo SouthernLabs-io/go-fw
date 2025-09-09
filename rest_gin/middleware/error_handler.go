@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type ErrorResponseBuilder = func(*gin.Error) (body any, status int, buildErr error)
@@ -65,7 +65,7 @@ func NewErrorHandlerFx(params ErrorHandlerMiddlewareParams) *ErrorHandlerMiddlew
 
 func NewErrorHandler(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	errMappings []ErrorMapper,
 	defaultErrorMapper ErrorResponseBuilder,
 ) *ErrorHandlerMiddleware {

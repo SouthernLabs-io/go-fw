@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/log"
 )
 
-func NewTestDatabase(conf config.Config, lf *log.LoggerFactory) database.DB {
+func NewTestDatabase(conf config.Config, lf log.LoggerFactory) database.DB {
 	if conf.Env.Type != config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
@@ -68,7 +68,7 @@ func CreateTestDBName(conf config.Config) string {
 	)
 }
 
-func OnTestDBStop(conf config.Config, db database.DB, lf *log.LoggerFactory) error {
+func OnTestDBStop(conf config.Config, db database.DB, lf log.LoggerFactory) error {
 	err := database.OnDBStop(db)
 	if err != nil {
 		return err

@@ -19,7 +19,7 @@ import (
 type TheStruct struct {
 }
 
-func (t TheStruct) Method(lf *log.LoggerFactory) log.Logger {
+func (t TheStruct) Method(lf log.LoggerFactory) log.Logger {
 	return lf.GetLogger()
 }
 
@@ -27,11 +27,11 @@ type WrapperStruct struct {
 	TheStruct
 }
 
-func (t *WrapperStruct) CallWrappedMethod(lf *log.LoggerFactory) log.Logger {
+func (t *WrapperStruct) CallWrappedMethod(lf log.LoggerFactory) log.Logger {
 	return t.TheStruct.Method(lf)
 }
 
-func (t *WrapperStruct) MethodInPtr(lf *log.LoggerFactory) log.Logger {
+func (t *WrapperStruct) MethodInPtr(lf log.LoggerFactory) log.Logger {
 	return lf.GetLogger()
 }
 

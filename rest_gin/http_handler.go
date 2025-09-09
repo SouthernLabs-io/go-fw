@@ -25,7 +25,7 @@ type HTTPHandler struct {
 // NewHTTPHandler creates a new request handler
 func NewHTTPHandler(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	lc fx.Lifecycle,
 ) HTTPHandler {
 	logger := lf.GetLoggerForType(HTTPHandler{})

@@ -10,7 +10,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type PanicRecoveryMiddleware struct {
@@ -19,7 +19,7 @@ type PanicRecoveryMiddleware struct {
 
 func NewPanicRecovery(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 ) *PanicRecoveryMiddleware {
 	return &PanicRecoveryMiddleware{
 		BaseMiddleware{conf, lf.GetLoggerForType(PanicRecoveryMiddleware{})},

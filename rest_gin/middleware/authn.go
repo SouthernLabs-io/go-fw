@@ -12,7 +12,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 	"github.com/southernlabs-io/go-fw/sync"
 )
 
@@ -81,7 +81,7 @@ type AuthNMiddleware struct {
 
 func NewAuthN(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	provider AuthNProvider,
 ) *AuthNMiddleware {
 	return &AuthNMiddleware{

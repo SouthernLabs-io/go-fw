@@ -11,7 +11,7 @@ import (
 	"github.com/southernlabs-io/go-fw/redis"
 )
 
-func NewTestRedis(conf config.Config, lf *log.LoggerFactory) redis.Redis {
+func NewTestRedis(conf config.Config, lf log.LoggerFactory) redis.Redis {
 	if conf.Env.Type != config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}

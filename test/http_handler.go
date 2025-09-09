@@ -5,10 +5,10 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
-func NewTestHTTPHandler(conf config.Config, lf *log.LoggerFactory) rest.HTTPHandler {
+func NewTestHTTPHandler(conf config.Config, lf log.LoggerFactory) rest.HTTPHandler {
 	ginLogger := lf.GetLoggerForType(&gin.Engine{})
 	gin.DefaultWriter = rest.NewDefaultGinWriter(ginLogger)
 	gin.DefaultErrorWriter = rest.NewDefaultErrorGinWriter(ginLogger)

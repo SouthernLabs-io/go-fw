@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 	"github.com/southernlabs-io/go-fw/version"
 )
 
@@ -32,7 +32,7 @@ type ReadyCheckMiddleware struct {
 
 type ReadyCheckMiddlewareParams struct {
 	di.BaseParams
-	LF          *log.LoggerFactory
+	LF          log.LoggerFactory
 	ReadyChecks []ReadyCheckProvider `group:"ready_checks"`
 }
 
@@ -42,7 +42,7 @@ func NewReadyCheckFx(params ReadyCheckMiddlewareParams) *ReadyCheckMiddleware {
 
 func NewReadyCheck(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	readyChecks []ReadyCheckProvider,
 ) *ReadyCheckMiddleware {
 	return &ReadyCheckMiddleware{

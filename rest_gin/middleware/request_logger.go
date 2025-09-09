@@ -15,17 +15,17 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type RequestLoggerMiddleware struct {
 	BaseMiddleware
 
-	lf         *log.LoggerFactory
+	lf         log.LoggerFactory
 	excludeMap map[string]bool
 }
 
-func NewRequestLogger(conf config.Config, lf *log.LoggerFactory) *RequestLoggerMiddleware {
+func NewRequestLogger(conf config.Config, lf log.LoggerFactory) *RequestLoggerMiddleware {
 	excludes := conf.HttpServer.ReqLoggerExcludes
 	excludeMap := make(map[string]bool, len(excludes))
 	for _, exclude := range excludes {

@@ -79,7 +79,7 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 
 func NewLongRunningWorkerHandler(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	db database.DB,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,

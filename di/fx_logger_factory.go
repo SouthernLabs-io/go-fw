@@ -15,7 +15,7 @@ type _FxLoggerFactory struct {
 	logger log.Logger
 }
 
-func NewFxLoggerFactory(lf *log.LoggerFactory) FxLoggerFactory {
+func NewFxLoggerFactory(lf log.LoggerFactory) FxLoggerFactory {
 	return _FxLoggerFactory{logger: lf.GetLoggerForType(fx.App{})}
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type Target interface {
@@ -49,7 +49,7 @@ func FxUnit(t *testing.T, opts ...fx.Option) *FxApp {
 			fx.Supply(t, fx.Annotate(t, fx.As(new(testing.TB)))),
 			ModuleTestConfig,
 			fx.Provide(NewLoggerFactory),
-			fx.WithLogger(func(lf *log.LoggerFactory) fxevent.Logger {
+			fx.WithLogger(func(lf log.LoggerFactory) fxevent.Logger {
 				return di.NewFxLogger(lf.GetLoggerForType(fx.App{}))
 			}),
 			ModuleContext,

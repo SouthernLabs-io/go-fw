@@ -19,7 +19,7 @@ func GetTestLogger(tb testing.TB) log.Logger {
 	)
 }
 
-func NewLoggerFactory(tb testing.TB, conf config.RootConfig) *log.LoggerFactory {
+func NewLoggerFactory(tb testing.TB, conf config.RootConfig) log.LoggerFactory {
 	return log.NewLoggerFactoryWithWriter(conf, newTestWriter(tb))
 }
 

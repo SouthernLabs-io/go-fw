@@ -33,7 +33,7 @@ type Client struct {
 	fullMsgTemplate *template.Template
 }
 
-func NewSlackClient(conf config.Config, lf *log.LoggerFactory) *Client {
+func NewSlackClient(conf config.Config, lf log.LoggerFactory) *Client {
 	if !conf.Slack.Enabled {
 		lf.GetLogger().Warn("Slack notifications are disabled")
 		return nil

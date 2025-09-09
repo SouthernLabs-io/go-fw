@@ -8,7 +8,7 @@ import (
 	"github.com/southernlabs-io/go-fw/database"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type DatabaseTrxMiddleware struct {
@@ -18,7 +18,7 @@ type DatabaseTrxMiddleware struct {
 
 func NewDatabaseTrx(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	db database.DB,
 ) *DatabaseTrxMiddleware {
 	return &DatabaseTrxMiddleware{

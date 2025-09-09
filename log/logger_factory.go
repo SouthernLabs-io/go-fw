@@ -18,53 +18,64 @@ import (
 var loggerFactoryCtxKey = context.CtxKey("_fw_logger_factory")
 
 // defaultLoggerFactory is the default logger factory used by the package-level functions.
-var defaultLoggerFactory = NewLoggerFactory(config.GetRootConfig())
+var defaultLoggerFactory LoggerFactory = NewLoggerFactory(config.GetRootConfig())
 
 // SetDefaultLoggerFactory sets the default logger factory to use for the package-level functions.
-func SetDefaultLoggerFactory(f *LoggerFactory) {
+func SetDefaultLoggerFactory(f LoggerFactory) {
 	defaultLoggerFactory = f
 }
 
 // GetDefaultLoggerFactory returns the default logger factory used by the package-level functions.
-func GetDefaultLoggerFactory() *LoggerFactory {
+func GetDefaultLoggerFactory() LoggerFactory {
 	return defaultLoggerFactory
 }
 
 type ValueContext interface{ Value(any) any }
 
-type LoggerFactory struct {
+type LoggerFactory interface {
+	SetCtx(ctx context.Context) context.Context
+	GetRootLogger() Logger
+	GetLoggerForPath(pth string) Logger
+	GetLoggerForType(forType any) Logger
+	GetLogger() Logger
+	GetLoggerFromCtx(ctx ValueContext) Logger
+	GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger
+	GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger
+}
+
+type _LoggerFactory struct {
 	loggersByPath *sync.Map[string, Logger]
 	coreConfig    config.RootConfig
 	writer        io.Writer
 }
 
 // NewLoggerFactory creates a new logger factory with the given core configuration.
-func NewLoggerFactory(coreConfig config.RootConfig) *LoggerFactory {
+func NewLoggerFactory(coreConfig config.RootConfig) LoggerFactory {
 	normalized := make(map[string]config.LogLevel, len(coreConfig.Log.Levels))
 	for pth, level := range coreConfig.Log.Levels {
 		normalized[path.Clean(pth)] = level
 	}
 	coreConfig.Log.Levels = normalized
 
-	return &LoggerFactory{
+	return &_LoggerFactory{
 		loggersByPath: sync.NewMap[string, Logger](),
 		coreConfig:    coreConfig,
 	}
 }
 
 // NewLoggerFactoryWithWriter creates a new logger factory with the given core configuration and writer.
-func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) *LoggerFactory {
-	factory := NewLoggerFactory(coreConfig)
+func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) LoggerFactory {
+	factory := NewLoggerFactory(coreConfig).(*_LoggerFactory)
 	factory.writer = writer
 	return factory
 }
 
-func (lf *LoggerFactory) SetCtx(ctx context.Context) context.Context {
+func (lf *_LoggerFactory) SetCtx(ctx context.Context) context.Context {
 	return context.CtxSetValue(ctx, loggerFactoryCtxKey, lf)
 }
 
 // GetRootLogger returns the root logger. This is a shortcut for GetLoggerForPath("/").
-func (lf *LoggerFactory) GetRootLogger() Logger {
+func (lf *_LoggerFactory) GetRootLogger() Logger {
 	return lf.GetLoggerForPath("root")
 }
 
@@ -74,7 +85,7 @@ func GetRootLogger() Logger {
 }
 
 // GetLoggerForPath returns a logger for the given path and adds the context properties (if any).
-func (lf *LoggerFactory) GetLoggerForPath(pth string) Logger {
+func (lf *_LoggerFactory) GetLoggerForPath(pth string) Logger {
 	return lf.GetLoggerFromCtxForPath(context.Background(), pth)
 }
 
@@ -85,7 +96,7 @@ func GetLoggerForPath(pth string) Logger {
 }
 
 // GetLoggerForType returns a logger for the given type and adds the context properties (if any).
-func (lf *LoggerFactory) GetLoggerForType(forType any) Logger {
+func (lf *_LoggerFactory) GetLoggerForType(forType any) Logger {
 	return lf.GetLoggerFromCtxForType(context.Background(), forType)
 }
 
@@ -96,8 +107,9 @@ func GetLoggerForType(forType any) Logger {
 }
 
 var skipPathPrefixes = []string{
-	"github.com/southernlabs-io/go-fw/log.(*LoggerFactory).",
+	"github.com/southernlabs-io/go-fw/log.(*_LoggerFactory).",
 	"github.com/southernlabs-io/go-fw/log.Logger.",
+	"github.com/southernlabs-io/go-fw/log.GetLogger",
 	"github.com/southernlabs-io/go-fw/log.GetLogger",
 	"github.com/southernlabs-io/go-fw/worker.NewWorkerContext",
 }
@@ -126,7 +138,7 @@ func findCallerPath() string {
 }
 
 // GetLogger returns a logger for the caller
-func (lf *LoggerFactory) GetLogger() Logger {
+func (lf *_LoggerFactory) GetLogger() Logger {
 	pth := findCallerPath()
 	return lf.GetLoggerFromCtxForPath(context.Background(), pth)
 }
@@ -137,7 +149,7 @@ func GetLogger() Logger {
 }
 
 // GetLoggerFromCtx returns a logger for the caller and adds the context properties (if any)
-func (lf *LoggerFactory) GetLoggerFromCtx(ctx ValueContext) Logger {
+func (lf *_LoggerFactory) GetLoggerFromCtx(ctx ValueContext) Logger {
 	pth := findCallerPath()
 	return lf.GetLoggerFromCtxForPath(ctx, pth)
 }
@@ -145,7 +157,7 @@ func (lf *LoggerFactory) GetLoggerFromCtx(ctx ValueContext) Logger {
 // GetLoggerFromCtx returns a logger for the caller and adds the context properties (if any). Default logger Factory will
 // be used if there is none in the context.
 func GetLoggerFromCtx(ctx ValueContext) Logger {
-	lf, is := ctx.Value(loggerFactoryCtxKey).(*LoggerFactory)
+	lf, is := ctx.Value(loggerFactoryCtxKey).(LoggerFactory)
 	if !is {
 		lf = defaultLoggerFactory
 	}
@@ -154,7 +166,7 @@ func GetLoggerFromCtx(ctx ValueContext) Logger {
 }
 
 // GetLoggerFromCtxForType returns a logger for the given type and adds the context properties (if any)
-func (lf *LoggerFactory) GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger {
+func (lf *_LoggerFactory) GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger {
 	pth := "_"
 	t := reflect.TypeOf(forType)
 	// Limit iterations to 10 to avoid infinite loops
@@ -181,7 +193,7 @@ func (lf *LoggerFactory) GetLoggerFromCtxForType(ctx ValueContext, forType any) 
 
 // GetLoggerFromCtxForType returns a logger for the given type and adds the context properties (if any) using
 func GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger {
-	lf, is := ctx.Value(loggerFactoryCtxKey).(*LoggerFactory)
+	lf, is := ctx.Value(loggerFactoryCtxKey).(LoggerFactory)
 	if !is {
 		lf = defaultLoggerFactory
 	}
@@ -190,7 +202,7 @@ func GetLoggerFromCtxForType(ctx ValueContext, forType any) Logger {
 }
 
 // GetLoggerFromCtxForPath returns a logger for the given type and adds the context properties (if any)
-func (lf *LoggerFactory) GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
+func (lf *_LoggerFactory) GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
 	var logger = lf.loggersByPath.LoadOrStoreFunc(pth, lf.newLogger)
 
 	attrs := GetLoggerAttrsFromCtx(ctx)
@@ -203,7 +215,7 @@ func (lf *LoggerFactory) GetLoggerFromCtxForPath(ctx ValueContext, pth string) L
 // GetLoggerFromCtxForPath returns a logger for the given path and adds the context properties (if any) using
 // the default logger factory.
 func GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
-	lf, is := ctx.Value(loggerFactoryCtxKey).(*LoggerFactory)
+	lf, is := ctx.Value(loggerFactoryCtxKey).(LoggerFactory)
 	if !is {
 		lf = defaultLoggerFactory
 	}
@@ -211,7 +223,7 @@ func GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
 }
 
 // newLogger creates a new logger for the given path and sets the level based on the configuration.
-func (lf *LoggerFactory) newLogger(pth string) Logger {
+func (lf *_LoggerFactory) newLogger(pth string) Logger {
 	var writer io.Writer
 	if lf.writer != nil {
 		writer = lf.writer

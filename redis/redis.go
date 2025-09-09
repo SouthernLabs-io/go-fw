@@ -15,7 +15,7 @@ type Redis struct {
 	Client *redis.Client
 }
 
-func NewRedis(conf config.Config, lf *log.LoggerFactory) *Redis {
+func NewRedis(conf config.Config, lf log.LoggerFactory) *Redis {
 	if conf.Env.Type == config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
@@ -27,7 +27,7 @@ func NewRedis(conf config.Config, lf *log.LoggerFactory) *Redis {
 	}
 }
 
-func MustOpenRedis(conf config.Config, lf *log.LoggerFactory) *redis.Client {
+func MustOpenRedis(conf config.Config, lf log.LoggerFactory) *redis.Client {
 	rdsConf := conf.Redis
 
 	opt, err := redis.ParseURL(rdsConf.URL)

@@ -8,7 +8,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
 type AuthZProvider interface {
@@ -24,7 +24,7 @@ var _ Middleware = new(AuthZMiddleware)
 
 func NewAuthZ(
 	conf config.Config,
-	lf *log.LoggerFactory,
+	lf log.LoggerFactory,
 	provider AuthZProvider,
 ) *AuthZMiddleware {
 	return &AuthZMiddleware{

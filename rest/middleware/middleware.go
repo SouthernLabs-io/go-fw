@@ -53,7 +53,7 @@ type Middlewares []Middleware
 func NewMiddlewares(deps struct {
 	fx.In
 
-	LF          *log.LoggerFactory
+	LF          log.LoggerFactory
 	Middlewares []Middleware `group:"middlewares"`
 }) Middlewares {
 	// We want a stable order

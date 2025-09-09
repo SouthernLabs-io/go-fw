@@ -24,7 +24,7 @@ func TestDBTx(t *testing.T) {
 		Pass: "postgres",
 	}
 	db := test.NewTestDatabase(conf, lf)
-	defer func(conf config.Config, lf *log.LoggerFactory, db database.DB) {
+	defer func(conf config.Config, lf log.LoggerFactory, db database.DB) {
 		err := test.OnTestDBStop(conf, db, lf)
 		require.NoError(t, err)
 	}(conf, lf, db)
