@@ -33,7 +33,7 @@ func GetDefaultLoggerFactory() LoggerFactory {
 type ValueContext interface{ Value(any) any }
 
 type LoggerFactory interface {
-	SetCtx(ctx context.Context) context.Context
+	AddToCtx(ctx context.Context) context.Context
 	GetRootLogger() Logger
 	GetLoggerForPath(pth string) Logger
 	GetLoggerForType(forType any) Logger
@@ -70,7 +70,7 @@ func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) 
 	return factory
 }
 
-func (lf *_LoggerFactory) SetCtx(ctx context.Context) context.Context {
+func (lf *_LoggerFactory) AddToCtx(ctx context.Context) context.Context {
 	return context.CtxSetValue(ctx, loggerFactoryCtxKey, lf)
 }
 

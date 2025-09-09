@@ -54,7 +54,7 @@ func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 }
 
 func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
-	m.lf.SetCtx(ctx)
+	m.lf.AddToCtx(ctx)
 
 	urlPath := ctx.Request.URL.Path
 	start := time.Now()
