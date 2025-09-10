@@ -6,36 +6,29 @@ import (
 	"github.com/southernlabs-io/go-fw/sync"
 )
 
-type keyValueContext struct {
-	context.Context
+var storeKey = CtxKey("_fw_store")
 
-	store *sync.Map[string, any]
+func NewContextWithStore(parent context.Context) context.Context {
+	return context.WithValue(parent, storeKey, sync.NewMap[string, any]())
 }
 
-func NewKeyValueContext(parent context.Context) *keyValueContext {
-	return &keyValueContext{
-		Context: parent,
-		store:   sync.NewMap[string, any](),
+func CtxStoreValue(ctx context.Context, key string, value any) bool {
+	if store, ok := ctx.Value(storeKey).(*sync.Map[string, any]); ok {
+		store.Store(key, value)
+		return true
 	}
+	return false
 }
 
-func (c *keyValueContext) Set(key string, value any) {
-	c.store.Store(key, value)
-}
-
-func (c *keyValueContext) Get(key string) (any, bool) {
-	return c.store.Load(key)
-}
-
-func (c *keyValueContext) Value(key any) any {
-	if keyStr, is := key.(string); is {
-		if value, present := c.store.Load(keyStr); present {
-			return value
-		}
+func CtxLoadValue(ctx context.Context, key string) (value any, ok bool) {
+	if store, ok := ctx.Value(storeKey).(*sync.Map[string, any]); ok {
+		return store.Load(key)
 	}
-	return c.Context.Value(key)
+	return nil, false
 }
 
-func (c *keyValueContext) Delete(key string) {
-	c.store.Delete(key)
+func CtxDeleteKey(ctx context.Context, key string) {
+	if store, ok := ctx.Value(storeKey).(*sync.Map[string, any]); ok {
+		store.Delete(key)
+	}
 }

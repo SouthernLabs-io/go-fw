@@ -18,7 +18,7 @@ func GetLoggerAttrsFromCtx(ctx ValueContext) []slog.Attr {
 
 // CtxWithLoggerAttrs sets the given attributes to the context, it will overwrite any existing attributes.
 func CtxWithLoggerAttrs(ctx context.Context, attrs ...slog.Attr) context.Context {
-	return context.CtxSetValue(ctx, loggerAttrsCtxKey, attrs)
+	return context.WithValue(ctx, loggerAttrsCtxKey, attrs)
 }
 
 // CtxAppendLoggerAttrs adds the given attributes to the context, it will append to any existing attributes.
@@ -26,5 +26,5 @@ func CtxAppendLoggerAttrs(ctx context.Context, attrs ...slog.Attr) context.Conte
 	if oldAttrs, present := ctx.Value(loggerAttrsCtxKey).([]slog.Attr); present {
 		attrs = append(oldAttrs, attrs...)
 	}
-	return context.CtxSetValue(ctx, loggerAttrsCtxKey, attrs)
+	return context.WithValue(ctx, loggerAttrsCtxKey, attrs)
 }

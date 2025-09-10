@@ -6,6 +6,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
+	"github.com/southernlabs-io/go-fw/rest"
 )
 
 type ServeCommand struct {
@@ -13,7 +14,7 @@ type ServeCommand struct {
 }
 
 func NewServeCommand(fxOpts fx.Option) *ServeCommand {
-	return &ServeCommand{fxOpts: fx.Options(fxOpts)}
+	return &ServeCommand{fxOpts: fx.Options(fxOpts, rest.Module)}
 }
 
 func (s *ServeCommand) Cmd() string {

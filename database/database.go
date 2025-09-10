@@ -63,7 +63,7 @@ func (d DB) SetCtx(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	return context.CtxSetValue(ctx, DBCtxKey, d.WithContext(ctx))
+	return context.WithValue(ctx, DBCtxKey, d.WithContext(ctx))
 }
 
 func GetDBFromCtx(ctx context.Context) *gorm.DB {
@@ -213,7 +213,7 @@ func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Co
 	}
 
 	tx = &DBTx{DB: db.Begin(txOptions...)}
-	ctx = context.CtxSetValue(ctx, DBTxCtxKey, tx)
+	ctx = context.WithValue(ctx, DBTxCtxKey, tx)
 
 	return tx, ctx
 }

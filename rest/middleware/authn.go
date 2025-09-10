@@ -16,8 +16,8 @@ import (
 
 var ErrInvalidToken = errors.Newf("AUTHN_TOKEN_NOT_VALID", "token is not valid")
 
-const PrincipalCtxKey = "authn_principal"
-const AuthNExcludedCtxKey = "authn_excluded"
+var PrincipalCtxKey = context.CtxKey("_fw_authn_principal")
+var AuthNExcludedCtxKey = context.CtxKey("authn_excluded")
 
 type PrincipalType string
 
@@ -41,8 +41,8 @@ func MustGetPrincipal(ctx context.Context) Principal {
 	panic(errors.Newf(errors.ErrCodeNotAuthenticated, "no principal"))
 }
 
-func SetPrincipal(ctx context.Context, principal Principal) {
-	context.CtxSetValue(ctx, PrincipalCtxKey, principal)
+func SetPrincipal(ctx context.Context, principal Principal) context.Context {
+	ctx = context.WithValue(ctx, PrincipalCtxKey, principal)
 	attrs := log.GetLoggerAttrsFromCtx(ctx)
 	principalAttr := slog.Group("usr",
 		slog.Any("id", principal.GetID()),
@@ -51,10 +51,11 @@ func SetPrincipal(ctx context.Context, principal Principal) {
 	for idx, attr := range attrs {
 		if attr.Key == principalAttr.Key {
 			attrs[idx] = principalAttr
-			return
+			return ctx
 		}
 	}
-	log.CtxAppendLoggerAttrs(ctx, principalAttr)
+	ctx = log.CtxAppendLoggerAttrs(ctx, principalAttr)
+	return ctx
 }
 
 type AuthNProvider interface {
@@ -70,6 +71,7 @@ type _PathMethod struct {
 // is empty, then all methods are excluded for the path prefix acting as map key
 type AuthNMiddleware struct {
 	BaseMiddleware
+
 	provider      AuthNProvider
 	excludes      map[string][]string
 	excludesCache *sync.Map[_PathMethod, bool]
@@ -137,8 +139,11 @@ func (m *AuthNMiddleware) Handle(next http.Handler) http.Handler {
 		})
 
 		if excluded {
-			ctx = context.CtxSetValue(ctx, AuthNExcludedCtxKey, true)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			ctx = context.WithValue(ctx, AuthNExcludedCtxKey, true)
+			if ctx != r.Context() {
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
 			return
 		}
 
@@ -151,7 +156,12 @@ func (m *AuthNMiddleware) Handle(next http.Handler) http.Handler {
 				panic(errors.Newf(errors.ErrCodeBadState, "failed to authenticate"))
 			}
 		} else {
-			SetPrincipal(ctx, principal)
+			ctx = SetPrincipal(ctx, principal)
+			log.GetLoggerFromCtx(ctx).Debugf("Authenticated principal: %s", principal.GetID())
+			if ctx != r.Context() {
+				r = r.WithContext(ctx)
+			}
+			next.ServeHTTP(w, r)
 		}
 	})
 }

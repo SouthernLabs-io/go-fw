@@ -19,19 +19,18 @@ type MiddlewarePriority int
 const (
 	MiddlewarePriorityHighest MiddlewarePriority = iota * 1_000
 
-	MiddlewarePriorityProbes
+	MiddlewarePriorityBeforeMux
+
+	MiddlewarePriorityAfterMux
 	MiddlewarePriorityAuthN
 	MiddlewarePriorityAuthZ
-	MiddlewarePriorityHeader
-	MiddlewarePriorityBody
-
 	MiddlewarePriorityDefault
-	MiddlewarePriorityLowest
+
+	MiddlewarePriorityLowest = MiddlewarePriorityDefault + 1_000
 )
 
 type Middleware interface {
 	Priority() MiddlewarePriority
-	GetLogger() log.Logger
 	Handle(http.Handler) http.Handler
 }
 
@@ -40,12 +39,8 @@ type BaseMiddleware struct {
 	Logger log.Logger
 }
 
-func (m *BaseMiddleware) GetLogger() log.Logger {
-	return m.Logger
-}
-
 func ProvideAsMiddleware(provider any, anns ...fx.Annotation) fx.Option {
-	return di.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"middlewares"`)})
+	return di.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"rest_middlewares"`)})
 }
 
 type Middlewares []Middleware
@@ -54,7 +49,7 @@ func NewMiddlewares(deps struct {
 	fx.In
 
 	LF          log.LoggerFactory
-	Middlewares []Middleware `group:"middlewares"`
+	Middlewares []Middleware `group:"rest_middlewares"`
 }) Middlewares {
 	// We want a stable order
 	slices.SortFunc(deps.Middlewares, func(a, b Middleware) int {
@@ -89,8 +84,5 @@ var Module = fx.Options(
 	fx.Provide(NewMiddlewares),
 
 	//Default providers
-	//ProvideAsMiddleware(NewHealthCheckFx),
-	//ProvideAsMiddleware(NewReadyCheckFx),
-	//ProvideAsMiddleware(NewPanicRecovery),
-	//ProvideAsMiddleware(NewErrorHandlerFx),
+	ProvideAsMiddleware(NewRequestLogger),
 )

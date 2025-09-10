@@ -144,8 +144,8 @@ func (l Logger) WithAttrs(attrs ...slog.Attr) Logger {
 }
 
 // With returns a new logger with the given attributes.
-func (l Logger) With(args ...any) Logger {
-	return l.WithAttrs(argsToAttrSlice(args)...)
+func (l Logger) With(attrs ...any) Logger {
+	return l.WithAttrs(argsToAttrSlice(attrs)...)
 }
 
 // Enabled returns true if the given level is enabled.
@@ -160,11 +160,11 @@ func (l Logger) Tracef(format string, args ...any) {
 	l.log(time.Now(), config.LogLevelTrace, fmt.Sprintf(format, args...))
 }
 
-func (l Logger) Trace(msg string, args ...any) {
+func (l Logger) Trace(msg string, attrs ...any) {
 	if !l.Enabled(config.LogLevelTrace) {
 		return
 	}
-	l.log(time.Now(), config.LogLevelTrace, msg, args...)
+	l.log(time.Now(), config.LogLevelTrace, msg, attrs...)
 }
 
 func (l Logger) Debugf(format string, args ...any) {
@@ -174,11 +174,11 @@ func (l Logger) Debugf(format string, args ...any) {
 	l.log(time.Now(), config.LogLevelDebug, fmt.Sprintf(format, args...))
 }
 
-func (l Logger) Debug(msg string, args ...any) {
+func (l Logger) Debug(msg string, attrs ...any) {
 	if !l.Enabled(config.LogLevelDebug) {
 		return
 	}
-	l.log(time.Now(), config.LogLevelDebug, msg, args...)
+	l.log(time.Now(), config.LogLevelDebug, msg, attrs...)
 }
 
 func (l Logger) Infof(format string, args ...any) {
@@ -188,11 +188,11 @@ func (l Logger) Infof(format string, args ...any) {
 	l.log(time.Now(), config.LogLevelInfo, fmt.Sprintf(format, args...))
 }
 
-func (l Logger) Info(msg string, args ...any) {
+func (l Logger) Info(msg string, attrs ...any) {
 	if !l.Enabled(config.LogLevelInfo) {
 		return
 	}
-	l.log(time.Now(), config.LogLevelInfo, msg, args...)
+	l.log(time.Now(), config.LogLevelInfo, msg, attrs...)
 }
 
 func (l Logger) Warnf(format string, args ...any) {
@@ -202,11 +202,11 @@ func (l Logger) Warnf(format string, args ...any) {
 	l.log(time.Now(), config.LogLevelWarn, fmt.Sprintf(format, args...))
 }
 
-func (l Logger) Warn(msg string, args ...any) {
+func (l Logger) Warn(msg string, attrs ...any) {
 	if !l.Enabled(config.LogLevelWarn) {
 		return
 	}
-	l.log(time.Now(), config.LogLevelWarn, msg, args...)
+	l.log(time.Now(), config.LogLevelWarn, msg, attrs...)
 }
 
 func (l Logger) Errorf(format string, args ...any) {
@@ -216,11 +216,11 @@ func (l Logger) Errorf(format string, args ...any) {
 	l.log(time.Now(), config.LogLevelError, fmt.Sprintf(format, args...))
 }
 
-func (l Logger) Error(msg string, args ...any) {
+func (l Logger) Error(msg string, attrs ...any) {
 	if !l.Enabled(config.LogLevelError) {
 		return
 	}
-	l.log(time.Now(), config.LogLevelError, msg, args...)
+	l.log(time.Now(), config.LogLevelError, msg, attrs...)
 }
 
 func (l Logger) ErrorE(err error) {
@@ -230,16 +230,16 @@ func (l Logger) ErrorE(err error) {
 	l.log(time.Now(), config.LogLevelError, fmt.Sprintf("%v", err), slog.Any("error", err))
 }
 
-func (l Logger) Log(level config.LogLevel, msg string, args ...any) {
-	l.log(time.Now(), level, msg, args...)
+func (l Logger) Log(level config.LogLevel, msg string, attrs ...any) {
+	l.log(time.Now(), level, msg, attrs...)
 }
 
 func (l Logger) LogAttrs(level config.LogLevel, msg string, attrs ...slog.Attr) {
 	l.logAttrs(time.Now(), level, 2, msg, attrs...)
 }
 
-func (l Logger) log(logTime time.Time, level config.LogLevel, msg string, args ...any) {
-	l.logAttrs(logTime, level, 3, msg, argsToAttrSlice(args)...)
+func (l Logger) log(logTime time.Time, level config.LogLevel, msg string, attrs ...any) {
+	l.logAttrs(logTime, level, 3, msg, argsToAttrSlice(attrs)...)
 }
 
 func (l Logger) logAttrs(logTime time.Time, level config.LogLevel, skipCallers int, msg string, attrs ...slog.Attr) {

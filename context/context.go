@@ -41,10 +41,9 @@ func NoDeadlineAndNotCancellableContext(parent context.Context) context.Context 
 	return &noDeadlineContext{parent}
 }
 
-func CtxSetValue(ctx context.Context, key any, value any) context.Context {
+func WithValue(ctx context.Context, key any, value any) context.Context {
 	if keyStr, is := key.(string); is {
-		if setCtx, is := ctx.(interface{ Set(key string, value any) }); is {
-			setCtx.Set(keyStr, value)
+		if CtxStoreValue(ctx, keyStr, value) {
 			return ctx
 		}
 	}
@@ -73,7 +72,6 @@ var (
 	WithDeadlineCause = context.WithDeadlineCause
 	WithTimeout       = context.WithTimeout
 	WithTimeoutCause  = context.WithTimeoutCause
-	WithValue         = context.WithValue
 )
 
 // Vars

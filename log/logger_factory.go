@@ -71,7 +71,7 @@ func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) 
 }
 
 func (lf *_LoggerFactory) AddToCtx(ctx context.Context) context.Context {
-	return context.CtxSetValue(ctx, loggerFactoryCtxKey, lf)
+	return context.WithValue(ctx, loggerFactoryCtxKey, lf)
 }
 
 // GetRootLogger returns the root logger. This is a shortcut for GetLoggerForPath("/").

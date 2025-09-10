@@ -53,16 +53,11 @@ func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
-	ctx        context.Context
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
-}
-
-func (rw *responseWriter) Context() context.Context {
-	return rw.ctx
 }
 
 func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
@@ -76,7 +71,7 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		if requestID == "" {
 			requestID = uuid.NewString()
 		}
-		ctx = context.CtxSetValue(ctx, context.RequestIDCtxKey.(string), requestID)
+		ctx = context.WithValue(ctx, context.RequestIDCtxKey.(string), requestID)
 
 		// Parse the host and port by using URL struct
 		hostPortURL := url.URL{Host: r.Host}
@@ -102,18 +97,17 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		}
 
 		attrs := []slog.Attr{
-			slog.Group("http",
+			slog.GroupAttrs("http",
 				slog.String("method", r.Method),
 				slog.String("url", r.RequestURI),
 				slog.String("request_id", requestID),
 				slog.String("referer", r.Referer()),
 				slog.String("useragent", r.UserAgent()),
 				slog.String("version", r.Proto),
-				slog.Group("url_details",
+				slog.GroupAttrs("url_details",
 					slog.String("host", hostname),
 					portAttr,
 					slog.String("path", urlPath),
-					slog.String("pattern", r.Pattern),
 					slog.Any("queryString", r.URL.Query()),
 				),
 			),
@@ -145,7 +139,12 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		logger := log.GetLoggerFromCtxForType(ctx, m)
 		logger.Debugf("Req Start: %s", urlPath)
 
-		rw := &responseWriter{w, 0, ctx}
+		rw := &responseWriter{w, 0}
+		if ctx != r.Context() {
+			// Only update the request if the context changed
+			logger.Warn("Request context was modified by previous middleware, this is not recommended")
+			r = r.WithContext(ctx)
+		}
 		next.ServeHTTP(rw, r)
 
 		latency := time.Since(start)
@@ -161,8 +160,9 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 			slog.Int("http.status_code", status),
 			// Using "duration" to follow DataDog expectations
 			slog.Duration("duration", latency),
+			// r.Pattern should be populated at this point
+			slog.String("http.url_details.pattern", r.Pattern),
 		)
-
 	})
 }
 

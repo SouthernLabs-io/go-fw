@@ -21,7 +21,7 @@ func NewWorkerContext(
 	name string,
 	id string,
 ) context.Context {
-	ctx := context.CtxSetValue(parentCtx, workerInfoKey, _WorkerInfo{name, id})
+	ctx := context.WithValue(parentCtx, workerInfoKey, _WorkerInfo{name, id})
 
 	// Add worker info to the context
 	ctx = log.CtxAppendLoggerAttrs(ctx, slog.Group("worker", slog.String("name", name), slog.String("id", id)))
