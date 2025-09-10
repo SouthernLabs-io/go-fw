@@ -43,7 +43,12 @@ func ProvideAsMiddleware(provider any, anns ...fx.Annotation) fx.Option {
 	return di.FxProvideAs[Middleware](provider, anns, []fx.Annotation{fx.ResultTags(`group:"rest_middlewares"`)})
 }
 
-type Middlewares []Middleware
+type Middlewares struct {
+	logger log.Logger
+	items  []Middleware
+}
+
+// NewMiddlewares constructs the list of middlewares, sorted by priority
 
 func NewMiddlewares(deps struct {
 	fx.In
@@ -51,8 +56,37 @@ func NewMiddlewares(deps struct {
 	LF          log.LoggerFactory
 	Middlewares []Middleware `group:"rest_middlewares"`
 }) Middlewares {
+	m := Middlewares{
+		logger: deps.LF.GetLoggerForType(Middlewares{}),
+		items:  deps.Middlewares,
+	}
+	m.sort()
+	return m
+}
+
+// Handle applies the middlewares in the given priority range [from, to] to the given handler, returning the wrapped handler
+func (m Middlewares) Handle(from MiddlewarePriority, to MiddlewarePriority, next http.Handler) http.Handler {
+	// We need to apply the middlewares in reverse order as they are applied inside out
+	for i := len(m.items) - 1; i >= 0; i-- {
+		mw := m.items[i]
+		priority := mw.Priority()
+		if priority >= from && priority <= to {
+			m.logger.Infof("Applying middleware: %s with priority: %d", reflect.TypeOf(mw).String(), priority)
+			next = mw.Handle(next)
+		}
+	}
+	return next
+}
+
+func (m Middlewares) Append(mw Middleware) Middlewares {
+	m.items = append(m.items, mw)
+	m.sort()
+	return m
+}
+
+func (m Middlewares) sort() {
 	// We want a stable order
-	slices.SortFunc(deps.Middlewares, func(a, b Middleware) int {
+	slices.SortFunc(m.items, func(a, b Middleware) int {
 		if a.Priority() < b.Priority() {
 			return -1
 		} else if a.Priority() == b.Priority() {
@@ -66,7 +100,7 @@ func NewMiddlewares(deps struct {
 				if tA.PkgPath() < tB.PkgPath() {
 					return -1
 				} else if tA.PkgPath() == tB.PkgPath() {
-					deps.LF.GetLoggerForType(Middlewares{}).Warnf(
+					m.logger.Warnf(
 						"Not stable sort on middlewares, you registered the same middleware twice: %s.%s",
 						tA.PkgPath(),
 						tA.Name(),
@@ -77,7 +111,6 @@ func NewMiddlewares(deps struct {
 		}
 		return 1
 	})
-	return deps.Middlewares
 }
 
 var Module = fx.Options(

@@ -28,8 +28,6 @@ type StdServer interface {
 
 	GetBasePath() string
 
-	RegisterMiddleware(middleware middleware.Middleware)
-
 	Register(verb string, pathPattern string, handler http.Handler)
 	RegisterFunc(verb string, pathPattern string, handler func(http.ResponseWriter, *http.Request))
 
@@ -40,12 +38,11 @@ type StdServer interface {
 type _StdServer struct {
 	logger log.Logger
 
-	httpSrv *http.Server
-	mux     *http.ServeMux
-
-	midlewares []middleware.Middleware
-
-	basePath string
+	httpSrv       *http.Server
+	basePath      string
+	middlewares   middleware.Middlewares
+	preMuxHandler http.Handler
+	mux           *http.ServeMux
 }
 
 // Make sure _StdServer implements StdServer
@@ -70,8 +67,9 @@ func NewStdServer(deps struct {
 
 	basePath := conf.HttpServer.BasePath
 	mux := http.NewServeMux()
+	preMuxHandler := middlewares.Handle(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMux, mux)
 	srv := &http.Server{
-		Handler: mux,
+		Handler: preMuxHandler,
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
 			// Use a custom key/value context
 			return fw_context.NewContextWithStore(ctx)
@@ -79,26 +77,13 @@ func NewStdServer(deps struct {
 	}
 
 	stdServer := &_StdServer{
-		logger:   logger,
-		httpSrv:  srv,
-		mux:      mux,
-		basePath: basePath,
+		logger:        logger,
+		httpSrv:       srv,
+		basePath:      basePath,
+		middlewares:   middlewares,
+		preMuxHandler: preMuxHandler,
+		mux:           mux,
 	}
-	var handler http.Handler = mux
-
-	// pre mux middlewares -> mux -> post mux middlewares -> actual server handler
-	// What do we want as pre mux middlewares?
-	// Request Loggers
-	// Panic/Error handlers
-
-	// Register middlewares, we need to register them in reverse order for them to be executed in the right order
-	for i := len(middlewares) - 1; i >= 0; i-- {
-		m := middlewares[i]
-		logger.Infof("Registering middleware: %s with priority: %d", reflect.TypeOf(m).String(), m.Priority())
-		handler = m.Handle(handler)
-	}
-	// Update the server handler with the middleware chain
-	srv.Handler = handler
 
 	// Register Resources
 	for _, r := range resources {
@@ -137,13 +122,11 @@ func (srv *_StdServer) GetBasePath() string {
 	return srv.basePath
 }
 
-func (srv *_StdServer) RegisterMiddleware(m middleware.Middleware) {
-	srv.midlewares = append(srv.midlewares, m)
-}
-
 // Handle registers the handler for the given pattern. If the pattern is already registered, Handle panics. This is a low level method that doesn't prepend the BasePath to the pattern. Use Register or RegisterFunc instead.
 func (srv *_StdServer) Handle(pattern string, handler http.Handler) {
 	srv.logger.Infof("Registering handler for pattern: %s", pattern)
+	// Apply after-mux middlewares
+	handler = srv.middlewares.Handle(middleware.MiddlewarePriorityAfterMux, middleware.MiddlewarePriorityLowest, handler)
 	srv.mux.Handle(pattern, handler)
 }
 
