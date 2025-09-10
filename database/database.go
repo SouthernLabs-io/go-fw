@@ -172,7 +172,8 @@ func GetDBTxFromCtx(ctx context.Context) *DBTx {
 	return nil
 }
 
-func InTx(ctx context.Context) *DBTx {
+// CurrentTx returns the current transaction from the context or a new automatic transaction if there is none. This is the preferred way to get a transaction in the code.
+func CurrentTx(ctx context.Context) *DBTx {
 	// check if there is one already
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {
@@ -188,7 +189,8 @@ func InTx(ctx context.Context) *DBTx {
 	return &DBTx{DB: db, automatic: true}
 }
 
-func WithTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Context) {
+// NewTx returns a new transaction and a new context with the transaction set. If there is already a transaction in the context, it creates a sub-transaction using savepoints.
+func NewTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Context) {
 	// check if there is one already
 	tx := GetDBTxFromCtx(ctx)
 	if tx != nil && !tx.closed {

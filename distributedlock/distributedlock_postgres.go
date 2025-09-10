@@ -83,7 +83,7 @@ func (l *DistributedPostgresLock) Lock(ctx context.Context) error {
 }
 
 func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err error) {
-	tx, _ := database.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	tx, _ := database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	// we wrap the deferred call so it is not bound to this tx in case we have to re create
 	// the tx due to schema initialization race
 	defer func() {
@@ -100,7 +100,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 			if err = tx.Rollback().Error; err != nil {
 				return false, err
 			}
-			tx, _ = database.WithTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+			tx, _ = database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		} else {
 			return false, err
 		}
@@ -149,7 +149,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 }
 
 func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
-	res := database.InTx(ctx).Exec(
+	res := database.CurrentTx(ctx).Exec(
 		"UPDATE distributed_lock.lock SET expiration = now() WHERE resource = ? AND instance_id = ? AND expiration > now()",
 		l.resource,
 		l.id,
@@ -176,7 +176,7 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	var until time.Time
 	var extendedCount int
-	err := database.InTx(ctx).Raw(
+	err := database.CurrentTx(ctx).Raw(
 		`UPDATE distributed_lock.lock
 				SET expiration = now() + INTERVAL '1 second' * ?,
 				    extended_count = extended_count + 1 

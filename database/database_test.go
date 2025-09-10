@@ -30,7 +30,7 @@ func TestDBTx(t *testing.T) {
 	}(conf, lf, db)
 	ctx := test.NewContext(db, lf)
 
-	tx, ctx2 := database.WithTx(ctx)
+	tx, ctx2 := database.NewTx(ctx)
 	require.NotNil(t, tx)
 	require.NotNil(t, ctx2)
 	require.False(t, tx.IsAutomatic())
@@ -39,7 +39,7 @@ func TestDBTx(t *testing.T) {
 	creatTableSQL := "CREATE TABLE test (id text not null)"
 	subTxCount := 3
 	for i := 0; i < subTxCount; i++ {
-		subTx, ctx3 := database.WithTx(ctx2)
+		subTx, ctx3 := database.NewTx(ctx2)
 		require.NotNil(t, subTx)
 		require.NotNil(t, ctx3)
 		require.False(t, subTx.IsAutomatic())
@@ -74,7 +74,7 @@ func TestDBTx(t *testing.T) {
 	require.ErrorIs(t, tx.Error, sql.ErrTxDone)
 
 	var count int64
-	err = database.InTx(ctx2).Raw("SELECT COUNT(*) FROM test").Row().Scan(&count)
+	err = database.CurrentTx(ctx2).Raw("SELECT COUNT(*) FROM test").Row().Scan(&count)
 	require.Nil(t, err)
 	require.EqualValues(t, 1, count)
 }
