@@ -118,4 +118,5 @@ var Module = fx.Options(
 
 	//Default providers
 	ProvideAsMiddleware(NewRequestLogger),
+	ProvideAsMiddleware(NewPanicRecovery),
 )
