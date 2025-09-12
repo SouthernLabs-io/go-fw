@@ -30,7 +30,7 @@ type Principal interface {
 
 func GetPrincipal(ctx context.Context) (principal Principal, present bool) {
 	if value, exists := ctx.Value(PrincipalCtxKey).(Principal); exists {
-		return value, true
+		return value, value != nil
 	}
 	return
 }
@@ -155,15 +155,16 @@ func (m *AuthNMiddleware) Handle(next http.Handler) http.Handler {
 			} else {
 				panic(errors.Newf(errors.ErrCodeBadState, "failed to authenticate"))
 			}
-		} else {
+		} else if principal != nil {
+			// Only set the principal if not nil. This allows unauthenticated access if the provider supports it
 			ctx = SetPrincipal(ctx, principal)
 			log.GetLoggerFromCtx(ctx).Debugf("Authenticated principal: %s", principal.GetID())
 			if ctx != r.Context() {
 				r = r.WithContext(ctx)
 			}
-			next.ServeHTTP(w, r)
 		}
+		next.ServeHTTP(w, r)
 	})
 }
 
-var AuthNModule = ProvideAsMiddleware(NewAuthN)
+var FxExportAuthN = ProvideAsMiddleware(NewAuthN)
