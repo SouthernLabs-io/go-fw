@@ -14,7 +14,7 @@ type ServeCommand struct {
 }
 
 func NewServeCommand(fxOpts fx.Option) *ServeCommand {
-	return &ServeCommand{fxOpts: fx.Options(fxOpts, rest.Module)}
+	return &ServeCommand{fxOpts: fx.Options(fxOpts, rest.FxExport)}
 }
 
 func (s *ServeCommand) Cmd() string {

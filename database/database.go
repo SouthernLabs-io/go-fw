@@ -58,7 +58,7 @@ func NewDB(conf config.Config, lf log.LoggerFactory) DB {
 	}
 }
 
-func (d DB) SetCtx(ctx context.Context) context.Context {
+func (d DB) AddToCtx(ctx context.Context) context.Context {
 	if d.DB == nil {
 		return ctx
 	}
@@ -261,4 +261,4 @@ func OnDBStop(db DB) error {
 	return sqlDB.Close()
 }
 
-var Module = fx.Provide(fx.Annotate(NewDB, fx.OnStop(OnDBStop)))
+var FxExport = fx.Provide(fx.Annotate(NewDB, fx.OnStop(OnDBStop)))

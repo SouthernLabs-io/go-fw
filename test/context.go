@@ -12,7 +12,7 @@ import (
 func NewContext(db database.DB, lf log.LoggerFactory) context.Context {
 	ctx := context.Background()
 	ctx = lf.AddToCtx(ctx)
-	ctx = db.SetCtx(ctx)
+	ctx = db.AddToCtx(ctx)
 
 	return ctx
 }

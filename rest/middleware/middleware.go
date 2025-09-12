@@ -113,7 +113,7 @@ func (m Middlewares) sort() {
 	})
 }
 
-var Module = fx.Options(
+var FxExport = fx.Options(
 	fx.Provide(NewMiddlewares),
 
 	//Default providers

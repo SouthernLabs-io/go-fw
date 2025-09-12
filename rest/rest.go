@@ -6,8 +6,8 @@ import (
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
-var Module = fx.Options(
-	middleware.Module,
-	fx.Invoke(NewResources),
+var FxExport = fx.Options(
+	middleware.FxExport,
+	fx.Provide(NewResources),
 	fx.Provide(NewStdServer),
 )

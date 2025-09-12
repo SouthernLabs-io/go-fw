@@ -34,7 +34,7 @@ func (m *DatabaseTrxMiddleware) Setup(httpHandler rest.HTTPHandler) {
 func (m *DatabaseTrxMiddleware) Run(ctx *gin.Context) {
 	logger := log.GetLoggerFromCtx(ctx)
 	// We ignore the returned context because is the same as the one passed in
-	m.db.SetCtx(ctx)
+	m.db.AddToCtx(ctx)
 	logger.Debugf("DB handle set on context")
 
 	defer func() {

@@ -101,7 +101,7 @@ func NewLongRunningWorkerHandler(
 	))
 
 	ctx := context.Background()
-	ctx = db.SetCtx(ctx)
+	ctx = db.AddToCtx(ctx)
 
 	wHandler.ctx, wHandler.cancelCauseFunc = context.WithCancelCause(ctx)
 

@@ -55,8 +55,8 @@ func NewStdServer(deps struct {
 
 	LF          log.LoggerFactory
 	Conf        config.Config
-	Middlewares middleware.Middlewares `optional:"true"`
-	Resources   Resources              `optional:"true"`
+	Middlewares middleware.Middlewares
+	Resources   Resources
 }) StdServer {
 	conf := deps.Conf
 	lf := deps.LF
