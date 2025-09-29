@@ -39,12 +39,12 @@ import (
 
 	"github.com/southernlabs-io/go-fw/bootstrap"
 	"github.com/southernlabs-io/go-fw/errors"
-	"github.com/southernlabs-io/go-fw/panich"
+	"github.com/southernlabs-io/go-fw/panics"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
 func main() {
-	defer panich.DeferredPanicToLogAndExit()
+	defer panics.DeferredPanicToLogAndExit()
 	var deps = fx.Options(
 		// middlewares
 		middleware.RequestLoggerModule,
