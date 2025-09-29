@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"go.uber.org/fx"
@@ -20,6 +21,10 @@ type DatabaseConfig struct {
 	Port int
 	User string
 	Pass string
+
+	MaxOpenConns int
+	MaxIdleConns int
+	ConnMaxIdle  time.Duration
 }
 
 type CORS struct {
