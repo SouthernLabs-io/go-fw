@@ -51,7 +51,8 @@ var _ StdServer = (*_StdServer)(nil)
 func NewStdServer(deps struct {
 	fx.In
 
-	LC fx.Lifecycle
+	Lc fx.Lifecycle
+	Sd fx.Shutdowner
 
 	LF          log.LoggerFactory
 	Conf        config.Config
@@ -62,7 +63,8 @@ func NewStdServer(deps struct {
 	lf := deps.LF
 	middlewares := deps.Middlewares
 	resources := deps.Resources
-	lc := deps.LC
+	lc := deps.Lc
+	sd := deps.Sd
 	logger := lf.GetLoggerForType(_StdServer{})
 
 	basePath := conf.HttpServer.BasePath
@@ -96,13 +98,14 @@ func NewStdServer(deps struct {
 			bindAddress := fmt.Sprintf("%s:%d", conf.HttpServer.BindAddress, conf.HttpServer.Port)
 			ln, err := net.Listen("tcp", bindAddress)
 			if err != nil {
-				panic(errors.NewUnknownf("failed to run http server on: %s, error: %w", bindAddress, err))
+				return errors.NewUnknownf("failed to run http server on: %s, error: %w", bindAddress, err)
 			}
 			logger.Infof("Running http server on: %s", bindAddress)
 			go func() {
 				err := srv.Serve(ln)
 				if !errors.Is(err, http.ErrServerClosed) {
-					panic(errors.Newf(errors.ErrCodeBadState, "failed to run http server, error: %w", err))
+					logger.Errorf("Http server failed with error: %s", err)
+					sd.Shutdown(fx.ExitCode(-1))
 				}
 			}()
 			return nil
