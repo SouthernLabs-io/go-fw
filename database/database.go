@@ -77,7 +77,14 @@ func GetDBFromCtx(ctx context.Context) *gorm.DB {
 }
 
 func (d DB) HealthCheck() error {
-	return d.Exec("SELECT 1").Error
+	if sqlDB, err := d.DB.DB(); err != nil {
+		return errors.NewUnknownf("failed to get sql db from gorm db: %w", err)
+	} else {
+		if err := sqlDB.Ping(); err != nil {
+			return errors.NewUnknownf("failed to ping db: %w", err)
+		}
+	}
+	return nil
 }
 
 type DBTx struct {
