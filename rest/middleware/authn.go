@@ -11,6 +11,7 @@ import (
 	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
+	resterrors "github.com/southernlabs-io/go-fw/rest/errors"
 	"github.com/southernlabs-io/go-fw/sync"
 )
 
@@ -151,10 +152,12 @@ func (m *AuthNMiddleware) Handle(next http.Handler) http.Handler {
 		if err != nil {
 			log.GetLoggerFromCtx(ctx).Errorf("failed to authenticate, error: %s", err)
 			if errors.Is(err, ErrInvalidToken) {
-				panic(errors.Newf(errors.ErrCodeNotAuthenticated, "no principal"))
+				resterrors.ErrorHandler(w, r, errors.Newf(errors.ErrCodeNotAuthenticated, "failed to authenticate: %w", err))
 			} else {
-				panic(errors.Newf(errors.ErrCodeBadState, "failed to authenticate"))
+				resterrors.ErrorHandler(w, r, errors.Newf(errors.ErrCodeBadState, "failed to authenticate: %w", err))
 			}
+			// Stop processing the request
+			return
 		} else if principal != nil {
 			// Only set the principal if not nil. This allows unauthenticated access if the provider supports it
 			ctx = SetPrincipal(ctx, principal)
