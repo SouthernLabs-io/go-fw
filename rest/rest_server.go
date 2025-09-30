@@ -95,7 +95,7 @@ func NewStdServer(deps struct {
 
 	basePath := conf.HttpServer.BasePath
 	mux := http.NewServeMux()
-	preMuxHandler := middlewares.Apply(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMux+1, mux) // Include BeforeMux middlewares
+	preMuxHandler := middlewares.Apply(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMuxInclusive, mux) // Include BeforeMux middlewares
 	srv := &http.Server{
 		Handler: preMuxHandler,
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
@@ -153,8 +153,15 @@ func (srv *_StdServer) GetBasePath() string {
 
 func (srv *_StdServer) handleWithOptions(pattern string, handler http.Handler, options HandleOptions) {
 
-	from := max(middleware.MiddlewarePriorityAfterMux, options.MiddlewarePriorityFrom)
-	to := max(from, options.MiddlewarePriorityTo, middleware.MiddlewarePriorityLowest)
+	from := middleware.MiddlewarePriorityAfterMux
+	to := middleware.MiddlewarePriorityLowest
+
+	// Clamp left side of the range to MiddlewarePriorityAfterMux
+	from = max(from, options.MiddlewarePriorityFrom)
+
+	if options.MiddlewarePriorityTo != middleware.MiddlewarePriorityNotSet {
+		to = max(from, options.MiddlewarePriorityTo)
+	}
 
 	// Apply after-mux middlewares
 	handler = srv.middlewares.Apply(from, to, handler)

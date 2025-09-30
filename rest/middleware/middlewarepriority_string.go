@@ -11,22 +11,27 @@ func _() {
 	_ = x[MiddlewarePriorityNotSet-0]
 	_ = x[MiddlewarePriorityHighest-1000]
 	_ = x[MiddlewarePriorityBeforeMux-2000]
-	_ = x[MiddlewarePriorityAfterMux-3000]
-	_ = x[MiddlewarePriorityAuthN-4000]
-	_ = x[MiddlewarePriorityAuthZ-5000]
-	_ = x[MiddlewarePriorityDefault-6000]
+	_ = x[MiddlewarePriorityBeforeMuxInclusive-2001]
+	_ = x[MiddlewarePriorityAfterMux-4000]
+	_ = x[MiddlewarePriorityAuthN-5000]
+	_ = x[MiddlewarePriorityAuthZ-6000]
+	_ = x[MiddlewarePriorityDefault-7000]
 	_ = x[MiddlewarePriorityLowest-9223372036854775807]
 }
 
 const (
 	_MiddlewarePriority_name_0 = "NotSet"
 	_MiddlewarePriority_name_1 = "Highest"
-	_MiddlewarePriority_name_2 = "BeforeMux"
+	_MiddlewarePriority_name_2 = "BeforeMuxBeforeMuxInclusive"
 	_MiddlewarePriority_name_3 = "AfterMux"
 	_MiddlewarePriority_name_4 = "AuthN"
 	_MiddlewarePriority_name_5 = "AuthZ"
 	_MiddlewarePriority_name_6 = "Default"
 	_MiddlewarePriority_name_7 = "Lowest"
+)
+
+var (
+	_MiddlewarePriority_index_2 = [...]uint8{0, 9, 27}
 )
 
 func (i MiddlewarePriority) String() string {
@@ -35,15 +40,16 @@ func (i MiddlewarePriority) String() string {
 		return _MiddlewarePriority_name_0
 	case i == 1000:
 		return _MiddlewarePriority_name_1
-	case i == 2000:
-		return _MiddlewarePriority_name_2
-	case i == 3000:
-		return _MiddlewarePriority_name_3
+	case 2000 <= i && i <= 2001:
+		i -= 2000
+		return _MiddlewarePriority_name_2[_MiddlewarePriority_index_2[i]:_MiddlewarePriority_index_2[i+1]]
 	case i == 4000:
-		return _MiddlewarePriority_name_4
+		return _MiddlewarePriority_name_3
 	case i == 5000:
-		return _MiddlewarePriority_name_5
+		return _MiddlewarePriority_name_4
 	case i == 6000:
+		return _MiddlewarePriority_name_5
+	case i == 7000:
 		return _MiddlewarePriority_name_6
 	case i == 9223372036854775807:
 		return _MiddlewarePriority_name_7

@@ -18,10 +18,11 @@ import (
 type MiddlewarePriority int
 
 const (
-	MiddlewarePriorityNotSet  MiddlewarePriority = 0
+	MiddlewarePriorityNotSet  MiddlewarePriority = iota
 	MiddlewarePriorityHighest MiddlewarePriority = iota * 1_000
 	MiddlewarePriorityBeforeMux
-	MiddlewarePriorityAfterMux
+	MiddlewarePriorityBeforeMuxInclusive MiddlewarePriority = MiddlewarePriorityBeforeMux + 1
+	MiddlewarePriorityAfterMux           MiddlewarePriority = iota * 1_000
 	MiddlewarePriorityAuthN
 	MiddlewarePriorityAuthZ
 	MiddlewarePriorityDefault

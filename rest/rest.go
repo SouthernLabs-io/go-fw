@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/rest/healthcheck"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
@@ -42,6 +43,7 @@ func WriteJSONStr(ctx context.Context, w http.ResponseWriter, statusCode int, js
 var FxExport = fx.Options(
 	middleware.FxExport,
 	ProvideAsResource(NewHealthCheckFx),
+	healthcheck.FxExport,
 	fx.Provide(NewResources),
 	fx.Provide(NewStdServer),
 )

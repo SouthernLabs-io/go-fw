@@ -8,6 +8,7 @@ import (
 	"github.com/southernlabs-io/go-fw/functional/predicates"
 	"github.com/southernlabs-io/go-fw/functional/slices"
 	"github.com/southernlabs-io/go-fw/log"
+	"github.com/southernlabs-io/go-fw/rest/healthcheck"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 	"github.com/southernlabs-io/go-fw/version"
 	"go.uber.org/fx"
@@ -22,14 +23,9 @@ type _HealthResponse struct {
 	Errors    map[string]error `json:"errors,omitempty"`
 }
 
-type HealthCheckProvider interface {
-	GetName() string
-	HealthCheck() error
-}
-
 type HealthCheckResource struct {
 	logger       log.Logger
-	healthChecks []HealthCheckProvider
+	healthChecks []healthcheck.Provider
 }
 
 type HealthCheckParams struct {
@@ -37,17 +33,17 @@ type HealthCheckParams struct {
 
 	Conf         config.Config
 	LF           log.LoggerFactory
-	HealthChecks []HealthCheckProvider `group:"health_checks"`
+	HealthChecks []healthcheck.Provider `group:"rest_healthcheck_providers"`
 }
 
 func NewHealthCheckFx(params HealthCheckParams) *HealthCheckResource {
 	return NewHealthCheck(params.Conf, params.LF, params.HealthChecks)
 }
 
-func NewHealthCheck(conf config.Config, lf log.LoggerFactory, healthChecks []HealthCheckProvider) *HealthCheckResource {
+func NewHealthCheck(conf config.Config, lf log.LoggerFactory, healthChecks []healthcheck.Provider) *HealthCheckResource {
 	return &HealthCheckResource{
 		logger:       lf.GetLoggerForType(HealthCheckResource{}),
-		healthChecks: slices.Filter(healthChecks, predicates.Not(predicates.Nil[HealthCheckProvider])),
+		healthChecks: slices.Filter(healthChecks, predicates.Not(predicates.Nil[healthcheck.Provider])),
 	}
 }
 
@@ -59,7 +55,7 @@ func (m *HealthCheckResource) Register(srv StdServer) {
 	}
 
 	srv.RegisterFuncWithOptions(http.MethodGet, "/health", m.HealthCheck, HandleOptions{
-		MiddlewarePriorityTo: middleware.MiddlewarePriorityAfterMux,
+		MiddlewarePriorityTo: middleware.MiddlewarePriorityBeforeMux,
 	})
 }
 
