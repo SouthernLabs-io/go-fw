@@ -1,4 +1,4 @@
-package database_test
+package databasegorm_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/test"
 )

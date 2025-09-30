@@ -1,7 +1,5 @@
 package middleware
 
-//go:generate mockery --all --with-expecter=true --keeptree=false --case=underscore
-
 import (
 	"net/http"
 	"reflect"
@@ -14,19 +12,22 @@ import (
 	"github.com/southernlabs-io/go-fw/log"
 )
 
+// generate the stringer
+//
+//go:generate stringer -type=MiddlewarePriority -trimprefix=MiddlewarePriority
 type MiddlewarePriority int
 
 const (
+	MiddlewarePriorityNotSet  MiddlewarePriority = 0
 	MiddlewarePriorityHighest MiddlewarePriority = iota * 1_000
-
 	MiddlewarePriorityBeforeMux
-
 	MiddlewarePriorityAfterMux
 	MiddlewarePriorityAuthN
 	MiddlewarePriorityAuthZ
 	MiddlewarePriorityDefault
 
-	MiddlewarePriorityLowest = MiddlewarePriorityDefault + 1_000
+	// Max int value
+	MiddlewarePriorityLowest MiddlewarePriority = MiddlewarePriority(int(^uint(0) >> 1))
 )
 
 type Middleware interface {
@@ -64,14 +65,15 @@ func NewMiddlewares(deps struct {
 	return m
 }
 
-// Handle applies the middlewares in the given priority range [from, to] to the given handler, returning the wrapped handler
-func (m Middlewares) Handle(from MiddlewarePriority, to MiddlewarePriority, next http.Handler) http.Handler {
+// Apply applies the middlewares in the given priority range [from, to) to the given handler, returning the wrapped handler
+func (m Middlewares) Apply(from MiddlewarePriority, to MiddlewarePriority, next http.Handler) http.Handler {
+	m.logger.Debugf("Applying middlewares range: [%v, %v)", from, to)
 	// We need to apply the middlewares in reverse order as they are applied inside out
 	for i := len(m.items) - 1; i >= 0; i-- {
 		mw := m.items[i]
 		priority := mw.Priority()
-		if priority >= from && priority <= to {
-			m.logger.Infof("Applying middleware: %s with priority: %d", reflect.TypeOf(mw).String(), priority)
+		if priority >= from && priority < to {
+			m.logger.Tracef("Applying middleware: %s with priority: %v", reflect.TypeOf(mw), priority.String())
 			next = mw.Handle(next)
 		}
 	}

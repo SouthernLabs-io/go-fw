@@ -40,7 +40,7 @@ func TestLockOneTimeUse(t *testing.T) {
 	ttl := time.Second * 2
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
-		dLock := distributedlock.NewDistributedPostgresLock("myResource_"+uuid.NewString(), ttl)
+		dLock := distributedlock.NewDistributedPostgresGORMLock("myResource_"+uuid.NewString(), ttl)
 		testLockOneTimeUse(t, ctx, dLock)
 	})
 
@@ -100,7 +100,7 @@ func TestLongRunningWorker(t *testing.T) {
 	ttl := time.Second * 2
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
-		dLock := distributedlock.NewDistributedPostgresLock("myResource_"+uuid.NewString(), ttl)
+		dLock := distributedlock.NewDistributedPostgresGORMLock("myResource_"+uuid.NewString(), ttl)
 		testLongRunningWorker(t, ctx, dLock)
 	})
 	t.Run("Redis", func(t *testing.T) {
@@ -158,8 +158,8 @@ func TestMultipleAccessToSameResource(t *testing.T) {
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
 		name := "myResource_" + uuid.NewString()
-		dLock1 := distributedlock.NewDistributedPostgresLock(name, ttl)
-		dLock2 := distributedlock.NewDistributedPostgresLock(name, ttl)
+		dLock1 := distributedlock.NewDistributedPostgresGORMLock(name, ttl)
+		dLock2 := distributedlock.NewDistributedPostgresGORMLock(name, ttl)
 		testMultipleAccessToSameResource(t, ctx, dLock1, dLock2)
 	})
 	t.Run("Redis", func(t *testing.T) {
@@ -203,8 +203,8 @@ func TestMultipleResources(t *testing.T) {
 	ttl := time.Second * 3
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
-		dLock1 := distributedlock.NewDistributedPostgresLock("myResource1_"+uuid.NewString(), ttl)
-		dLock2 := distributedlock.NewDistributedPostgresLock("myResource2_"+uuid.NewString(), ttl)
+		dLock1 := distributedlock.NewDistributedPostgresGORMLock("myResource1_"+uuid.NewString(), ttl)
+		dLock2 := distributedlock.NewDistributedPostgresGORMLock("myResource2_"+uuid.NewString(), ttl)
 		testMultipleResources(t, ctx, dLock1, dLock2)
 	})
 	t.Run("Redis", func(t *testing.T) {
@@ -292,7 +292,7 @@ func TestAutoExtender(t *testing.T) {
 	ttl := time.Second * 2
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
-		dLock := distributedlock.NewDistributedPostgresLock("myResource_"+uuid.NewString(), ttl)
+		dLock := distributedlock.NewDistributedPostgresGORMLock("myResource_"+uuid.NewString(), ttl)
 		testAutoExtender(t, ctx, dLock)
 	})
 	t.Run("Redis", func(t *testing.T) {
@@ -360,7 +360,7 @@ func TestAutoExtenderStopWhenUnlocked(t *testing.T) {
 	ttl := time.Second * 2
 	t.Run("Postgres", func(t *testing.T) {
 		ctx := setupDB(t)
-		dLock := distributedlock.NewDistributedPostgresLock("myResource_"+uuid.NewString(), ttl)
+		dLock := distributedlock.NewDistributedPostgresGORMLock("myResource_"+uuid.NewString(), ttl)
 		testAutoExtenderStopWhenUnlocked(t, ctx, dLock)
 	})
 	t.Run("Redis", func(t *testing.T) {

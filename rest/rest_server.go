@@ -2,7 +2,6 @@ package rest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,9 +16,27 @@ import (
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
 
+type HandleOptions struct {
+	// The priority starting range for the middlewares to be applied before the handler. It must be equal or higher than middleware.MiddlewarePriorityAfterMux. If no set, it defaults to middleware.MiddlewarePriorityAfterMux.
+	MiddlewarePriorityFrom middleware.MiddlewarePriority
+
+	// The priority ending range for the middlewares to be applied before the handler. It must be equal or higher than MiddlewarePriorityFrom. If not set, it defaults to middleware.MiddlewarePriorityLowest.
+	MiddlewarePriorityTo middleware.MiddlewarePriority
+}
+
 type StdMux interface {
+	// Handle registers the handler for the given pattern. If the pattern is already registered, Handle panics. This is a low level method that doesn't prepend the BasePath to the pattern. Use Register or RegisterFunc instead.
 	Handle(pattern string, handler http.Handler)
+
+	// See Handle
+	HandleWithOptions(pattern string, handler http.Handler, options HandleOptions)
+
+	// HandleFunc registers the handler function for the given pattern. If the pattern is already registered, HandleFunc panics. This is a low level method that doesn't prepend the BasePath to the pattern. Use Register or RegisterFunc instead.
 	HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request))
+
+	// See HandleFunc
+	HandleFuncWithOptions(pattern string, handler func(http.ResponseWriter, *http.Request), options HandleOptions)
+
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
@@ -28,8 +45,17 @@ type StdServer interface {
 
 	GetBasePath() string
 
+	// Register registers a handler for the given HTTP verb and path pattern. Use one of the http.Method* constants for the verb. Example: http.MethodGet, http.MethodPost, etc. The BasePath will be prepended to the path pattern.
 	Register(verb string, pathPattern string, handler http.Handler)
+
+	// See Register
+	RegisterWithOptions(verb string, pathPattern string, handler http.Handler, options HandleOptions)
+
+	// RegisterFunc registers a handler for the given HTTP verb and path pattern. Use one of the http.Method* constants for the verb. Example: http.MethodGet, http.MethodPost, etc. The BasePath will be prepended to the path pattern.
 	RegisterFunc(verb string, pathPattern string, handler func(http.ResponseWriter, *http.Request))
+
+	// See RegisterFunc
+	RegisterFuncWithOptions(verb string, pathPattern string, handler func(http.ResponseWriter, *http.Request), options HandleOptions)
 
 	Close() error
 	Shutdown(ctx context.Context) error
@@ -69,7 +95,7 @@ func NewStdServer(deps struct {
 
 	basePath := conf.HttpServer.BasePath
 	mux := http.NewServeMux()
-	preMuxHandler := middlewares.Handle(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMux, mux)
+	preMuxHandler := middlewares.Apply(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMux+1, mux) // Include BeforeMux middlewares
 	srv := &http.Server{
 		Handler: preMuxHandler,
 		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
@@ -125,20 +151,34 @@ func (srv *_StdServer) GetBasePath() string {
 	return srv.basePath
 }
 
-// Handle registers the handler for the given pattern. If the pattern is already registered, Handle panics. This is a low level method that doesn't prepend the BasePath to the pattern. Use Register or RegisterFunc instead.
-func (srv *_StdServer) Handle(pattern string, handler http.Handler) {
-	srv.logger.Infof("Registering handler for pattern: %s", pattern)
+func (srv *_StdServer) handleWithOptions(pattern string, handler http.Handler, options HandleOptions) {
+
+	from := max(middleware.MiddlewarePriorityAfterMux, options.MiddlewarePriorityFrom)
+	to := max(from, options.MiddlewarePriorityTo, middleware.MiddlewarePriorityLowest)
+
 	// Apply after-mux middlewares
-	handler = srv.middlewares.Handle(middleware.MiddlewarePriorityAfterMux, middleware.MiddlewarePriorityLowest, handler)
+	handler = srv.middlewares.Apply(from, to, handler)
 	srv.mux.Handle(pattern, handler)
 }
 
-// HandleFunc registers the handler function for the given pattern. If the pattern is already registered, HandleFunc panics. This is a low level method that doesn't prepend the BasePath to the pattern. Use Register or RegisterFunc instead.
+func (srv *_StdServer) Handle(pattern string, handler http.Handler) {
+	srv.logger.Infof("Registering handler for pattern: %s", pattern)
+	srv.handleWithOptions(pattern, handler, HandleOptions{})
+}
+
+func (srv *_StdServer) HandleWithOptions(pattern string, handler http.Handler, options HandleOptions) {
+	srv.logger.Infof("Registering handler with options for pattern: %s", pattern)
+	srv.handleWithOptions(pattern, handler, options)
+}
+
 func (srv *_StdServer) HandleFunc(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	srv.Handle(pattern, http.HandlerFunc(handler))
 }
 
-// Register registers a handler for the given HTTP verb and path pattern. Use one of the http.Method* constants for the verb. Example: http.MethodGet, http.MethodPost, etc. The BasePath will be prepended to the path pattern.
+func (srv *_StdServer) HandleFuncWithOptions(pattern string, handler func(http.ResponseWriter, *http.Request), options HandleOptions) {
+	srv.HandleWithOptions(pattern, http.HandlerFunc(handler), options)
+}
+
 func (srv *_StdServer) Register(verb string, pathPattern string, handler http.Handler) {
 	if srv.basePath != "" {
 		pathPattern = srv.basePath + pathPattern
@@ -146,9 +186,19 @@ func (srv *_StdServer) Register(verb string, pathPattern string, handler http.Ha
 	srv.Handle(verb+" "+pathPattern, handler)
 }
 
-// RegisterFunc registers a handler for the given HTTP verb and path pattern. Use one of the http.Method* constants for the verb. Example: http.MethodGet, http.MethodPost, etc. The BasePath will be prepended to the path pattern.
+func (srv *_StdServer) RegisterWithOptions(verb string, pathPattern string, handler http.Handler, options HandleOptions) {
+	if srv.basePath != "" {
+		pathPattern = srv.basePath + pathPattern
+	}
+	srv.HandleWithOptions(verb+" "+pathPattern, handler, options)
+}
+
 func (srv *_StdServer) RegisterFunc(verb string, pathPattern string, handler func(http.ResponseWriter, *http.Request)) {
 	srv.Register(verb, pathPattern, http.HandlerFunc(handler))
+}
+
+func (srv *_StdServer) RegisterFuncWithOptions(verb string, pathPattern string, handler func(http.ResponseWriter, *http.Request), options HandleOptions) {
+	srv.RegisterWithOptions(verb, pathPattern, http.HandlerFunc(handler), options)
 }
 
 func (srv *_StdServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -161,17 +211,4 @@ func (srv *_StdServer) Close() error {
 
 func (srv *_StdServer) Shutdown(ctx context.Context) error {
 	return srv.httpSrv.Shutdown(ctx)
-}
-
-func WriteJSON(ctx context.Context, resp http.ResponseWriter, statusCode int, obj any) {
-	resp.Header().Set("Content-Type", "application/json")
-	resp.WriteHeader(statusCode)
-	err := json.NewEncoder(resp).Encode(obj)
-	if err != nil {
-		log.GetLoggerFromCtx(ctx).Errorf("failed to write json response, error: %s", err)
-	}
-}
-
-func AbortWithStatus(ctx context.Context, resp http.ResponseWriter, statusCode int) {
-	resp.WriteHeader(statusCode)
 }

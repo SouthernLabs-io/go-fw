@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 	fwsync "github.com/southernlabs-io/go-fw/sync"
@@ -17,14 +17,14 @@ import (
 
 var errSchemaAlreadyInitialized = errors.Newf("SCHEMA_ALREADY_INITIALIZED", "schema already initialized by another instance")
 
-type PostgresFactory struct{}
+type PostgresGORMFactory struct{}
 
-func NewPostgresFactory() *PostgresFactory {
-	return &PostgresFactory{}
+func NewPostgresGORMFactory() *PostgresGORMFactory {
+	return &PostgresGORMFactory{}
 }
 
-func (f *PostgresFactory) NewDistributedLock(resource string, ttl time.Duration) DistributedLock {
-	return NewDistributedPostgresLock(resource, ttl)
+func (f *PostgresGORMFactory) NewDistributedLock(resource string, ttl time.Duration) DistributedLock {
+	return NewDistributedPostgresGORMLock(resource, ttl)
 }
 
 type DistributedPostgresLock struct {
@@ -33,7 +33,7 @@ type DistributedPostgresLock struct {
 
 var _ DistributedLock = &DistributedPostgresLock{}
 
-func NewDistributedPostgresLock(resource string, ttl time.Duration) *DistributedPostgresLock {
+func NewDistributedPostgresGORMLock(resource string, ttl time.Duration) *DistributedPostgresLock {
 	return &DistributedPostgresLock{
 		BaseDistributedLock{
 			resource: resource,

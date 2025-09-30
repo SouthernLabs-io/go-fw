@@ -9,7 +9,7 @@ import (
 	"go.uber.org/fx/fxtest"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/redis"

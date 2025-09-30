@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/secrets"
 )

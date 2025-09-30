@@ -6,34 +6,34 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 )
 
-type DatabaseTrxMiddleware struct {
+type DatabaseGORMTrxMiddleware struct {
 	BaseMiddleware
 	db database.DB
 }
 
-func NewDatabaseTrx(
+func NewDatabaseGORMTrx(
 	conf config.Config,
 	lf log.LoggerFactory,
 	db database.DB,
-) *DatabaseTrxMiddleware {
-	return &DatabaseTrxMiddleware{
-		BaseMiddleware{conf, lf.GetLoggerForType(DatabaseTrxMiddleware{})},
+) *DatabaseGORMTrxMiddleware {
+	return &DatabaseGORMTrxMiddleware{
+		BaseMiddleware{conf, lf.GetLoggerForType(DatabaseGORMTrxMiddleware{})},
 		db,
 	}
 }
 
-var _ Middleware = (*DatabaseTrxMiddleware)(nil)
+var _ Middleware = (*DatabaseGORMTrxMiddleware)(nil)
 
-func (m *DatabaseTrxMiddleware) Priority() MiddlewarePriority {
+func (m *DatabaseGORMTrxMiddleware) Priority() MiddlewarePriority {
 	return MiddlewarePriorityBeforeMux
 }
 
-func (m *DatabaseTrxMiddleware) Handle(next http.Handler) http.Handler {
+func (m *DatabaseGORMTrxMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		logger := log.GetLoggerFromCtx(ctx)
@@ -79,4 +79,4 @@ func (m *DatabaseTrxMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
-var FxExportDB = ProvideAsMiddleware(NewDatabaseTrx)
+var FxExportDBGORM = ProvideAsMiddleware(NewDatabaseGORMTrx)

@@ -1,7 +1,5 @@
 package middleware
 
-//go:generate mockery --all --with-expecter=true --keeptree=false --case=underscore
-
 import (
 	"reflect"
 	"slices"
@@ -14,6 +12,7 @@ import (
 	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
+// go generate stringer -type=MiddlewarePriority -trimprefix=MiddlewarePriority
 type MiddlewarePriority int
 
 const (

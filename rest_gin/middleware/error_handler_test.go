@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
 	"github.com/southernlabs-io/go-fw/test"

@@ -1,4 +1,4 @@
-package database_test
+package databasegorm_test
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/test"
 )
@@ -23,7 +23,7 @@ func TestDBTx(t *testing.T) {
 		User: "postgres",
 		Pass: "postgres",
 	}
-	db := test.NewTestDatabase(conf, lf)
+	db := test.NewTestDatabaseGORM(conf, lf)
 	defer func(conf config.Config, lf log.LoggerFactory, db database.DB) {
 		err := test.OnTestDBStop(conf, db, lf)
 		require.NoError(t, err)

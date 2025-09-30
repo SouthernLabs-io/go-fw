@@ -8,12 +8,12 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
-	"github.com/southernlabs-io/go-fw/database"
+	database "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 )
 
-func NewTestDatabase(conf config.Config, lf log.LoggerFactory) database.DB {
+func NewTestDatabaseGORM(conf config.Config, lf log.LoggerFactory) database.DB {
 	if conf.Env.Type != config.EnvTypeTest {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
@@ -85,7 +85,7 @@ func OnTestDBStop(conf config.Config, db database.DB, lf log.LoggerFactory) erro
 
 var TestModuleDB = fx.Provide(
 	fx.Annotate(
-		NewTestDatabase,
+		NewTestDatabaseGORM,
 		fx.OnStop(OnTestDBStop),
 	),
 )

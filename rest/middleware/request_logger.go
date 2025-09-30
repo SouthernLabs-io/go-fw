@@ -131,20 +131,20 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		}
 
 		ctx = log.CtxAppendLoggerAttrs(ctx, attrs...)
-
-		if m.excludeMap[r.Pattern] {
-			return
-		}
-
 		logger := log.GetLoggerFromCtxForType(ctx, m)
-		logger.Debugf("Req Start: %s", urlPath)
-
+		logReq := !m.excludeMap[r.URL.Path]
+		if logReq {
+			// Log request started
+			logger.Debugf("Req Start: %s", urlPath)
+		}
 		rw := &responseWriter{w, 0}
 		if ctx != r.Context() {
 			// Only update the request if the context changed
 			logger.Warn("Request context was modified by previous middleware, this is not recommended")
 			r = r.WithContext(ctx)
 		}
+
+		// Continue the chain
 		next.ServeHTTP(rw, r)
 
 		latency := time.Since(start)
@@ -156,13 +156,17 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		} else if status >= 400 {
 			level = config.LogLevelWarn
 		}
-		logger.Log(level, "Req End: "+urlPath,
-			slog.Int("http.status_code", status),
-			// Using "duration" to follow DataDog expectations
-			slog.Duration("duration", latency),
-			// r.Pattern should be populated at this point
-			slog.String("http.url_details.pattern", r.Pattern),
-		)
+
+		// Log the request if asked or if level is higher than info
+		if logReq || level > config.LogLevelInfo {
+			logger.Log(level, "Req End: "+urlPath,
+				slog.Int("http.status_code", status),
+				// Using "duration" to follow DataDog expectations
+				slog.Duration("duration", latency),
+				// r.Pattern should be populated at this point
+				slog.String("http.url_details.pattern", r.Pattern),
+			)
+		}
 	})
 }
 

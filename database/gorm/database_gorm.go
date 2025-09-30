@@ -1,0 +1,254 @@
+package databasegorm
+
+import (
+	"database/sql"
+	"fmt"
+	"math/rand"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/fx"
+	sqltrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/database/sql"
+	gormtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorm.io/gorm.v1"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+
+	"github.com/southernlabs-io/go-fw/config"
+	"github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
+)
+
+type DB struct {
+	*gorm.DB
+	DbName string
+}
+
+// NewDB creates a new database instance
+func NewDB(conf config.Config, lf log.LoggerFactory) DB {
+	if conf.Env.Type == config.EnvTypeTest {
+		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
+	}
+
+	dbName := database.CreateDBName(conf)
+	db := MustOpenGORM(conf, dbName, lf)
+	return DB{
+		DB:     db,
+		DbName: dbName,
+	}
+}
+
+func (d DB) AddToCtx(ctx context.Context) context.Context {
+	if d.DB == nil {
+		return ctx
+	}
+
+	return context.WithValue(ctx, database.DBCtxKey, d.WithContext(ctx))
+}
+
+func GetDBFromCtx(ctx context.Context) *gorm.DB {
+	// DB context is set in the middleware, and can also be set manually in tests, worker contexts, etc...
+	if db, is := ctx.Value(database.DBCtxKey).(*gorm.DB); is {
+		// Update DB context, it could have change if a no deadline context was passed
+		db = db.WithContext(ctx)
+		return db
+	}
+	return nil
+}
+
+func (d DB) HealthCheck() error {
+	if sqlDB, err := d.DB.DB(); err != nil {
+		return errors.NewUnknownf("failed to get sql db from gorm db: %w", err)
+	} else {
+		if err := sqlDB.Ping(); err != nil {
+			return errors.NewUnknownf("failed to ping db: %w", err)
+		}
+	}
+	return nil
+}
+
+type DBTx struct {
+	*gorm.DB
+	closed    bool
+	automatic bool
+	parentTx  *DBTx
+	savePoint string
+}
+
+func (t *DBTx) IsAutomatic() bool {
+	return t.automatic
+}
+
+func (t *DBTx) IsClosed() bool {
+	return t.closed
+}
+
+func (t *DBTx) IsSub() bool {
+	return t.parentTx != nil
+}
+
+func (t *DBTx) DeferredCommitOrRollback(err *error) {
+	if r := recover(); r != nil {
+		*err = errors.Newf(errors.ErrCodePanic, "panic in transaction: %v", r)
+		// FIXME: a panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
+		// log it here and kill the app, because it will leak memory otherwise
+		var logger log.Logger
+		if t.Statement != nil && t.Statement.Context != nil {
+			logger = log.GetLoggerFromCtx(t.Statement.Context)
+		} else {
+			logger = log.GetLogger()
+		}
+		logger.Errorf(
+			`A panic produces a deadlock in a transaction when trying to rollback/commit: https://github.com/lib/pq/issues/178
+Killing the process, because it will leak memory otherwise
+%s`,
+			*err,
+		)
+		os.Exit(1)
+	}
+	if *err != nil {
+		if rollbackErr := t.Rollback().Error; rollbackErr != nil {
+			var logger log.Logger
+			if t.Statement != nil && t.Statement.Context != nil {
+				logger = log.GetLoggerFromCtx(t.Statement.Context)
+			} else {
+				logger = log.GetLoggerFromCtx(context.Background())
+			}
+			logger.ErrorE(errors.Newf(database.ErrCodeRollbackFailed, "failed to rollback on error: %w,\n rollback error: %w", *err, rollbackErr))
+		}
+	} else {
+		if commitErr := t.Commit().Error; commitErr != nil {
+			*err = errors.Newf(database.ErrCodeCommitFailed, "failed to commit trx: %w", commitErr)
+		}
+	}
+}
+func (t *DBTx) Commit() *gorm.DB {
+	defer func() {
+		t.closed = true
+		// Avoid future use of this subTx
+		t.DB = &gorm.DB{Error: sql.ErrTxDone}
+	}()
+	if t.parentTx != nil {
+		log.GetLoggerFromCtx(t.DB.Statement.Context).Debugf("SubTx: release savepoint: %s", t.savePoint)
+		return t.DB.Exec("RELEASE SAVEPOINT " + t.savePoint)
+	}
+	return t.DB.Commit()
+}
+
+func (t *DBTx) Rollback() *gorm.DB {
+	defer func() {
+		t.closed = true
+		// Avoid future use of this subTx
+		t.DB = &gorm.DB{Error: sql.ErrTxDone}
+	}()
+	if t.parentTx != nil {
+		log.GetLoggerFromCtx(t.DB.Statement.Context).Infof("SubTx: rollback to savepoint: %s", t.savePoint)
+		return t.parentTx.RollbackTo(t.savePoint)
+	}
+	return t.DB.Rollback()
+}
+
+func GetDBTxFromCtx(ctx context.Context) *DBTx {
+	if tx, is := ctx.Value(database.DBTxCtxKey).(*DBTx); is {
+		if !tx.closed {
+			// Update tx context, it could have change if a no deadline context was passed
+			tx.DB = tx.DB.WithContext(ctx)
+		}
+		return tx
+	}
+	return nil
+}
+
+// CurrentTx returns the current transaction from the context or a new automatic transaction if there is none. This is the preferred way to get a transaction in the code.
+func CurrentTx(ctx context.Context) *DBTx {
+	// check if there is one already
+	tx := GetDBTxFromCtx(ctx)
+	if tx != nil && !tx.closed {
+		log.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, returning it!")
+		return tx
+	}
+
+	db := GetDBFromCtx(ctx)
+	if db == nil {
+		panic(errors.Newf(errors.ErrCodeBadState, "no db in context!"))
+	}
+	// gorm does automatic transaction handling per query
+	return &DBTx{DB: db, automatic: true}
+}
+
+// NewTx returns a new transaction and a new context with the transaction set. If there is already a transaction in the context, it creates a sub-transaction using savepoints.
+func NewTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Context) {
+	// check if there is one already
+	tx := GetDBTxFromCtx(ctx)
+	if tx != nil && !tx.closed {
+		savePoint := fmt.Sprintf("sub_%d_%d", time.Now().UnixNano(), rand.Uint32())
+		log.GetLoggerFromCtx(ctx).Debugf("tx found in ctx, creating a sub tx with savepoint: %s", savePoint)
+		err := tx.DB.Exec("SAVEPOINT " + savePoint).Error
+		if err != nil {
+			panic(errors.NewUnknownf("failed to create a save point in the db transaction: %w", err))
+		}
+		return &DBTx{
+			DB:        tx.DB,
+			closed:    false,
+			automatic: false,
+			parentTx:  tx,
+			savePoint: savePoint,
+		}, ctx
+	}
+
+	db := GetDBFromCtx(ctx)
+	if db == nil {
+		panic(errors.Newf(errors.ErrCodeBadState, "no db in context!"))
+	}
+
+	tx = &DBTx{DB: db.Begin(txOptions...)}
+	ctx = context.WithValue(ctx, database.DBTxCtxKey, tx)
+
+	return tx, ctx
+}
+
+func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm.DB {
+	dbConf := conf.Database
+	dsn := fmt.Sprintf("host='%s' user='%s' password='%s' dbname='%s' port=%d",
+		dbConf.Host,
+		dbConf.User,
+		dbConf.Pass,
+		dbName,
+		dbConf.Port)
+	gormConf := gorm.Config{
+		Logger: NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
+		NowFunc: func() time.Time {
+			// Return time with microsecond precision. Postgres timestamp type has microsecond precision.
+			return time.UnixMicro(time.Now().UnixMicro())
+		},
+	}
+
+	var db *gorm.DB
+	var err error
+
+	if conf.Datadog.Tracing {
+		sqltrace.Register("pgx", &stdlib.Driver{})
+		db, err = gormtrace.Open(postgres.Open(dsn), &gormConf)
+	} else {
+		db, err = gorm.Open(postgres.Open(dsn), &gormConf)
+	}
+	if err != nil {
+		dsn = strings.ReplaceAll(dsn, "'"+dbConf.Pass+"'", "*")
+		panic(errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err))
+	}
+	lf.GetLogger().Infof("DB connection established: \"%s\"", dbName)
+	return db
+}
+
+func OnDBStop(db DB) error {
+	sqlDB, err := db.DB.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
+}
+
+var FxExport = fx.Provide(fx.Annotate(NewDB, fx.OnStop(OnDBStop)))
