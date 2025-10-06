@@ -94,7 +94,7 @@ func (ms Middlewares) Setup(httpHandler rest.HTTPHandler) {
 	}
 }
 
-var Module = fx.Options(
+var FxExport = fx.Options(
 	fx.Invoke(NewMiddlewares),
 
 	//Default providers

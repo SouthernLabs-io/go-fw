@@ -43,7 +43,7 @@ func NewTestRootConfig(tb testing.TB) config.RootConfig {
 	return rootConf
 }
 
-var ModuleTestConfig = fx.Options(
+var FxExportTestConfig = fx.Options(
 	fx.Provide(NewTestConfig),
 	fx.Provide(NewTestRootConfig),
 )

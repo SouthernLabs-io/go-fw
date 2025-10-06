@@ -52,4 +52,4 @@ func OnStop(r Redis) error {
 	return r.Client.Close()
 }
 
-var Module = fx.Provide(fx.Annotate(NewRedis, fx.OnStop(OnStop)))
+var FxExport = fx.Provide(fx.Annotate(NewRedis, fx.OnStop(OnStop)))

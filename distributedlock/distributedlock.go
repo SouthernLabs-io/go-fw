@@ -142,8 +142,8 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 	return ctx, nil
 }
 
-var ModuleRedis = di.FxProvideAs[Factory](NewRedisFactory, nil, nil)
+var FxExportRedis = di.FxProvideAs[Factory](NewRedisFactory, nil, nil)
 
-var ModulePostgres = di.FxProvideAs[Factory](NewPostgresGORMFactory, nil, nil)
+var FxExportPostgres = di.FxProvideAs[Factory](NewPostgresGORMFactory, nil, nil)
 
-var ModuleLocal = di.FxProvideAs[Factory](NewLocalFactory, nil, nil)
+var FxExportLocal = di.FxProvideAs[Factory](NewLocalFactory, nil, nil)

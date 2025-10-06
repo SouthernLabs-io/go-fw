@@ -2,7 +2,7 @@ package slack
 
 import "go.uber.org/fx"
 
-var Module = fx.Options(
+var FxExport = fx.Options(
 	fx.Provide(NewSlackClient),
 	fx.Decorate(NewFxLoggerFactory),
 )

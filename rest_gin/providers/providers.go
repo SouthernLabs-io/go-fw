@@ -31,7 +31,7 @@ func ProvideAsAuthZ(provider any, anns ...fx.Annotation) fx.Option {
 	)
 }
 
-var Module = fx.Options(
+var FxExport = fx.Options(
 	ProvideAsHealthCheck(
 		NewDatabaseBunHealthCheckProvider,
 		fx.ParamTags(`optional:"true"`),

@@ -19,8 +19,8 @@ func TestLongRunningWorkerHandlerWithGoodAndBrokenWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
-		distributedlock.ModuleLocal,
-		worker.ModuleWorkerHandler,
+		distributedlock.FxExportLocal,
+		worker.FxExport,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
 			return NewTestLongRunningWorker("good worker")
 		}),
@@ -40,8 +40,8 @@ func TestLongRunningWorkerHandlerWithBrokenWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
-		distributedlock.ModuleLocal,
-		worker.ModuleWorkerHandler,
+		distributedlock.FxExportLocal,
+		worker.FxExport,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorkerBroken {
 			return NewTestLongRunningWorkerBroken("bad worker")
 		}),
@@ -60,7 +60,7 @@ func TestLongRunningWorkerHandlerStartStop(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	fxApp := test.FxIntegration(
 		t,
-		distributedlock.ModulePostgres,
+		distributedlock.FxExportPostgres,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
 			return NewTestLongRunningWorker("good worker")
 		}),
@@ -85,8 +85,8 @@ func TestLongRunningWorkerNoWorker(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	app := test.FxUnit(
 		t,
-		distributedlock.ModuleLocal,
-		worker.ModuleWorkerHandler,
+		distributedlock.FxExportLocal,
+		worker.FxExport,
 	).Populate(
 		&longRunningWorkerHandler,
 	)

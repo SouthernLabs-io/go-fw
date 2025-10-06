@@ -292,7 +292,7 @@ func ProvideAsLongRunningWorker(provider any, anns ...fx.Annotation) fx.Option {
 	return di.FxProvideAs[LongRunningWorker](provider, anns, []fx.Annotation{fx.ResultTags(`group:"long_running_workers"`)})
 }
 
-var ModuleWorkerHandler = di.FxProvideAs[Handler](
+var FxExport = di.FxProvideAs[Handler](
 	NewLongRunningWorkerHandlerFx,
 	nil,
 	[]fx.Annotation{fx.ResultTags(`group:"worker_handlers"`)},

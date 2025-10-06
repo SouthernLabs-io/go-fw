@@ -47,4 +47,4 @@ func FxProvideAs[I any](provider any, tAnns []fx.Annotation, iAnns []fx.Annotati
 	)
 }
 
-var Module = fx.Provide(NewFxLoggerFactory)
+var FxExport = fx.Provide(NewFxLoggerFactory)

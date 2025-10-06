@@ -259,4 +259,4 @@ func (l Logger) logAttrs(logTime time.Time, level config.LogLevel, skipCallers i
 	_ = l.h.Handle(l.ctx, r)
 }
 
-var Module = fx.Provide(NewLoggerFactory)
+var FxExport = fx.Provide(NewLoggerFactory)

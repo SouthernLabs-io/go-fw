@@ -31,7 +31,7 @@ func (rs Resources) Setup(httpHandler HTTPHandler) {
 	}
 }
 
-var Module = fx.Options(
+var FxExport = fx.Options(
 	fx.Invoke(NewResources),
 	fx.Provide(NewHTTPHandler),
 )

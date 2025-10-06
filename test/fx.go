@@ -47,12 +47,12 @@ func FxUnit(t *testing.T, opts ...fx.Option) *FxApp {
 		t: t,
 		opts: fx.Options(
 			fx.Supply(t, fx.Annotate(t, fx.As(new(testing.TB)))),
-			ModuleTestConfig,
+			FxExportTestConfig,
 			fx.Provide(NewLoggerFactory),
 			fx.WithLogger(func(lf log.LoggerFactory) fxevent.Logger {
 				return di.NewFxLogger(lf.GetLoggerForType(fx.App{}))
 			}),
-			ModuleContext,
+			FxExportContext,
 			fx.Options(opts...),
 		),
 	}
@@ -83,15 +83,15 @@ func (a *FxApp) WithDB() *FxApp {
 }
 
 func (a *FxApp) WithRedis() *FxApp {
-	a.opts = fx.Options(a.opts, ModuleRedis)
+	a.opts = fx.Options(a.opts, FxExportRedis)
 	return a
 }
 
 func (a *FxApp) WithHTTPHandler() *FxApp {
 	a.opts = fx.Options(
 		a.opts,
-		ModuleMiddlewares,
-		ModuleRest,
+		FxExportMiddlewares,
+		FxExportRest,
 	)
 	return a
 }

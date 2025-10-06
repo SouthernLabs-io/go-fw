@@ -24,4 +24,4 @@ func NewAWSConfig(rootConf config.RootConfig) (aws.Config, error) {
 	return awsConfig, nil
 }
 
-var Module = fx.Provide(NewAWSConfig)
+var FxExport = fx.Provide(NewAWSConfig)

@@ -68,9 +68,9 @@ func WrapSubCommand(cmd Command) *cobra.Command {
 			logger := log.GetLoggerForType(new(Command))
 			logger.Infof("Running %s", cmd.Cmd())
 			opts := fx.Options(
-				config.Module,
-				log.Module,
-				di.Module,
+				config.FxExport,
+				log.FxExport,
+				di.FxExport,
 				fx.WithLogger(func(fxLoggerFactory di.FxLoggerFactory) fxevent.Logger {
 					return fxLoggerFactory.CreateLogger()
 				}),

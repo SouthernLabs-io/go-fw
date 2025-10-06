@@ -25,7 +25,7 @@ func setupDB(t *testing.T) (ctx context.Context) {
 func setupRedis(t *testing.T) (rds redis.Redis, ctx context.Context) {
 	t.Parallel()
 
-	test.FxIntegration(t, test.ModuleRedis).Populate(&rds, &ctx)
+	test.FxIntegration(t, test.FxExportRedis).Populate(&rds, &ctx)
 	return
 }
 

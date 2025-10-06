@@ -19,6 +19,6 @@ func NewLocalStackAWSConfig(tb testing.TB) (aws.Config, error) {
 	return awsconfig.LoadDefaultConfig(context.Background())
 }
 
-var ModuleTestAWSLocalStackConfig = fx.Options(
+var FxExportTestAWSLocalStackConfig = fx.Options(
 	fx.Provide(NewLocalStackAWSConfig),
 )

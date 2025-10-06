@@ -14,7 +14,7 @@ type WorkCommand struct {
 }
 
 func NewWorkCommand(fxOpts fx.Option) *WorkCommand {
-	return &WorkCommand{fxOpts: fx.Options(fxOpts, worker.ModuleWorkerHandler)}
+	return &WorkCommand{fxOpts: fx.Options(fxOpts, worker.FxExport)}
 }
 
 func (w *WorkCommand) Cmd() string {

@@ -6,7 +6,7 @@ import (
 	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
 )
 
-var ModuleMiddlewares = fx.Options(
+var FxExportMiddlewares = fx.Options(
 	fx.Invoke(middleware.NewMiddlewares),
 	middleware.RequestLoggerModule,
 

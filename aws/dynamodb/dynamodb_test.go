@@ -15,7 +15,7 @@ import (
 func TestDynamoDB(t *testing.T) {
 	var ddb *dynamodb.DynamoDB
 	var ctx context.Context
-	test.FxIntegration(t, test.ModuleTestAWSLocalStackConfig, test.ModuleTestDynamoDB).
+	test.FxIntegration(t, test.FxExportTestAWSLocalStackConfig, test.FxExportTestDynamoDB).
 		Populate(
 			&ctx,
 			&ddb,
@@ -100,7 +100,7 @@ func TestDynamoDB(t *testing.T) {
 func TestDynamoDB_ScanNotAllowed(t *testing.T) {
 	var ddb *dynamodb.DynamoDB
 	var ctx context.Context
-	test.FxIntegration(t, test.ModuleTestAWSLocalStackConfig, test.ModuleTestDynamoDB).
+	test.FxIntegration(t, test.FxExportTestAWSLocalStackConfig, test.FxExportTestDynamoDB).
 		Populate(
 			&ctx,
 			&ddb,
@@ -133,7 +133,7 @@ func TestDynamoDB_ScanNotAllowed(t *testing.T) {
 func TestDynamoDB_Update(t *testing.T) {
 	var ddb *dynamodb.DynamoDB
 	var ctx context.Context
-	test.FxIntegration(t, test.ModuleTestAWSLocalStackConfig, test.ModuleTestDynamoDB).
+	test.FxIntegration(t, test.FxExportTestAWSLocalStackConfig, test.FxExportTestDynamoDB).
 		Populate(
 			&ctx,
 			&ddb,
@@ -229,7 +229,7 @@ func TestDynamoDB_Update(t *testing.T) {
 func TestDynamoDB_PKWithRange(t *testing.T) {
 	var ddb *dynamodb.DynamoDB
 	var ctx context.Context
-	test.FxIntegration(t, test.ModuleTestAWSLocalStackConfig, test.ModuleTestDynamoDB).
+	test.FxIntegration(t, test.FxExportTestAWSLocalStackConfig, test.FxExportTestDynamoDB).
 		Populate(
 			&ctx,
 			&ddb,

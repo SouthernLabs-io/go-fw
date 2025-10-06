@@ -36,7 +36,7 @@ func OnTestDynamoDBStop(tb testing.TB, ctx context.Context, ddb *dynamodb.Dynamo
 	return ddb.DeleteAllTables(ctx)
 }
 
-var ModuleTestDynamoDB = fx.Options(
+var FxExportTestDynamoDB = fx.Options(
 	fx.Provide(dynamodb.NewAWSDynamoDBClient),
 	fx.Provide(fx.Annotate(
 		NewTestDynamoDB,

@@ -67,7 +67,7 @@ func (s *AWSSecretsManager) GetBinarySecretVerbatim(ctx context.Context, id stri
 	return resp.SecretBinary, nil
 }
 
-var ModuleAWS = fx.Options(
-	Module,
+var FxExportAWSSM = fx.Options(
+	fxExport,
 	di.FxProvideAs[SecretsManager](NewAWSSecretsManager, nil, nil),
 )

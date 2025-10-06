@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
+	"github.com/southernlabs-io/go-fw/di"
 )
 
 type SecretsManager interface {
@@ -24,7 +25,11 @@ type SecretsManager interface {
 	GetBinarySecretVerbatim(ctx context.Context, id string) ([]byte, error)
 }
 
-var Module = fx.Options(
+func ProvideAsSecretsManager(provider any, anns ...fx.Annotation) fx.Option {
+	return di.FxProvideAs[SecretsManager](provider, nil, anns)
+}
+
+var fxExport = fx.Options(
 	// Provide interface conversion for SecretsManager to config.SecretsManager
 	fx.Provide(func(secretsManager SecretsManager) config.SecretsManager {
 		return secretsManager

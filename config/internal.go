@@ -248,10 +248,9 @@ func loadSecrets(conf RootConfig, secretsMgr SecretsManager) func(map[string]any
 		var traverse func(string, map[string]any)
 		traverse = func(prefix string, m map[string]any) {
 			for key, val := range m {
-				key = prefix + key
 				switch v := val.(type) {
 				case map[string]any:
-					traverse(key+".", v)
+					traverse(prefix+key+".", v)
 				case string:
 					if !strings.HasPrefix(v, "<secret") || !strings.HasSuffix(v, ">") {
 						continue
@@ -260,7 +259,7 @@ func loadSecrets(conf RootConfig, secretsMgr SecretsManager) func(map[string]any
 					var smKey, secret string
 					var err error
 					if v == "<secret>" {
-						smKey = key
+						smKey = prefix + key
 						secret, err = secretsMgr.GetSecret(ctx, smKey)
 					} else if v[7] == ':' {
 						smKey = v[8 : len(v)-1]

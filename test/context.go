@@ -17,4 +17,4 @@ func NewContext(db database.DB, lf log.LoggerFactory) context.Context {
 	return ctx
 }
 
-var ModuleContext = fx.Provide(fx.Annotate(NewContext, fx.ParamTags(`optional:"true"`)))
+var FxExportContext = fx.Provide(fx.Annotate(NewContext, fx.ParamTags(`optional:"true"`)))

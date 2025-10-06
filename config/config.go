@@ -258,8 +258,8 @@ func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
 	loadConfig(dst, loadSecrets(root, secretsMgr))
 }
 
-// Module exports dependency
-var Module = fx.Options(
+// FxExport exports dependency
+var FxExport = fx.Options(
 	fx.Provide(fx.Annotate(NewConfig, fx.ParamTags("", `optional:"true"`))),
 	fx.Provide(GetRootConfig),
 )
