@@ -52,6 +52,7 @@ func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 
 type responseWriter struct {
 	http.ResponseWriter
+	http.Flusher
 	statusCode int
 }
 
@@ -137,7 +138,14 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 			// Log request started
 			logger.Debugf("Req Start: %s", urlPath)
 		}
-		rw := &responseWriter{w, 0}
+		var rw *responseWriter
+		if flusher, ok := w.(http.Flusher); ok {
+			// Wrap the writer to capture status code
+			rw = &responseWriter{w, flusher, 0}
+		} else {
+			rw = &responseWriter{w, nil, 0}
+		}
+
 		if ctx != r.Context() {
 			// Only update the request if the context changed
 			logger.Warn("Request context was modified by previous middleware, this is not recommended")
