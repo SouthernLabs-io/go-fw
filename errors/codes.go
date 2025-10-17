@@ -9,7 +9,7 @@ const (
 	ErrCodeUnknown = "UNKNOWN"
 
 	// ErrCodeBadArgument is used when an argument is invalid. This should be used when the argument is provided by
-	// an external source. This error will be mapped to HTTP 409.
+	// an external source. This error will be mapped to HTTP 400.
 	ErrCodeBadArgument = "BAD_ARGUMENT"
 
 	// ErrCodeBadState is used when the application is in a state that is not expected, this can be used when

@@ -250,11 +250,6 @@ func (e *Error) Copy() *Error {
 	}
 }
 
-// NewUnknownf creates a new error with the ErrCodeUnknown code and the given message format/args.
-func NewUnknownf(format string, args ...any) *Error {
-	return Newf(ErrCodeUnknown, format, args...)
-}
-
 // IsCode returns true if the error, or any wrapped error, is of type Error and has the given code.
 func IsCode(err error, code string) bool {
 	var fwErr *Error
@@ -312,6 +307,36 @@ func UnwrapMulti(err error) []error {
 		return e.Unwrap()
 	}
 	return nil
+}
+
+// NewUnknownf creates a new error with the ErrCodeUnknown code and the given message format/args.
+// This errors should be mapped to HTTP 500.
+func NewUnknownf(format string, args ...any) *Error {
+	return Newf(ErrCodeUnknown, format, args...)
+}
+
+// NewBadArgumentf creates a new error with the ErrCodeBadArgument code and the given message format/args.
+// This errors should be mapped to HTTP 400.
+func NewBadArgumentf(format string, args ...any) *Error {
+	return Newf(ErrCodeBadArgument, format, args...)
+}
+
+// NewValidationFailedf creates a new error with the ErrCodeValidationFailed code and the given message format/args.
+// This errors should be mapped to HTTP 422.
+func NewValidationFailedf(format string, args ...any) *Error {
+	return Newf(ErrCodeValidationFailed, format, args...)
+}
+
+// NewConflict creates a new error with the ErrCodeConflict code and the given message format/args.
+// This errors should be mapped to HTTP 409.
+func NewConflictf(format string, args ...any) *Error {
+	return Newf(ErrCodeConflict, format, args...)
+}
+
+// NewNotFoundf creates a new error with the ErrCodeNotFound code and the given message format/args.
+// This errors should be mapped to HTTP 404.
+func NewNotFoundf(format string, args ...any) *Error {
+	return Newf(ErrCodeNotFound, format, args...)
 }
 
 //#region copy from errors.go
