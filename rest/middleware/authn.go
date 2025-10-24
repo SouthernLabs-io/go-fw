@@ -60,7 +60,7 @@ func SetPrincipal(ctx context.Context, principal Principal) context.Context {
 }
 
 type AuthNProvider interface {
-	Authenticate(ctx context.Context, r *http.Request) (Principal, error)
+	Authenticate(ctx context.Context, w http.ResponseWriter, r *http.Request) (Principal, error)
 }
 
 type _PathMethod struct {
@@ -148,7 +148,7 @@ func (m *AuthNMiddleware) Handle(next http.Handler) http.Handler {
 			return
 		}
 
-		principal, err := m.provider.Authenticate(ctx, r)
+		principal, err := m.provider.Authenticate(ctx, w, r)
 		if err != nil {
 			log.GetLoggerFromCtx(ctx).Errorf("failed to authenticate, error: %s", err)
 			if errors.Is(err, ErrInvalidToken) {
