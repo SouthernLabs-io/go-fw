@@ -16,6 +16,14 @@ func ToPtr[T any](v T) *T {
 	return &v
 }
 
+func ToPtrIfNotZero[T comparable](v T) *T {
+	var zero T
+	if v == zero {
+		return nil
+	}
+	return &v
+}
+
 // ToValue returns the value referenced by p. Returns a zero value if p is nil.
 func ToValue[T comparable](p *T) (v T) {
 	if p == nil {
