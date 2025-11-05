@@ -10,7 +10,6 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
-	fw_context "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
@@ -98,10 +97,6 @@ func NewStdServer(deps struct {
 	preMuxHandler := middlewares.Apply(middleware.MiddlewarePriorityHighest, middleware.MiddlewarePriorityBeforeMuxInclusive, mux) // Include BeforeMux middlewares
 	srv := &http.Server{
 		Handler: preMuxHandler,
-		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			// Use a custom key/value context
-			return fw_context.NewContextWithStore(ctx)
-		},
 	}
 
 	stdServer := &_StdServer{
