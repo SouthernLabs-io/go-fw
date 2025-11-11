@@ -31,16 +31,13 @@ func NewDB(conf config.Config, lf log.LoggerFactory) (*bun.DB, error) {
 	}
 
 	bunDB := bun.NewDB(sqlDB, pgdialect.New())
-	// Set maximum number of open connections to the database.
-	// This is important for performance and to avoid exhausting database connections.
 	bunDB.SetMaxOpenConns(conf.Database.MaxOpenConns)
-	// Set maximum number of idle connections in the pool.
 	bunDB.SetMaxIdleConns(conf.Database.MaxIdleConns)
-	// Set the maximum lifetime of a connection.
 	bunDB.SetConnMaxLifetime(conf.Database.ConnMaxIdle)
 
-	return bunDB, nil
+	bunDB.AddQueryHook(&BunLogger{})
 
+	return bunDB, nil
 }
 
 func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB, error) {
