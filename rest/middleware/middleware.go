@@ -120,6 +120,7 @@ var FxExport = fx.Options(
 	fx.Provide(NewMiddlewares),
 
 	//Default providers
+	ProvideAsMiddleware(NewKeyValueContextMiddleware),
 	ProvideAsMiddleware(NewRequestLogger),
 	ProvideAsMiddleware(NewPanicRecovery),
 )

@@ -47,7 +47,7 @@ func NewRequestLogger(conf config.Config, lf log.LoggerFactory) *RequestLoggerMi
 }
 
 func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
-	return MiddlewarePriorityHighest
+	return MiddlewarePriorityHighest + 1
 }
 
 type responseWriter struct {

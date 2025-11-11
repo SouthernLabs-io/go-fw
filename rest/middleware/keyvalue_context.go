@@ -24,7 +24,7 @@ func NewKeyValueContextMiddleware(
 var _ Middleware = (*KeyValueContextMiddleware)(nil)
 
 func (m *KeyValueContextMiddleware) Priority() MiddlewarePriority {
-	return -1 // Special value to make sure it runs first, no exceptions.
+	return MiddlewarePriorityHighest
 }
 
 func (m *KeyValueContextMiddleware) Handle(next http.Handler) http.Handler {

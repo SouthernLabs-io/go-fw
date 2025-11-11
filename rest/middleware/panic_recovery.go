@@ -26,7 +26,7 @@ func NewPanicRecovery(
 var _ Middleware = (*PanicRecoveryMiddleware)(nil)
 
 func (m *PanicRecoveryMiddleware) Priority() MiddlewarePriority {
-	return MiddlewarePriorityHighest + 1
+	return MiddlewarePriorityHighest + 2
 }
 
 func (m *PanicRecoveryMiddleware) Handle(next http.Handler) http.Handler {
