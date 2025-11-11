@@ -30,14 +30,22 @@ func NewDB(conf config.Config, lf log.LoggerFactory) (*bun.DB, error) {
 		return nil, err
 	}
 
-	bunDB := bun.NewDB(sqlDB, pgdialect.New())
+	bunDB := WrapWithBun(conf, sqlDB)
+	return bunDB, nil
+}
+
+func WrapWithBun(conf config.Config, slqDB *sql.DB) *bun.DB {
+	bunDB := bun.NewDB(slqDB, pgdialect.New())
+
+	// Set connection pool settings
 	bunDB.SetMaxOpenConns(conf.Database.MaxOpenConns)
 	bunDB.SetMaxIdleConns(conf.Database.MaxIdleConns)
 	bunDB.SetConnMaxLifetime(conf.Database.ConnMaxIdle)
 
+	// Add query logger
 	bunDB.AddQueryHook(&BunLogger{})
 
-	return bunDB, nil
+	return bunDB
 }
 
 func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB, error) {

@@ -21,7 +21,7 @@ import (
 func TestErrorHandler(t *testing.T) {
 	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
-	ctx := test.NewContext(database.DB{}, lf)
+	ctx := test.NewContext(database.DB{}, nil, lf)
 
 	errMappers := []middleware.ErrorMapper{
 		middleware.NewErrorCodeMapper(

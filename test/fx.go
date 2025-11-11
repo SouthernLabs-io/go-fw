@@ -68,17 +68,29 @@ func FxIntegration(t *testing.T, opts ...fx.Option) *FxApp {
 	)
 }
 
-// FxIntegrationWithDB is a helper function to create an integration test with DB
-func FxIntegrationWithDB(t *testing.T, opts ...fx.Option) *FxApp {
+func FxIntegrationWithDBGORM(t *testing.T, opts ...fx.Option) *FxApp {
 	return FxIntegration(
 		t,
 		fx.Options(opts...),
-		TestModuleDB,
+		TestFxExportDBGORM,
 	)
 }
 
-func (a *FxApp) WithDB() *FxApp {
-	a.opts = fx.Options(a.opts, TestModuleDB)
+func FxIntegrationWithDBBun(t *testing.T, opts ...fx.Option) *FxApp {
+	return FxIntegration(
+		t,
+		fx.Options(opts...),
+		TestFxExportDBBun,
+	)
+}
+
+func (a *FxApp) WithDBGORM() *FxApp {
+	a.opts = fx.Options(a.opts, TestFxExportDBGORM)
+	return a
+}
+
+func (a *FxApp) WithDBBun() *FxApp {
+	a.opts = fx.Options(a.opts, TestFxExportDBBun)
 	return a
 }
 

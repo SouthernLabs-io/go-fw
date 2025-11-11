@@ -8,33 +8,32 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/uptrace/bun"
 
-	database "github.com/southernlabs-io/go-fw/database/gorm"
+	database "github.com/southernlabs-io/go-fw/database/bun"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 	fwsync "github.com/southernlabs-io/go-fw/sync"
 )
 
-var errSchemaAlreadyInitialized = errors.Newf("SCHEMA_ALREADY_INITIALIZED", "schema already initialized by another instance")
+type PostgresBunFactory struct{}
 
-type PostgresGORMFactory struct{}
-
-func NewPostgresGORMFactory() *PostgresGORMFactory {
-	return &PostgresGORMFactory{}
+func NewPostgresBunFactory() *PostgresBunFactory {
+	return &PostgresBunFactory{}
 }
 
-func (f *PostgresGORMFactory) NewDistributedLock(resource string, ttl time.Duration) DistributedLock {
-	return NewDistributedPostgresGORMLock(resource, ttl)
+func (f *PostgresBunFactory) NewDistributedLock(resource string, ttl time.Duration) DistributedLock {
+	return NewDistributedPostgresBunLock(resource, ttl)
 }
 
-type DistributedPostgresLock struct {
+type DistributedPostgresBunLock struct {
 	BaseDistributedLock
 }
 
-var _ DistributedLock = &DistributedPostgresLock{}
+var _ DistributedLock = &DistributedPostgresBunLock{}
 
-func NewDistributedPostgresGORMLock(resource string, ttl time.Duration) *DistributedPostgresLock {
-	return &DistributedPostgresLock{
+func NewDistributedPostgresBunLock(resource string, ttl time.Duration) *DistributedPostgresBunLock {
+	return &DistributedPostgresBunLock{
 		BaseDistributedLock{
 			resource: resource,
 			id:       uuid.NewString(),
@@ -43,8 +42,8 @@ func NewDistributedPostgresGORMLock(resource string, ttl time.Duration) *Distrib
 	}
 }
 
-func setupDBGORM(tx *database.DBTx) error {
-	err := tx.Exec(`
+func setupDBBun(tx bun.Tx) error {
+	_, err := tx.Exec(`
 		CREATE SCHEMA IF NOT EXISTS distributed_lock;
 		CREATE TABLE IF NOT EXISTS distributed_lock.lock (
 			resource TEXT PRIMARY KEY,
@@ -52,7 +51,7 @@ func setupDBGORM(tx *database.DBTx) error {
 			expiration TIMESTAMP WITH TIME ZONE NOT NULL,
 			first_locked_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
 			extended_count INTEGER NOT NULL DEFAULT 0
-		)`).Error
+		)`)
 	if err == nil {
 		return nil
 	}
@@ -63,7 +62,7 @@ func setupDBGORM(tx *database.DBTx) error {
 	return err
 }
 
-func (l *DistributedPostgresLock) Lock(ctx context.Context) error {
+func (l *DistributedPostgresBunLock) Lock(ctx context.Context) error {
 	var locked bool
 	for {
 		var err error
@@ -82,59 +81,80 @@ func (l *DistributedPostgresLock) Lock(ctx context.Context) error {
 	}
 }
 
-func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err error) {
-	tx, _ := database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+func (l *DistributedPostgresBunLock) TryLock(ctx context.Context) (locked bool, err error) {
+	idb := database.GetDBFromCtx(ctx)
+	tx, err := idb.BeginTx(ctx, nil)
+	if err != nil {
+		return false, errors.NewUnknownf("failed to begin tx for locking: %w", err)
+	}
 	// we wrap the deferred call so it is not bound to this tx in case we have to re create
 	// the tx due to schema initialization race
 	defer func() {
-		tx.DeferredCommitOrRollback(&err)
+		if err != nil {
+			rbErr := tx.Rollback()
+			if rbErr != nil {
+				err = errors.NewUnknownf("failed to rollback tx after error: %v, original error: %w", rbErr, err)
+			}
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			err = errors.NewUnknownf("failed to commit tx: %w", err)
+		}
 	}()
 	var until time.Time
 	var currLockID string
 
-	err = setupDBGORM(tx)
+	err = setupDBBun(tx)
 	if err != nil {
 		if errors.Is(err, errSchemaAlreadyInitialized) {
 			log.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
 			// The transaction is dead. We need to roll it back and create a new one
-			if err = tx.Rollback().Error; err != nil {
+			if err = tx.Rollback(); err != nil {
 				return false, err
 			}
-			tx, _ = database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+			tx, err = idb.BeginTx(ctx, nil)
+			if err != nil {
+				return false, errors.NewUnknownf("failed to begin tx for locking: %w", err)
+			}
 		} else {
 			return false, err
 		}
 	}
 
-	err = tx.Raw(
+	err = tx.NewRaw(
 		"SELECT instance_id FROM distributed_lock.lock WHERE resource = ? FOR UPDATE",
 		l.resource,
-	).Scan(&currLockID).Error
+	).Scan(ctx, &currLockID)
 	if err != nil {
-		return false, err
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, errors.NewUnknownf("failed to select current lock id: %w", err)
+		}
 	}
 
 	if currLockID != "" {
-		err = tx.Raw(
+		err = tx.NewRaw(
 			`UPDATE distributed_lock.lock SET instance_id = ?, expiration = now() + INTERVAL '1 second' * ?
 		 			WHERE resource = ? AND instance_id = ? AND expiration < now() RETURNING expiration`,
 			l.id,
 			l.ttl.Seconds(),
 			l.resource,
 			currLockID,
-		).Scan(&until).Error
+		).Scan(ctx, &until)
 	} else {
-		err = tx.Raw(
+		err = tx.NewRaw(
 			`INSERT INTO distributed_lock.lock (resource, instance_id, expiration)
 					VALUES(?, ?, now() + INTERVAL '1 second' * ?)
 					ON CONFLICT DO NOTHING RETURNING expiration`,
 			l.resource,
 			l.id,
 			l.ttl.Seconds(),
-		).Scan(&until).Error
+		).Scan(ctx, &until)
 	}
 	if err != nil {
-		return false, err
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, errors.NewUnknownf("failed to acquire lock: %w", err)
+		}
 	}
 
 	logger := log.GetLoggerFromCtx(ctx)
@@ -148,14 +168,14 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 	return false, nil
 }
 
-func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
-	res := database.CurrentTx(ctx).Exec(
+func (l *DistributedPostgresBunLock) Unlock(ctx context.Context) error {
+	res, err := database.GetDBFromCtx(ctx).NewRaw(
 		"UPDATE distributed_lock.lock SET expiration = now() WHERE resource = ? AND instance_id = ? AND expiration > now()",
 		l.resource,
 		l.id,
-	)
-	if res.Error != nil {
-		return res.Error
+	).Exec(ctx)
+	if err != nil {
+		return errors.NewUnknownf("failed to unlock: %w", err)
 	}
 
 	if l.autoExtenderCancel != nil {
@@ -165,7 +185,11 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 	l.expiration = time.Time{}
 	l.extendedCount = 0
 	logger := log.GetLoggerFromCtx(ctx)
-	if res.RowsAffected != 0 {
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return errors.NewUnknownf("failed to get rows affected on unlock: %w", err)
+	}
+	if rows != 0 {
 		logger.Debugf("Lock unlocked: %s, lockID: %s", l.resource, l.id)
 	} else {
 		logger.Debugf("it was already expired or unlocked: %s, lockID: %s", l.resource, l.id)
@@ -173,10 +197,10 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 	return nil
 }
 
-func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
+func (l *DistributedPostgresBunLock) Extend(ctx context.Context) (bool, error) {
 	var until time.Time
 	var extendedCount int
-	err := database.CurrentTx(ctx).Raw(
+	err := database.GetDBFromCtx(ctx).NewRaw(
 		`UPDATE distributed_lock.lock
 				SET expiration = now() + INTERVAL '1 second' * ?,
 				    extended_count = extended_count + 1 
@@ -187,7 +211,7 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 		l.ttl.Seconds(),
 		l.resource,
 		l.id,
-	).Row().Scan(&until, &extendedCount)
+	).Scan(ctx, &until, &extendedCount)
 
 	logger := log.GetLoggerFromCtx(ctx)
 	if err != nil {
@@ -212,6 +236,6 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (l *DistributedPostgresLock) AutoExtend(ctx context.Context) (context.Context, error) {
+func (l *DistributedPostgresBunLock) AutoExtend(ctx context.Context) (context.Context, error) {
 	return autoExtend(ctx, l, &l.BaseDistributedLock)
 }

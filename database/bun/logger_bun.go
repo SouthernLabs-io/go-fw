@@ -3,6 +3,8 @@ package databasebun
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -26,8 +28,7 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	now := time.Now()
 	dur := now.Sub(event.StartTime)
 	if !logger.Enabled(config.LogLevelDebug) {
-		switch event.Err {
-		case sql.ErrNoRows, sql.ErrTxDone:
+		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) {
 			return
 		}
 	}
@@ -39,8 +40,12 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	}
 
 	if event.Err != nil {
-		attrs = append(attrs, slog.Any("error", event.Err))
-		logger.Error("Bun query error", slog.GroupAttrs("sql", attrs...))
+		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) {
+			logger.Debug(fmt.Sprintf("Bun query terminated with: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
+		} else {
+			attrs = append(attrs, slog.Any("error", event.Err))
+			logger.Error("Bun query failed", slog.GroupAttrs("sql", attrs...))
+		}
 	} else {
 		if event.Result != nil {
 			affected, err := event.Result.RowsAffected()

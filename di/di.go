@@ -3,10 +3,11 @@ package di
 import (
 	"reflect"
 
+	"github.com/uptrace/bun"
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
-	database "github.com/southernlabs-io/go-fw/database/gorm"
+	databasegorm "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 )
@@ -17,8 +18,9 @@ type BaseParams struct {
 	FxLifecycle  fx.Lifecycle
 	FxShutdowner fx.Shutdowner
 
-	Conf config.Config
-	DB   database.DB `optional:"true"`
+	Conf   config.Config
+	DBGorm databasegorm.DB `optional:"true"`
+	DBBun  *bun.DB         `optional:"true"`
 }
 
 func FxProvideAs[I any](provider any, tAnns []fx.Annotation, iAnns []fx.Annotation) fx.Option {

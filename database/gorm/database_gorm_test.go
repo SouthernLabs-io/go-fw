@@ -23,12 +23,12 @@ func TestDBTx(t *testing.T) {
 		User: "postgres",
 		Pass: "postgres",
 	}
-	db := test.NewTestDatabaseGORM(conf, lf)
+	db := test.NewTestDBGORM(conf, lf)
 	defer func(conf config.Config, lf log.LoggerFactory, db database.DB) {
-		err := test.OnTestDBStop(conf, db, lf)
+		err := test.OnTestDBGORMStop(conf, db, lf)
 		require.NoError(t, err)
 	}(conf, lf, db)
-	ctx := test.NewContext(db, lf)
+	ctx := test.NewContext(db, nil, lf)
 
 	tx, ctx2 := database.NewTx(ctx)
 	require.NotNil(t, tx)

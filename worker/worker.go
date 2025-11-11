@@ -3,11 +3,13 @@ package worker
 import (
 	"time"
 
+	"github.com/uptrace/bun"
 	"go.uber.org/fx"
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/context"
-	database "github.com/southernlabs-io/go-fw/database/gorm"
+	databasebun "github.com/southernlabs-io/go-fw/database/bun"
+	databasegorm "github.com/southernlabs-io/go-fw/database/gorm"
 	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/distributedlock"
 	"github.com/southernlabs-io/go-fw/errors"
@@ -46,7 +48,8 @@ type LongRunningWorker interface {
 type LongRunningWorkerHandler struct {
 	conf   config.Config
 	logger log.Logger
-	db     database.DB
+	dbGORM databasegorm.DB
+	dbBun  *bun.DB
 	sd     fx.Shutdowner
 
 	dlFactory distributedlock.Factory
@@ -69,7 +72,8 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 	return NewLongRunningWorkerHandler(
 		params.Conf,
 		params.LF,
-		params.DB,
+		params.DBGorm,
+		params.DBBun,
 		params.FxLifecycle,
 		params.FxShutdowner,
 		params.DLFactory,
@@ -80,7 +84,8 @@ func NewLongRunningWorkerHandlerFx(params LongRunningWorkerHandlerParams) *LongR
 func NewLongRunningWorkerHandler(
 	conf config.Config,
 	lf log.LoggerFactory,
-	db database.DB,
+	dbGORM databasegorm.DB,
+	dbBun *bun.DB,
 	fxLifecycle fx.Lifecycle,
 	fxShutdowner fx.Shutdowner,
 	dlFactory distributedlock.Factory,
@@ -90,7 +95,8 @@ func NewLongRunningWorkerHandler(
 		conf:      conf,
 		logger:    lf.GetLoggerForType(LongRunningWorkerHandler{}),
 		sd:        fxShutdowner,
-		db:        db,
+		dbGORM:    dbGORM,
+		dbBun:     dbBun,
 		dlFactory: dlFactory,
 		workers:   workers,
 		closedChn: make(chan any),
@@ -101,7 +107,10 @@ func NewLongRunningWorkerHandler(
 	))
 
 	ctx := context.Background()
-	ctx = db.AddToCtx(ctx)
+	ctx = dbGORM.AddToCtx(ctx)
+	if dbBun != nil {
+		ctx = databasebun.AddToCtx(ctx, dbBun)
+	}
 
 	wHandler.ctx, wHandler.cancelCauseFunc = context.WithCancelCause(ctx)
 

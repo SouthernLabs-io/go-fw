@@ -60,13 +60,13 @@ func TestLongRunningWorkerHandlerStartStop(t *testing.T) {
 	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
 	fxApp := test.FxIntegration(
 		t,
-		distributedlock.FxExportPostgres,
+		distributedlock.FxExportPostgresBun,
 		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
 			return NewTestLongRunningWorker("good worker")
 		}),
 	).
 		WithWorkerHandler().
-		WithDB().
+		WithDBBun().
 		Populate(&target, &sd, &longRunningWorkerHandler)
 	require.NotNil(t, sd)
 	require.NotNil(t, longRunningWorkerHandler)
