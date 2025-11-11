@@ -31,3 +31,13 @@ func ToValue[T comparable](p *T) (v T) {
 	}
 	return *p
 }
+
+// Coalesce returns the first non-nil pointer from the provided list. If all pointers are nil, it returns nil.
+func Coalesce[T comparable](ptrs ...*T) *T {
+	for _, p := range ptrs {
+		if p != nil {
+			return p
+		}
+	}
+	return nil
+}
