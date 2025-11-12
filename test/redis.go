@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"testing"
 
 	"go.uber.org/fx"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func NewTestRedis(conf config.Config, lf log.LoggerFactory) redis.Redis {
-	if conf.Env.Type != config.EnvTypeTest {
+	if !testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 

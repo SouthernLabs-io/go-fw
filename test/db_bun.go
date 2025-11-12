@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"testing"
 
 	"github.com/uptrace/bun"
 	"go.uber.org/fx"
@@ -14,7 +15,7 @@ import (
 )
 
 func NewTestDBBun(conf config.Config, lf log.LoggerFactory) *bun.DB {
-	if conf.Env.Type != config.EnvTypeTest {
+	if !testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 

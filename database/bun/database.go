@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"testing"
 
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
@@ -20,7 +21,7 @@ import (
 
 // NewDB creates a new database instance
 func NewDB(conf config.Config, lf log.LoggerFactory) (*bun.DB, error) {
-	if conf.Env.Type == config.EnvTypeTest {
+	if testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 

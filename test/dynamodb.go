@@ -14,7 +14,7 @@ import (
 )
 
 func NewTestDynamoDB(_ testing.TB, ctx context.Context, conf config.Config, dynamoDBClient *awsdynamodb.Client) *dynamodb.DynamoDB {
-	if conf.Env.Type != config.EnvTypeTest {
+	if !testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "not in a test: %+v", conf.Env))
 	}
 

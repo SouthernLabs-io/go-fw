@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"testing"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
@@ -16,7 +17,7 @@ type Redis struct {
 }
 
 func NewRedis(conf config.Config, lf log.LoggerFactory) *Redis {
-	if conf.Env.Type == config.EnvTypeTest {
+	if testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 

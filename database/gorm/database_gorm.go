@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/stdlib"
@@ -29,7 +30,7 @@ type DB struct {
 
 // NewDB creates a new database instance
 func NewDB(conf config.Config, lf log.LoggerFactory) DB {
-	if conf.Env.Type == config.EnvTypeTest {
+	if testing.Testing() {
 		panic(errors.Newf(errors.ErrCodeBadState, "in a test: %+v", conf.Env))
 	}
 
