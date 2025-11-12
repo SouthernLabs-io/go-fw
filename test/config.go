@@ -1,7 +1,9 @@
 package test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"go.uber.org/fx"
 
@@ -21,7 +23,7 @@ func NewTestRootConfig(tb testing.TB) config.RootConfig {
 	if rootConf.Name == "" {
 		rootConf.Name = "test-service"
 	}
-	rootConf.Name += "-" + tb.Name()
+	rootConf.Name += fmt.Sprintf("-%s-%d", tb.Name(), time.Now().UnixNano())
 
 	// Force test environment
 	rootConf.Env = config.EnvConfig{
