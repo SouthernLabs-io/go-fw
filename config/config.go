@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -251,11 +252,18 @@ func GetRootConfig() RootConfig {
 	return loadRootConfigOnce()
 }
 
+// LoadConfig loads configuration into the provided dst struct from various sources. It will then write the give RootConfig into dst if it embeds it.
 func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
 	if secretsMgr == nil {
 		secretsMgr = PanicSecretsManager{}
 	}
 	loadConfig(dst, loadSecrets(root, secretsMgr))
+
+	// Use reflection to set RootConfig field in dst if it embeds it
+	sField, exists := reflect.TypeOf(dst).Elem().FieldByName("RootConfig")
+	if exists && sField.Type == reflect.TypeOf(RootConfig{}) {
+		reflect.ValueOf(dst).Elem().FieldByName("RootConfig").Set(reflect.ValueOf(root))
+	}
 }
 
 // FxExport exports dependency
