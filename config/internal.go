@@ -18,11 +18,11 @@ import (
 	"github.com/southernlabs-io/go-fw/sync"
 )
 
-// findConfigFile calls the recursiveFileFinder, to find a config file in Test model.
+// findConfigFile calls the recursiveTestFileFinder, to find a config file in Test model.
 // If the file is not found, an os.ErrNotExist will be returned.
 func findConfigFile(fileName string) (string, error) {
 	if testing.Testing() {
-		return recursiveFileFinder(fileName, "")
+		return recursiveTestFileFinder(fileName, "")
 	}
 
 	abs, err := filepath.Abs(fileName)
@@ -55,17 +55,17 @@ func absFile(relFilePath string) (string, error) {
 	return filePath, nil
 }
 
-// recursiveFileFinder will traverse the filesystem looking for a file with the given name.
+// recursiveTestFileFinder will traverse the filesystem looking for a file with the given name.
 // The algorithm to search is as follows:
 //
-//  1. Check if the file exists in a sub-folder called test.
+//  1. Check if the file exists in a sub-folder called testdata.
 //  2. Check if the file exists in current folder.
-//  3. Check if the current folder has a go.mod file, if not, then step one level up and repeat the process.
+//  3. Go up one folder and repeat, unless this is the root of the Go module by checking the presence of go.mod file.
 //
 // An os.ErrNotExist will be returned if it was not found.
-func recursiveFileFinder(fileName string, prefix string) (string, error) {
-	// 1. Check if the file exists in a sub-folder called test.
-	filePath, err := absFile(filepath.Join(prefix, "test", fileName))
+func recursiveTestFileFinder(fileName string, prefix string) (string, error) {
+	// 1. Check if the file exists in a sub-folder called testdata.
+	filePath, err := absFile(filepath.Join(prefix, "testdata", fileName))
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func recursiveFileFinder(fileName string, prefix string) (string, error) {
 				if string(filepath.Separator) == filepath.Base(filePath) {
 					return "", os.ErrNotExist
 				}
-				return recursiveFileFinder(fileName, "../"+prefix)
+				return recursiveTestFileFinder(fileName, "../"+prefix)
 			} else {
 				// go.mod exists in the current folder, but the file was not found.
 				return "", os.ErrNotExist
