@@ -23,14 +23,17 @@ func AddToCtx(ctx context.Context, db bun.IDB) context.Context {
 	return fw_context.WithValue(ctx, database.DBCtxKey, db)
 }
 
-// NewTx starts a new Bun transaction and returns a new context containing the transaction.
-func NewTx(ctx context.Context) (context.Context, bun.Tx, error) {
-	db := GetDBFromCtx(ctx)
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return ctx, bun.Tx{}, err
-	}
-
-	ctx = AddToCtx(ctx, tx)
-	return ctx, tx, nil
+func RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	idb := GetDBFromCtx(ctx)
+	return idb.RunInTx(ctx, nil, func(ctxTx context.Context, tx bun.Tx) error {
+		defer func() {
+			// We need to restore the original DB in the context after the transaction ends if we are in an http request.
+			// This is because the rest package uses a mutable context.
+			if ctx == ctxTx {
+				ctx = AddToCtx(ctx, idb)
+			}
+		}()
+		ctxTx = AddToCtx(ctxTx, tx)
+		return fn(ctxTx)
+	})
 }
