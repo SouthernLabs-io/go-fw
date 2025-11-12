@@ -22,9 +22,9 @@ type DatabaseConfig struct {
 	User string
 	Pass string
 
-	MaxOpenConns int
-	MaxIdleConns int
-	ConnMaxIdle  time.Duration
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxIdleTime time.Duration
 }
 
 type CORS struct {

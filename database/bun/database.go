@@ -41,7 +41,7 @@ func WrapWithBun(conf config.Config, slqDB *sql.DB) *bun.DB {
 	// Set connection pool settings
 	bunDB.SetMaxOpenConns(conf.Database.MaxOpenConns)
 	bunDB.SetMaxIdleConns(conf.Database.MaxIdleConns)
-	bunDB.SetConnMaxLifetime(conf.Database.ConnMaxIdle)
+	bunDB.SetConnMaxIdleTime(conf.Database.ConnMaxIdleTime)
 
 	// Add query logger
 	bunDB.AddQueryHook(&BunLogger{})
