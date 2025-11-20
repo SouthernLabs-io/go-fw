@@ -339,6 +339,12 @@ func NewNotFoundf(format string, args ...any) *Error {
 	return Newf(ErrCodeNotFound, format, args...)
 }
 
+// NewNotAllowedf creates a new error with the ErrCodeNotAllowed code and the given message format/args.
+// This errors should be mapped to HTTP 403.
+func NewNotAllowedf(format string, args ...any) *Error {
+	return Newf(ErrCodeNotAllowed, format, args...)
+}
+
 //#region copy from errors.go
 
 // ErrUnsupported is a copy of the errors.ErrUnsupported variable from the go std core.
