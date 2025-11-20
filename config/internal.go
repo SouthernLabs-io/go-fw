@@ -208,6 +208,8 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 				if envVal, ok := envMap[envKey]; ok {
 					logger.Info(fmt.Sprintf("[%T] Using env key: %s", *conf, envKey))
 					m[key] = envVal
+				} else {
+					logger.Debug(fmt.Sprintf("[%T] Env key: %s not found", *conf, envKey))
 				}
 			}
 		}
