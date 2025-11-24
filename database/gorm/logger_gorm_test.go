@@ -48,7 +48,7 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 
 	require.Greater(t, buffer.Len(), 0, "Expected log messages")
 	var logMsg map[string]any
-	for _, logMsgStr := range strings.Split(buffer.String(), "\n") {
+	for logMsgStr := range strings.SplitSeq(buffer.String(), "\n") {
 		if logMsgStr == "" {
 			continue
 		}
@@ -56,10 +56,10 @@ func TestGormLoggerSkipCallers(t *testing.T) {
 		require.NoError(t, json.Unmarshal([]byte(logMsgStr), &logMsg))
 		loggerMap, isMap := logMsg["logger"].(map[string]any)
 		require.True(t, isMap)
-		loggerName := loggerMap["method_name"].(string)
+		loggerMethodName := loggerMap["method_name"].(string)
 		require.True(t,
-			strings.HasPrefix(loggerName, "gorm.io/gorm") ||
-				strings.HasPrefix(loggerName, "github.com/southernlabs-io/go-fw/database_test"),
+			strings.HasPrefix(loggerMethodName, "gorm.io/gorm") ||
+				strings.HasPrefix(loggerMethodName, "github.com/southernlabs-io/go-fw/database/gorm_test"),
 			logMsgStr,
 		)
 	}
