@@ -339,6 +339,12 @@ func NewNotFoundf(format string, args ...any) *Error {
 	return Newf(ErrCodeNotFound, format, args...)
 }
 
+// NewNotAuthenticatedf creates a new error with the ErrCodeNotAuthenticated code and the given message format/args.
+// This errors should be mapped to HTTP 401.
+func NewNotAuthenticatedf(format string, args ...any) *Error {
+	return Newf(ErrCodeNotAuthenticated, format, args...)
+}
+
 // NewNotAllowedf creates a new error with the ErrCodeNotAllowed code and the given message format/args.
 // This errors should be mapped to HTTP 403.
 func NewNotAllowedf(format string, args ...any) *Error {
