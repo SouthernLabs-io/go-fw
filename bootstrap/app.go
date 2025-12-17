@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Short: "Go service",
 	Long: `
 	This is a command runner or cli for service architecture in golang.
-	It is build with uber-go/fx, gin-gonic/gin and based on dipeshdulal/clean-gin. 
+	It is build with uber-go/fx and based on dipeshdulal/clean-gin. 
 	`,
 	TraverseChildren: true,
 }
