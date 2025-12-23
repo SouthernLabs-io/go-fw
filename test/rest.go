@@ -6,13 +6,16 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/fx"
 
-	rest "github.com/southernlabs-io/go-fw/rest_gin"
-	"github.com/southernlabs-io/go-fw/rest_gin/middleware"
-	middlewaremocks "github.com/southernlabs-io/go-fw/rest_gin/middleware/mocks"
+	"github.com/southernlabs-io/go-fw/rest/middleware"
+	rest_gin "github.com/southernlabs-io/go-fw/rest_gin"
+	middleware_gin "github.com/southernlabs-io/go-fw/rest_gin/middleware"
+	middleware_gin_mocks "github.com/southernlabs-io/go-fw/rest_gin/middleware/mocks"
+
+	rest "github.com/southernlabs-io/go-fw/rest"
 )
 
-func NewMockAuthN(t *testing.T, principal middleware.Principal) fx.Option {
-	mockAuthNProvider := middlewaremocks.NewAuthNProvider(t)
+func NewMockAuthNGin(t *testing.T, principal middleware_gin.Principal) fx.Option {
+	mockAuthNProvider := middleware_gin_mocks.NewAuthNProvider(t)
 	if principal != nil {
 		mockAuthNProvider.EXPECT().Authenticate(mock.Anything).Return(principal, nil).Maybe()
 	} else {
@@ -21,7 +24,13 @@ func NewMockAuthN(t *testing.T, principal middleware.Principal) fx.Option {
 	return fx.Supply(fx.Annotate(mockAuthNProvider, fx.As(new(middleware.AuthNProvider))))
 }
 
+var FxExportRestGin = fx.Options(
+	fx.Provide(NewTestHTTPHandlerGin),
+	fx.Invoke(rest_gin.NewResources),
+)
+
 var FxExportRest = fx.Options(
-	fx.Provide(NewTestHTTPHandler),
-	fx.Invoke(rest.NewResources),
+	middleware.FxExport,
+	fx.Provide(rest.NewResources),
+	fx.Provide(rest.NewStdServer),
 )

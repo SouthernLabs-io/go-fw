@@ -8,7 +8,7 @@ import (
 	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
 
-func NewTestHTTPHandler(conf config.Config, lf log.LoggerFactory) rest.HTTPHandler {
+func NewTestHTTPHandlerGin(conf config.Config, lf log.LoggerFactory) rest.HTTPHandler {
 	ginLogger := lf.GetLoggerForType(&gin.Engine{})
 	gin.DefaultWriter = rest.NewDefaultGinWriter(ginLogger)
 	gin.DefaultErrorWriter = rest.NewDefaultErrorGinWriter(ginLogger)

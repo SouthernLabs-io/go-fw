@@ -177,5 +177,3 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		}
 	})
 }
-
-var RequestLoggerModule = ProvideAsMiddleware(NewRequestLogger)

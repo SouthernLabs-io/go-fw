@@ -6,25 +6,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/southernlabs-io/go-fw/rest_gin"
+	"gopkg.in/yaml.v3"
 )
 
 // HTTPHandlerClient is a client for testing HTTPHandler implementations.
 type HTTPHandlerClient struct {
-	t           *testing.T
-	httpHandler rest.HTTPHandler
-	headers     http.Header
+	t       *testing.T
+	baseURL string
+	headers http.Header
+	client  *http.Client
 }
 
-func NewHTTPClient(t *testing.T, httpHandler rest.HTTPHandler) *HTTPHandlerClient {
+func NewHTTPClient(t *testing.T, baseURL string, client *http.Client) *HTTPHandlerClient {
 	return &HTTPHandlerClient{
-		t:           t,
-		httpHandler: httpHandler,
+		t:       t,
+		baseURL: baseURL,
+		client:  client,
 	}
 }
 
@@ -33,48 +33,88 @@ func (c *HTTPHandlerClient) SetHeaders(headers http.Header) *HTTPHandlerClient {
 	return c
 }
 
-func (c *HTTPHandlerClient) GET(
-	urlFormat string,
-	args ...any,
-) *Response {
-	return c.Do(http.MethodGet, fmt.Sprintf(urlFormat, args...), nil)
+type BodyType string
+
+const (
+	BodyTypeText   BodyType = "text"
+	BodyTypeJSON   BodyType = "json"
+	BodyTypeYAML   BodyType = "yaml"
+	BodyTypeBinary BodyType = "binary"
+)
+
+type RequestArgs struct {
+	Body      any
+	BodyType  BodyType
+	UrlFormat string
+	Headers   http.Header
 }
 
-func (c *HTTPHandlerClient) POST(
-	body any,
-	urlFormat string,
-	args ...any,
-) *Response {
-	return c.Do(http.MethodPost, fmt.Sprintf(urlFormat, args...), body)
+func (c *HTTPHandlerClient) GET(req RequestArgs, urlArgs ...any) *Response {
+	return c.Do(http.MethodGet, req, urlArgs...)
 }
 
-func (c *HTTPHandlerClient) PATCH(
-	body any,
-	urlFormat string,
-	args ...any,
-) *Response {
-	return c.Do(http.MethodPatch, fmt.Sprintf(urlFormat, args...), body)
+func (c *HTTPHandlerClient) POST(req RequestArgs, urlArgs ...any) *Response {
+	return c.Do(http.MethodPost, req, urlArgs...)
 }
 
-func (c *HTTPHandlerClient) DELETE(
-	urlFormat string,
-	args ...any,
-) *Response {
-	return c.Do(http.MethodDelete, fmt.Sprintf(urlFormat, args...), nil)
+func (c *HTTPHandlerClient) PATCH(req RequestArgs, urlArgs ...any) *Response {
+	return c.Do(http.MethodPatch, req, urlArgs...)
 }
 
-func (c *HTTPHandlerClient) Do(method, url string, body any) *Response {
+func (c *HTTPHandlerClient) PUT(req RequestArgs, urlArgs ...any) *Response {
+	return c.Do(http.MethodPut, req, urlArgs...)
+}
+
+func (c *HTTPHandlerClient) DELETE(req RequestArgs, urlArgs ...any) *Response {
+	return c.Do(http.MethodDelete, req, urlArgs...)
+}
+
+func (c *HTTPHandlerClient) Do(method string, reqArgs RequestArgs, urlArgs ...any) *Response {
+	// Prepare body
 	var reader io.Reader
-	if body != nil {
-		if bodyReader, ok := body.(io.Reader); ok {
-			reader = bodyReader
-		} else {
-			jsonBytes, err := json.Marshal(body)
-			require.NoError(c.t, err)
-			reader = bytes.NewReader(jsonBytes)
+	if reqArgs.Body != nil {
+		switch reqArgs.BodyType {
+		case BodyTypeText:
+			if reqArgs.Body != nil {
+				if bodyStr, ok := reqArgs.Body.(string); ok {
+					reader = bytes.NewReader([]byte(bodyStr))
+				} else if bodyBytes, ok := reqArgs.Body.([]byte); ok {
+					reader = bytes.NewReader(bodyBytes)
+				} else {
+					require.Fail(c.t, "Body must be string or []byte for BodyTypeText")
+				}
+			}
+		case BodyTypeJSON:
+			if reqArgs.Body != nil {
+				jsonBytes, err := json.Marshal(reqArgs.Body)
+				require.NoError(c.t, err)
+				reader = bytes.NewReader(jsonBytes)
+			}
+		case BodyTypeYAML:
+			if reqArgs.Body != nil {
+				yamlBytes, err := yaml.Marshal(reqArgs.Body)
+				require.NoError(c.t, err)
+				reader = bytes.NewReader(yamlBytes)
+			}
+		case BodyTypeBinary:
+			if reqArgs.Body != nil {
+				if bodyReader, ok := reqArgs.Body.(io.Reader); ok {
+					reader = bodyReader
+				} else if bodyBytes, ok := reqArgs.Body.([]byte); ok {
+					reader = bytes.NewReader(bodyBytes)
+				} else {
+					require.Fail(c.t, "Body must be io.Reader or []byte for BodyTypeBinary")
+				}
+			}
+		default:
+			require.Fail(c.t, "Unsupported BodyType", reqArgs.BodyType)
 		}
 	}
 
+	// Format URL
+	url := fmt.Sprintf("%s"+reqArgs.UrlFormat, append([]any{c.baseURL}, urlArgs...)...)
+
+	// Create request
 	req, err := http.NewRequest(
 		method,
 		url,
@@ -82,40 +122,77 @@ func (c *HTTPHandlerClient) Do(method, url string, body any) *Response {
 	)
 	require.NoError(c.t, err)
 
-	req.Header = c.headers
-
-	res := &Response{
-		t:  c.t,
-		rr: httptest.NewRecorder(),
+	// Set Content-Type header
+	if reqArgs.Body != nil &&
+		(reqArgs.Headers == nil || len(reqArgs.Headers.Values("Content-Type")) == 0) {
+		switch reqArgs.BodyType {
+		case BodyTypeText:
+			req.Header.Set("Content-Type", "text/plain")
+		case BodyTypeJSON:
+			req.Header.Set("Content-Type", "application/json")
+		case BodyTypeYAML:
+			req.Header.Set("Content-Type", "application/x-yaml")
+		case BodyTypeBinary:
+			req.Header.Set("Content-Type", "application/octet-stream")
+		}
 	}
-	c.httpHandler.Engine.ServeHTTP(res.rr, req)
-	return res
+
+	// Set client default headers
+	for key, values := range c.headers {
+		for _, value := range values {
+			req.Header.Set(key, value)
+		}
+	}
+
+	// Set request specific headers
+	for key, values := range reqArgs.Headers {
+		for _, value := range values {
+			req.Header.Set(key, value)
+		}
+	}
+
+	// Do request
+	res, err := c.client.Do(req)
+	require.NoError(c.t, err)
+	return NewResponse(c.t, res)
 }
 
 type Response struct {
-	t  *testing.T
-	rr *httptest.ResponseRecorder
+	t    *testing.T
+	rr   *http.Response
+	body *bytes.Buffer
+}
+
+func NewResponse(t *testing.T, rr *http.Response) *Response {
+	body := bytes.Buffer{}
+	_, err := io.Copy(&body, rr.Body)
+	require.NoError(t, err)
+	err = rr.Body.Close()
+	require.NoError(t, err)
+	return &Response{
+		t:    t,
+		rr:   rr,
+		body: &body,
+	}
 }
 
 // RequireJSONBodyAs decodes the response body as JSON into the given body.
 // Target must be a reference to store the deserialized body.
 func (r *Response) RequireJSONBodyAs(target any) {
-	require.Equal(r.t, "application/json; charset=utf-8", r.rr.Header().Get("Content-Type"))
-	require.Greater(r.t, r.rr.Body.Len(), 0)
-	err := json.NewDecoder(r.rr.Body).Decode(target)
+	require.Equal(r.t, "application/json", r.rr.Header.Get("Content-Type"))
+	require.Greater(r.t, r.body.Len(), 0)
+	err := json.NewDecoder(r.body).Decode(target)
 	require.NoError(r.t, err)
 }
 
-func (r *Response) RequireStatus(status int) *Response {
-	require.Equalf(r.t, status, r.rr.Code, "expected status %d, got %d, body: %s", status, r.rr.Code, r.rr.Body.String())
-	return r
+func (r *Response) RequireStatus(status int) {
+	require.Equalf(r.t, status, r.rr.StatusCode, "expected status %d, got %d, url: %s, body: %s", status, r.rr.StatusCode, r.rr.Request.RequestURI, r.body.String())
 }
 
-func (r *Response) RequireHeader(header, value string) *Response {
-	require.Contains(r.t, r.rr.Header().Values(header), value)
-	return r
+func (r *Response) RequireHeader(header, value string) {
+	require.Contains(r.t, r.rr.Header.Values(header), value)
 }
 
 func (r *Response) RequireEmptyBody() {
-	require.Empty(r.t, r.rr.Body)
+	require.Empty(r.t, r.body)
 }

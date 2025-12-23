@@ -99,10 +99,18 @@ func (a *FxApp) WithRedis() *FxApp {
 	return a
 }
 
+func (a *FxApp) WithHTTPHandlerGin() *FxApp {
+	a.opts = fx.Options(
+		a.opts,
+		FxExportMiddlewaresGin,
+		FxExportRestGin,
+	)
+	return a
+}
+
 func (a *FxApp) WithHTTPHandler() *FxApp {
 	a.opts = fx.Options(
 		a.opts,
-		FxExportMiddlewares,
 		FxExportRest,
 	)
 	return a

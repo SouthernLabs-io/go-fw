@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"testing"
 
 	"go.uber.org/fx"
 
@@ -116,6 +117,10 @@ func NewStdServer(deps struct {
 
 	lc.Append(fx.StartStopHook(
 		func() error {
+			if testing.Testing() {
+				logger.Infof("Skipping http server start in testing mode")
+				return nil
+			}
 			bindAddress := fmt.Sprintf("%s:%d", conf.HttpServer.BindAddress, conf.HttpServer.Port)
 			ln, err := net.Listen("tcp", bindAddress)
 			if err != nil {
@@ -132,6 +137,10 @@ func NewStdServer(deps struct {
 			return nil
 		},
 		func(ctx context.Context) {
+			if testing.Testing() {
+				logger.Infof("Skipping http server shutdown in testing mode")
+				return
+			}
 			err := srv.Shutdown(ctx)
 			if err != nil {
 				logger.Errorf("Error while shutting down http server: %s", err)
@@ -204,7 +213,7 @@ func (srv *_StdServer) RegisterFuncWithOptions(verb string, pathPattern string, 
 }
 
 func (srv *_StdServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	srv.mux.ServeHTTP(w, r)
+	srv.preMuxHandler.ServeHTTP(w, r)
 }
 
 func (srv *_StdServer) Close() error {
