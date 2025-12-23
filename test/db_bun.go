@@ -10,6 +10,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	database "github.com/southernlabs-io/go-fw/database/bun"
+	"github.com/southernlabs-io/go-fw/di"
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 )
@@ -72,9 +73,4 @@ func OnTestDBBunStop(ctx context.Context, conf config.Config, db *bun.DB, lf log
 	return nil
 }
 
-var TestFxExportDBBun = fx.Provide(
-	fx.Annotate(
-		NewTestDBBun,
-		fx.OnStop(OnTestDBBunStop),
-	),
-)
+var TestFxExportDBBun = di.FxProvideAs[bun.IDB](NewTestDBBun, []fx.Annotation{fx.OnStop(OnTestDBBunStop)}, nil)
