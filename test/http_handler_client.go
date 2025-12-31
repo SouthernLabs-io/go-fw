@@ -196,3 +196,11 @@ func (r *Response) RequireHeader(header, value string) {
 func (r *Response) RequireEmptyBody() {
 	require.Empty(r.t, r.body)
 }
+
+func (r *Response) Body() []byte {
+	return r.body.Bytes()
+}
+
+func (r *Response) StatusCode() int {
+	return r.rr.StatusCode
+}
