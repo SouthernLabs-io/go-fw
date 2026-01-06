@@ -2,6 +2,7 @@ package databasebun
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/uptrace/bun"
 
@@ -23,9 +24,9 @@ func AddToCtx(ctx context.Context, db bun.IDB) context.Context {
 	return fw_context.WithValue(ctx, database.DBCtxKey, db)
 }
 
-func RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+func RunInTxWithOpts(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context) error) error {
 	idb := GetDBFromCtx(ctx)
-	return idb.RunInTx(ctx, nil, func(ctxTx context.Context, tx bun.Tx) error {
+	return idb.RunInTx(ctx, opts, func(ctxTx context.Context, tx bun.Tx) error {
 		defer func() {
 			// We need to restore the original DB in the context after the transaction ends if we are in an http request.
 			// This is because the rest package uses a mutable context.
@@ -36,4 +37,8 @@ func RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
 		ctxTx = AddToCtx(ctxTx, tx)
 		return fn(ctxTx)
 	})
+}
+
+func RunInTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return RunInTxWithOpts(ctx, nil, fn)
 }
