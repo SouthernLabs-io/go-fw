@@ -8,6 +8,7 @@ import (
 
 	fw_context "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/errors"
 )
 
 func GetDBFromCtx(ctx context.Context) bun.IDB {
@@ -26,6 +27,9 @@ func AddToCtx(ctx context.Context, db bun.IDB) context.Context {
 
 func RunInTxWithOpts(ctx context.Context, opts *sql.TxOptions, fn func(ctx context.Context) error) error {
 	idb := GetDBFromCtx(ctx)
+	if idb == nil {
+		return errors.NewUnknownf("no database found in context")
+	}
 	return idb.RunInTx(ctx, opts, func(ctxTx context.Context, tx bun.Tx) error {
 		defer func() {
 			// We need to restore the original DB in the context after the transaction ends if we are in an http request.
