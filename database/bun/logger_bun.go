@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
@@ -43,7 +44,14 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) {
 			logger.Debug(fmt.Sprintf("Bun query terminated with: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
 		} else {
-			attrs = append(attrs, slog.Any("error", event.Err))
+			err := event.Err
+			var pgErr pgdriver.Error
+
+			if errors.As(err, &pgErr) {
+				// Create a new error with pgErr extra fields
+				err = fmt.Errorf("%w, with pg.details: %q, pg.where: %q, pg.column: %q, pg.constraint: %q", pgErr, pgErr.Field('D'), pgErr.Field('W'), pgErr.Field('c'), pgErr.Field('n'))
+			}
+			attrs = append(attrs, slog.Any("error", err))
 			logger.Error("Bun query failed", slog.GroupAttrs("sql", attrs...))
 		}
 	} else {
