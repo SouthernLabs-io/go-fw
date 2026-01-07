@@ -42,11 +42,22 @@ const (
 	BodyTypeBinary BodyType = "binary"
 )
 
+type AcceptType string
+
+const (
+	AcceptTypeJSON   AcceptType = "json"
+	AcceptTypeYAML   AcceptType = "yaml"
+	AcceptTypeBinary AcceptType = "binary"
+	AcceptTypeText   AcceptType = "text"
+	AcceptTypeSSE    AcceptType = "sse"
+)
+
 type RequestArgs struct {
 	Body      any
 	BodyType  BodyType
 	UrlFormat string
 	Headers   http.Header
+	Accept    AcceptType
 }
 
 func (c *HTTPHandlerClient) GET(req RequestArgs, urlArgs ...any) *Response {
@@ -112,7 +123,12 @@ func (c *HTTPHandlerClient) Do(method string, reqArgs RequestArgs, urlArgs ...an
 	}
 
 	// Format URL
-	url := fmt.Sprintf("%s"+reqArgs.UrlFormat, append([]any{c.baseURL}, urlArgs...)...)
+	var url string
+	if len(urlArgs) > 0 {
+		url = fmt.Sprintf("%s"+reqArgs.UrlFormat, append([]any{c.baseURL}, urlArgs...)...)
+	} else {
+		url = c.baseURL + reqArgs.UrlFormat
+	}
 
 	// Create request
 	req, err := http.NewRequest(
@@ -150,6 +166,25 @@ func (c *HTTPHandlerClient) Do(method string, reqArgs RequestArgs, urlArgs ...an
 			req.Header.Set(key, value)
 		}
 	}
+	// Set Accept header
+	if reqArgs.Accept != "" {
+		acceptVal := ""
+		switch reqArgs.Accept {
+		case AcceptTypeJSON:
+			acceptVal = "application/json"
+		case AcceptTypeYAML:
+			acceptVal = "application/yaml"
+		case AcceptTypeBinary:
+			acceptVal = "application/octet-stream"
+		case AcceptTypeText:
+			acceptVal = "text/plain"
+		case AcceptTypeSSE:
+			acceptVal = "text/event-stream"
+		default:
+			require.Fail(c.t, "Unsupported AcceptType", reqArgs.Accept)
+		}
+		req.Header.Set("Accept", acceptVal)
+	}
 
 	// Do request
 	res, err := c.client.Do(req)
@@ -164,15 +199,9 @@ type Response struct {
 }
 
 func NewResponse(t *testing.T, rr *http.Response) *Response {
-	body := bytes.Buffer{}
-	_, err := io.Copy(&body, rr.Body)
-	require.NoError(t, err)
-	err = rr.Body.Close()
-	require.NoError(t, err)
 	return &Response{
-		t:    t,
-		rr:   rr,
-		body: &body,
+		t:  t,
+		rr: rr,
 	}
 }
 
@@ -180,8 +209,8 @@ func NewResponse(t *testing.T, rr *http.Response) *Response {
 // Target must be a reference to store the deserialized body.
 func (r *Response) RequireJSONBodyAs(target any) {
 	require.Equal(r.t, "application/json", r.rr.Header.Get("Content-Type"))
-	require.Greater(r.t, r.body.Len(), 0)
-	err := json.NewDecoder(r.body).Decode(target)
+	require.Greater(r.t, len(r.BodyBytes()), 0)
+	err := json.NewDecoder(r.Body()).Decode(target)
 	require.NoError(r.t, err)
 }
 
@@ -194,11 +223,34 @@ func (r *Response) RequireHeader(header, value string) {
 }
 
 func (r *Response) RequireEmptyBody() {
-	require.Empty(r.t, r.body)
+	require.Empty(r.t, r.BodyBytes())
 }
 
-func (r *Response) Body() []byte {
+func (r *Response) BodyBytes() []byte {
+	if r.body == nil {
+		buff := &bytes.Buffer{}
+		_, err := io.Copy(buff, r.rr.Body)
+		require.NoError(r.t, err)
+		err = r.rr.Body.Close()
+		require.NoError(r.t, err)
+		r.body = buff
+	}
 	return r.body.Bytes()
+}
+
+func (r *Response) BodyString() string {
+	bytes := r.BodyBytes()
+	if bytes == nil {
+		return "<nil>"
+	}
+	return string(bytes)
+}
+
+func (r *Response) Body() io.ReadCloser {
+	if r.body == nil {
+		return r.rr.Body
+	}
+	return io.NopCloser(r.body)
 }
 
 func (r *Response) StatusCode() int {
