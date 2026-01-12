@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/driver/pgdriver"
 
 	database "github.com/southernlabs-io/go-fw/database/bun"
 	"github.com/southernlabs-io/go-fw/errors"
@@ -55,8 +55,8 @@ func setupDBBun(tx bun.Tx) error {
 	if err == nil {
 		return nil
 	}
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.ConstraintName == "pg_namespace_nspname_index" {
+	var pgErr pgdriver.Error
+	if errors.As(err, &pgErr) && pgErr.Field('n') == "pg_namespace_nspname_index" {
 		return errSchemaAlreadyInitialized
 	}
 	return err
