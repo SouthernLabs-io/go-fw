@@ -257,7 +257,7 @@ func LoadConfig[T any](root RootConfig, dst *T, secretsMgr SecretsManager) {
 	if secretsMgr == nil {
 		secretsMgr = PanicSecretsManager{}
 	}
-	loadConfig(dst, loadSecrets(root, secretsMgr))
+	loadConfig(dst, loadSecrets(secretsMgr))
 
 	// Use reflection to set RootConfig field in dst if it embeds it
 	sField, exists := reflect.TypeOf(dst).Elem().FieldByName("RootConfig")

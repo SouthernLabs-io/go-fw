@@ -240,11 +240,8 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 	}
 }
 
-func loadSecrets(conf RootConfig, secretsMgr SecretsManager) func(map[string]any) {
+func loadSecrets(secretsMgr SecretsManager) func(map[string]any) {
 	return func(confMap map[string]any) {
-		if conf.Env.Type == EnvTypeTest {
-			return
-		}
 		ctx := context.Background()
 
 		var traverse func(string, map[string]any)
