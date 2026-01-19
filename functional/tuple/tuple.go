@@ -25,6 +25,10 @@ func (t Tuple[T1, T2]) Second() T2 {
 	return t.second
 }
 
+func (t Tuple[T1, T2]) Deconstruct() (T1, T2) {
+	return t.first, t.second
+}
+
 func (t Tuple[T1, T2]) All() iter.Seq2[int, any] {
 	return func(yield func(int, any) bool) {
 		_ = yield(0, t.first) && yield(1, t.second)
@@ -96,6 +100,10 @@ func (t Tuple3[T1, T2, T3]) Second() T2 {
 
 func (t Tuple3[T1, T2, T3]) Third() T3 {
 	return t.third
+}
+
+func (t Tuple3[T1, T2, T3]) Deconstruct() (T1, T2, T3) {
+	return t.first, t.second, t.third
 }
 
 func (t Tuple3[T1, T2, T3]) All() iter.Seq2[int, any] {
