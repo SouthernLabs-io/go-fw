@@ -13,7 +13,7 @@ type Tuple[T1 any, T2 any] struct {
 	second T2
 }
 
-func NewTuple[T1 any, T2 any](first T1, second T2) Tuple[T1, T2] {
+func New[T1 any, T2 any](first T1, second T2) Tuple[T1, T2] {
 	return Tuple[T1, T2]{first: first, second: second}
 }
 
@@ -69,11 +69,11 @@ func (t Tuple[T1, T2]) ToSlice() []any {
 }
 
 func (t Tuple[T1, T2]) Swap() Tuple[T2, T1] {
-	return NewTuple(t.second, t.first)
+	return New(t.second, t.first)
 }
 
 func (t Tuple[T1, T2]) Clone() Tuple[T1, T2] {
-	return NewTuple(t.first, t.second)
+	return New(t.first, t.second)
 }
 
 type Tuple3[T1 any, T2 any, T3 any] struct {
@@ -82,7 +82,7 @@ type Tuple3[T1 any, T2 any, T3 any] struct {
 	third  T3
 }
 
-func NewTuple3[T1 any, T2 any, T3 any](first T1, second T2, third T3) Tuple3[T1, T2, T3] {
+func New3[T1 any, T2 any, T3 any](first T1, second T2, third T3) Tuple3[T1, T2, T3] {
 	return Tuple3[T1, T2, T3]{first: first, second: second, third: third}
 }
 
@@ -144,18 +144,18 @@ func (t Tuple3[T1, T2, T3]) ToSlice() []any {
 }
 
 func (t Tuple3[T1, T2, T3]) Swap() Tuple3[T3, T2, T1] {
-	return NewTuple3(t.third, t.second, t.first)
+	return New3(t.third, t.second, t.first)
 }
 
 func (t Tuple3[T1, T2, T3]) Clone() Tuple3[T1, T2, T3] {
-	return NewTuple3(t.first, t.second, t.third)
+	return New3(t.first, t.second, t.third)
 }
 
 type TupleN[T any] struct {
 	elements []T
 }
 
-func NewTupleN[T any](elements ...T) TupleN[T] {
+func NewN[T any](elements ...T) TupleN[T] {
 	return TupleN[T]{elements: elements}
 }
 

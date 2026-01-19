@@ -9,38 +9,38 @@ import (
 )
 
 func TestNewTuple(t *testing.T) {
-	t1 := tuple.NewTuple(1, "hello")
+	t1 := tuple.New(1, "hello")
 	require.NotNil(t, t1)
 	require.Equal(t, 1, t1.First())
 	require.Equal(t, "hello", t1.Second())
 }
 
 func TestTupleFirst(t *testing.T) {
-	t1 := tuple.NewTuple(42, "world")
+	t1 := tuple.New(42, "world")
 	require.Equal(t, 42, t1.First())
 
-	t2 := tuple.NewTuple("foo", 3.14)
+	t2 := tuple.New("foo", 3.14)
 	require.Equal(t, "foo", t2.First())
 }
 
 func TestTupleSecond(t *testing.T) {
-	t1 := tuple.NewTuple(42, "world")
+	t1 := tuple.New(42, "world")
 	require.Equal(t, "world", t1.Second())
 
-	t2 := tuple.NewTuple("foo", 3.14)
+	t2 := tuple.New("foo", 3.14)
 	require.Equal(t, 3.14, t2.Second())
 }
 
 func TestTupleDim(t *testing.T) {
-	t1 := tuple.NewTuple(1, 2)
+	t1 := tuple.New(1, 2)
 	require.Equal(t, 2, t1.Dim())
 
-	t2 := tuple.NewTuple("a", "b")
+	t2 := tuple.New("a", "b")
 	require.Equal(t, 2, t2.Dim())
 }
 
 func TestTupleAt(t *testing.T) {
-	t1 := tuple.NewTuple(100, "test")
+	t1 := tuple.New(100, "test")
 
 	val0 := t1.At(0)
 	require.Equal(t, 100, val0)
@@ -50,7 +50,7 @@ func TestTupleAt(t *testing.T) {
 }
 
 func TestTupleAtPanic(t *testing.T) {
-	t1 := tuple.NewTuple(1, 2)
+	t1 := tuple.New(1, 2)
 
 	require.Panics(t, func() {
 		t1.At(2)
@@ -66,7 +66,7 @@ func TestTupleAtPanic(t *testing.T) {
 }
 
 func TestTupleAll(t *testing.T) {
-	t1 := tuple.NewTuple("first", "second")
+	t1 := tuple.New("first", "second")
 
 	count := 0
 	for idx, val := range t1.All() {
@@ -81,7 +81,7 @@ func TestTupleAll(t *testing.T) {
 }
 
 func TestTupleValues(t *testing.T) {
-	t1 := tuple.NewTuple(10, 20)
+	t1 := tuple.New(10, 20)
 
 	values := make([]any, 0)
 	for val := range t1.Values() {
@@ -93,8 +93,8 @@ func TestTupleValues(t *testing.T) {
 	require.Equal(t, 20, values[1])
 }
 
-func TestNewTuple3(t *testing.T) {
-	t3 := tuple.NewTuple3(1, "hello", 3.14)
+func TestNew3(t *testing.T) {
+	t3 := tuple.New3(1, "hello", 3.14)
 	require.NotNil(t, t3)
 	require.Equal(t, 1, t3.First())
 	require.Equal(t, "hello", t3.Second())
@@ -102,39 +102,39 @@ func TestNewTuple3(t *testing.T) {
 }
 
 func TestTuple3First(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "world", true)
+	t3 := tuple.New3(42, "world", true)
 	require.Equal(t, 42, t3.First())
 
-	t4 := tuple.NewTuple3("foo", 3.14, 100)
+	t4 := tuple.New3("foo", 3.14, 100)
 	require.Equal(t, "foo", t4.First())
 }
 
 func TestTuple3Second(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "world", true)
+	t3 := tuple.New3(42, "world", true)
 	require.Equal(t, "world", t3.Second())
 
-	t4 := tuple.NewTuple3("foo", 3.14, 100)
+	t4 := tuple.New3("foo", 3.14, 100)
 	require.Equal(t, 3.14, t4.Second())
 }
 
 func TestTuple3Third(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "world", true)
+	t3 := tuple.New3(42, "world", true)
 	require.Equal(t, true, t3.Third())
 
-	t4 := tuple.NewTuple3("foo", 3.14, 100)
+	t4 := tuple.New3("foo", 3.14, 100)
 	require.Equal(t, 100, t4.Third())
 }
 
 func TestTuple3Dim(t *testing.T) {
-	t3 := tuple.NewTuple3(1, 2, 3)
+	t3 := tuple.New3(1, 2, 3)
 	require.Equal(t, 3, t3.Dim())
 
-	t4 := tuple.NewTuple3("a", "b", "c")
+	t4 := tuple.New3("a", "b", "c")
 	require.Equal(t, 3, t4.Dim())
 }
 
 func TestTuple3At(t *testing.T) {
-	t3 := tuple.NewTuple3(100, "test", true)
+	t3 := tuple.New3(100, "test", true)
 
 	val0 := t3.At(0)
 	require.Equal(t, 100, val0)
@@ -147,7 +147,7 @@ func TestTuple3At(t *testing.T) {
 }
 
 func TestTuple3AtPanic(t *testing.T) {
-	t3 := tuple.NewTuple3(1, 2, 3)
+	t3 := tuple.New3(1, 2, 3)
 
 	require.Panics(t, func() {
 		t3.At(3)
@@ -163,7 +163,7 @@ func TestTuple3AtPanic(t *testing.T) {
 }
 
 func TestTuple3All(t *testing.T) {
-	t3 := tuple.NewTuple3("first", "second", "third")
+	t3 := tuple.New3("first", "second", "third")
 
 	count := 0
 	for idx, val := range t3.All() {
@@ -180,7 +180,7 @@ func TestTuple3All(t *testing.T) {
 }
 
 func TestTuple3Values(t *testing.T) {
-	t3 := tuple.NewTuple3(10, 20, 30)
+	t3 := tuple.New3(10, 20, 30)
 
 	values := make([]any, 0)
 	for val := range t3.Values() {
@@ -193,57 +193,57 @@ func TestTuple3Values(t *testing.T) {
 	require.Equal(t, 30, values[2])
 }
 
-func TestNewTupleN(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+func TestNewN(t *testing.T) {
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 	require.NotNil(t, tn)
 	require.Equal(t, 5, tn.Dim())
 }
 
 func TestTupleNFirst(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40)
+	tn := tuple.NewN(10, 20, 30, 40)
 	require.Equal(t, 10, tn.First())
 
-	tn2 := tuple.NewTupleN("a", "b", "c")
+	tn2 := tuple.NewN("a", "b", "c")
 	require.Equal(t, "a", tn2.First())
 }
 
 func TestTupleNSecond(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40)
+	tn := tuple.NewN(10, 20, 30, 40)
 	require.Equal(t, 20, tn.Second())
 
-	tn2 := tuple.NewTupleN("a", "b", "c")
+	tn2 := tuple.NewN("a", "b", "c")
 	require.Equal(t, "b", tn2.Second())
 }
 
 func TestTupleNThird(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40)
+	tn := tuple.NewN(10, 20, 30, 40)
 	require.Equal(t, 30, tn.Third())
 
-	tn2 := tuple.NewTupleN("a", "b", "c", "d")
+	tn2 := tuple.NewN("a", "b", "c", "d")
 	require.Equal(t, "c", tn2.Third())
 }
 
 func TestTupleNFourth(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40, 50)
+	tn := tuple.NewN(10, 20, 30, 40, 50)
 	require.Equal(t, 40, tn.Fourth())
 
-	tn2 := tuple.NewTupleN("a", "b", "c", "d", "e")
+	tn2 := tuple.NewN("a", "b", "c", "d", "e")
 	require.Equal(t, "d", tn2.Fourth())
 }
 
 func TestTupleNLast(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40, 50)
+	tn := tuple.NewN(10, 20, 30, 40, 50)
 	require.Equal(t, 50, tn.Last())
 
-	tn2 := tuple.NewTupleN("a", "b", "c")
+	tn2 := tuple.NewN("a", "b", "c")
 	require.Equal(t, "c", tn2.Last())
 
-	tn3 := tuple.NewTupleN(100)
+	tn3 := tuple.NewN(100)
 	require.Equal(t, 100, tn3.Last())
 }
 
 func TestTupleNAt(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 
 	require.Equal(t, 1, tn.At(0))
 	require.Equal(t, 2, tn.At(1))
@@ -253,18 +253,18 @@ func TestTupleNAt(t *testing.T) {
 }
 
 func TestTupleNDim(t *testing.T) {
-	tn1 := tuple.NewTupleN(1)
+	tn1 := tuple.NewN(1)
 	require.Equal(t, 1, tn1.Dim())
 
-	tn3 := tuple.NewTupleN(1, 2, 3)
+	tn3 := tuple.NewN(1, 2, 3)
 	require.Equal(t, 3, tn3.Dim())
 
-	tn10 := tuple.NewTupleN(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	tn10 := tuple.NewN(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 	require.Equal(t, 10, tn10.Dim())
 }
 
 func TestTupleNAll(t *testing.T) {
-	tn := tuple.NewTupleN(10, 20, 30, 40, 50)
+	tn := tuple.NewN(10, 20, 30, 40, 50)
 
 	count := 0
 	expectedValues := []int{10, 20, 30, 40, 50}
@@ -276,7 +276,7 @@ func TestTupleNAll(t *testing.T) {
 }
 
 func TestTupleNValues(t *testing.T) {
-	tn := tuple.NewTupleN("a", "b", "c", "d")
+	tn := tuple.NewN("a", "b", "c", "d")
 
 	values := make([]string, 0)
 	for val := range tn.Values() {
@@ -288,7 +288,7 @@ func TestTupleNValues(t *testing.T) {
 }
 
 func TestTupleNEmpty(t *testing.T) {
-	tn := tuple.NewTupleN[int]()
+	tn := tuple.NewN[int]()
 	require.Equal(t, 0, tn.Dim())
 }
 
@@ -300,31 +300,31 @@ func TestTupleWithDifferentTypes(t *testing.T) {
 	}
 
 	person := Person{Name: "John", Age: 30}
-	t1 := tuple.NewTuple(person, "metadata")
+	t1 := tuple.New(person, "metadata")
 	require.Equal(t, person, t1.First())
 	require.Equal(t, "metadata", t1.Second())
 
 	// Test with pointer types
-	t2 := tuple.NewTuple(&person, 42)
+	t2 := tuple.New(&person, 42)
 	require.Equal(t, &person, t2.First())
 	require.Equal(t, 42, t2.Second())
 
 	// Test with nil values
-	t3 := tuple.NewTuple[*string, *int](nil, nil)
+	t3 := tuple.New[*string, *int](nil, nil)
 	require.Nil(t, t3.First())
 	require.Nil(t, t3.Second())
 }
 
 func TestTuple3WithDifferentTypes(t *testing.T) {
 	// Test with mixed types
-	t3 := tuple.NewTuple3([]int{1, 2, 3}, map[string]int{"a": 1}, true)
+	t3 := tuple.New3([]int{1, 2, 3}, map[string]int{"a": 1}, true)
 	require.Equal(t, []int{1, 2, 3}, t3.First())
 	require.Equal(t, map[string]int{"a": 1}, t3.Second())
 	require.Equal(t, true, t3.Third())
 }
 
 func TestTupleNWithSingleElement(t *testing.T) {
-	tn := tuple.NewTupleN(42)
+	tn := tuple.NewN(42)
 	require.Equal(t, 1, tn.Dim())
 	require.Equal(t, 42, tn.First())
 	require.Equal(t, 42, tn.Last())
@@ -332,7 +332,7 @@ func TestTupleNWithSingleElement(t *testing.T) {
 }
 
 func TestTupleIterationBreak(t *testing.T) {
-	t1 := tuple.NewTuple(1, 2)
+	t1 := tuple.New(1, 2)
 
 	// Test early break in All()
 	count := 0
@@ -352,7 +352,7 @@ func TestTupleIterationBreak(t *testing.T) {
 }
 
 func TestTuple3IterationBreak(t *testing.T) {
-	t3 := tuple.NewTuple3(1, 2, 3)
+	t3 := tuple.New3(1, 2, 3)
 
 	// Test early break in All()
 	count := 0
@@ -376,7 +376,7 @@ func TestTuple3IterationBreak(t *testing.T) {
 }
 
 func TestTupleNIterationBreak(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 
 	// Test early break in All()
 	count := 0
@@ -402,18 +402,18 @@ func TestTupleNIterationBreak(t *testing.T) {
 // Tests for new methods
 
 func TestTupleString(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
+	t1 := tuple.New(42, "hello")
 	require.Equal(t, "(42, hello)", t1.String())
 
-	t2 := tuple.NewTuple(3.14, true)
+	t2 := tuple.New(3.14, true)
 	require.Equal(t, "(3.14, true)", t2.String())
 
-	t3 := tuple.NewTuple("foo", "bar")
+	t3 := tuple.New("foo", "bar")
 	require.Equal(t, "(foo, bar)", t3.String())
 }
 
 func TestTupleGoString(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
+	t1 := tuple.New(42, "hello")
 	goStr := t1.GoString()
 	require.Contains(t, goStr, "tuple.Tuple")
 	require.Contains(t, goStr, "first: 42")
@@ -421,10 +421,10 @@ func TestTupleGoString(t *testing.T) {
 }
 
 func TestTupleEquals(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
-	t2 := tuple.NewTuple(42, "hello")
-	t3 := tuple.NewTuple(42, "world")
-	t4 := tuple.NewTuple(100, "hello")
+	t1 := tuple.New(42, "hello")
+	t2 := tuple.New(42, "hello")
+	t3 := tuple.New(42, "world")
+	t4 := tuple.New(100, "hello")
 
 	require.True(t, t1.Equals(t2))
 	require.False(t, t1.Equals(t3))
@@ -435,13 +435,13 @@ func TestTupleEquals(t *testing.T) {
 
 	// Test with pointers
 	val := 10
-	p1 := tuple.NewTuple(&val, &val)
-	p2 := tuple.NewTuple(&val, &val)
+	p1 := tuple.New(&val, &val)
+	p2 := tuple.New(&val, &val)
 	require.True(t, p1.Equals(p2))
 }
 
 func TestTupleToSlice(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
+	t1 := tuple.New(42, "hello")
 	slice := t1.ToSlice()
 
 	require.Equal(t, 2, len(slice))
@@ -449,7 +449,7 @@ func TestTupleToSlice(t *testing.T) {
 	require.Equal(t, "hello", slice[1])
 
 	// Test with different types
-	t2 := tuple.NewTuple([]int{1, 2, 3}, map[string]int{"a": 1})
+	t2 := tuple.New([]int{1, 2, 3}, map[string]int{"a": 1})
 	slice2 := t2.ToSlice()
 	require.Equal(t, 2, len(slice2))
 	require.Equal(t, []int{1, 2, 3}, slice2[0])
@@ -457,7 +457,7 @@ func TestTupleToSlice(t *testing.T) {
 }
 
 func TestTupleSwap(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
+	t1 := tuple.New(42, "hello")
 	swapped := t1.Swap()
 
 	require.Equal(t, "hello", swapped.First())
@@ -468,14 +468,14 @@ func TestTupleSwap(t *testing.T) {
 	require.Equal(t, "hello", t1.Second())
 
 	// Test with different types
-	t2 := tuple.NewTuple(3.14, true)
+	t2 := tuple.New(3.14, true)
 	swapped2 := t2.Swap()
 	require.Equal(t, true, swapped2.First())
 	require.Equal(t, 3.14, swapped2.Second())
 }
 
 func TestTupleClone(t *testing.T) {
-	t1 := tuple.NewTuple(42, "hello")
+	t1 := tuple.New(42, "hello")
 	cloned := t1.Clone()
 
 	require.Equal(t, t1.First(), cloned.First())
@@ -484,15 +484,15 @@ func TestTupleClone(t *testing.T) {
 }
 
 func TestTuple3String(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", true)
 	require.Equal(t, "(42, hello, true)", t3.String())
 
-	t4 := tuple.NewTuple3(1, 2, 3)
+	t4 := tuple.New3(1, 2, 3)
 	require.Equal(t, "(1, 2, 3)", t4.String())
 }
 
 func TestTuple3GoString(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", true)
 	goStr := t3.GoString()
 	require.Contains(t, goStr, "tuple.Tuple3")
 	require.Contains(t, goStr, "first: 42")
@@ -501,10 +501,10 @@ func TestTuple3GoString(t *testing.T) {
 }
 
 func TestTuple3Equals(t *testing.T) {
-	t1 := tuple.NewTuple3(42, "hello", true)
-	t2 := tuple.NewTuple3(42, "hello", true)
-	t3 := tuple.NewTuple3(42, "hello", false)
-	t4 := tuple.NewTuple3(100, "hello", true)
+	t1 := tuple.New3(42, "hello", true)
+	t2 := tuple.New3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", false)
+	t4 := tuple.New3(100, "hello", true)
 
 	require.True(t, t1.Equals(t2))
 	require.False(t, t1.Equals(t3))
@@ -515,7 +515,7 @@ func TestTuple3Equals(t *testing.T) {
 }
 
 func TestTuple3ToSlice(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", true)
 	slice := t3.ToSlice()
 
 	require.Equal(t, 3, len(slice))
@@ -525,7 +525,7 @@ func TestTuple3ToSlice(t *testing.T) {
 }
 
 func TestTuple3Swap(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", true)
 	swapped := t3.Swap()
 
 	require.Equal(t, true, swapped.First())
@@ -539,7 +539,7 @@ func TestTuple3Swap(t *testing.T) {
 }
 
 func TestTuple3Clone(t *testing.T) {
-	t3 := tuple.NewTuple3(42, "hello", true)
+	t3 := tuple.New3(42, "hello", true)
 	cloned := t3.Clone()
 
 	require.Equal(t, t3.First(), cloned.First())
@@ -549,7 +549,7 @@ func TestTuple3Clone(t *testing.T) {
 }
 
 func TestTuple3AtPanicWithMessage(t *testing.T) {
-	t3 := tuple.NewTuple3(1, 2, 3)
+	t3 := tuple.New3(1, 2, 3)
 
 	require.PanicsWithValue(t, "index out of range: 5, valid: [0,2]", func() {
 		t3.At(5)
@@ -561,28 +561,28 @@ func TestTuple3AtPanicWithMessage(t *testing.T) {
 }
 
 func TestTupleNString(t *testing.T) {
-	tn1 := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn1 := tuple.NewN(1, 2, 3, 4, 5)
 	require.Equal(t, "(1, 2, 3, 4, 5)", tn1.String())
 
-	tn2 := tuple.NewTupleN("a", "b", "c")
+	tn2 := tuple.NewN("a", "b", "c")
 	require.Equal(t, "(a, b, c)", tn2.String())
 
-	tn3 := tuple.NewTupleN(42)
+	tn3 := tuple.NewN(42)
 	require.Equal(t, "(42)", tn3.String())
 }
 
 func TestTupleNGoString(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3)
+	tn := tuple.NewN(1, 2, 3)
 	goStr := tn.GoString()
 	require.Contains(t, goStr, "tuple.TupleN")
 	require.Contains(t, goStr, "elements:")
 }
 
 func TestTupleNEquals(t *testing.T) {
-	tn1 := tuple.NewTupleN(1, 2, 3, 4, 5)
-	tn2 := tuple.NewTupleN(1, 2, 3, 4, 5)
-	tn3 := tuple.NewTupleN(1, 2, 3, 4, 6)
-	tn4 := tuple.NewTupleN(1, 2, 3)
+	tn1 := tuple.NewN(1, 2, 3, 4, 5)
+	tn2 := tuple.NewN(1, 2, 3, 4, 5)
+	tn3 := tuple.NewN(1, 2, 3, 4, 6)
+	tn4 := tuple.NewN(1, 2, 3)
 
 	require.True(t, tn1.Equals(tn2))
 	require.False(t, tn1.Equals(tn3))
@@ -592,13 +592,13 @@ func TestTupleNEquals(t *testing.T) {
 	require.True(t, tn1.Equals(tn1))
 
 	// Test with strings
-	tns1 := tuple.NewTupleN("a", "b", "c")
-	tns2 := tuple.NewTupleN("a", "b", "c")
+	tns1 := tuple.NewN("a", "b", "c")
+	tns2 := tuple.NewN("a", "b", "c")
 	require.True(t, tns1.Equals(tns2))
 }
 
 func TestTupleNToSlice(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 	slice := tn.ToSlice()
 
 	require.Equal(t, 5, len(slice))
@@ -610,7 +610,7 @@ func TestTupleNToSlice(t *testing.T) {
 }
 
 func TestTupleNSwap(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 	swapped := tn.Swap()
 
 	require.Equal(t, 5, swapped.First())
@@ -624,7 +624,7 @@ func TestTupleNSwap(t *testing.T) {
 	require.Equal(t, 5, tn.Last())
 
 	// Test with even number of elements
-	tn2 := tuple.NewTupleN(10, 20, 30, 40)
+	tn2 := tuple.NewN(10, 20, 30, 40)
 	swapped2 := tn2.Swap()
 	require.Equal(t, 40, swapped2.First())
 	require.Equal(t, 30, swapped2.Second())
@@ -633,7 +633,7 @@ func TestTupleNSwap(t *testing.T) {
 }
 
 func TestTupleNClone(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 	cloned := tn.Clone()
 
 	require.Equal(t, tn.Dim(), cloned.Dim())
@@ -647,47 +647,47 @@ func TestTupleNClone(t *testing.T) {
 }
 
 func TestTupleNFirstPanic(t *testing.T) {
-	tn := tuple.NewTupleN[int]()
+	tn := tuple.NewN[int]()
 	require.PanicsWithValue(t, "TupleN has no elements", func() {
 		tn.First()
 	})
 }
 
 func TestTupleNSecondPanic(t *testing.T) {
-	tn := tuple.NewTupleN(1)
+	tn := tuple.NewN(1)
 	require.PanicsWithValue(t, "TupleN has less than 2 elements", func() {
 		tn.Second()
 	})
 
-	tn2 := tuple.NewTupleN[int]()
+	tn2 := tuple.NewN[int]()
 	require.PanicsWithValue(t, "TupleN has less than 2 elements", func() {
 		tn2.Second()
 	})
 }
 
 func TestTupleNThirdPanic(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2)
+	tn := tuple.NewN(1, 2)
 	require.PanicsWithValue(t, "TupleN has less than 3 elements", func() {
 		tn.Third()
 	})
 }
 
 func TestTupleNFourthPanic(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3)
+	tn := tuple.NewN(1, 2, 3)
 	require.PanicsWithValue(t, "TupleN has less than 4 elements", func() {
 		tn.Fourth()
 	})
 }
 
 func TestTupleNLastPanic(t *testing.T) {
-	tn := tuple.NewTupleN[int]()
+	tn := tuple.NewN[int]()
 	require.PanicsWithValue(t, "TupleN has no elements", func() {
 		tn.Last()
 	})
 }
 
 func TestTupleNAtPanicWithMessage(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 
 	require.PanicsWithValue(t, "index out of range: 10, valid: [0,4]", func() {
 		tn.At(10)
@@ -698,21 +698,21 @@ func TestTupleNAtPanicWithMessage(t *testing.T) {
 	})
 
 	// Test with empty tuple
-	tn2 := tuple.NewTupleN[int]()
+	tn2 := tuple.NewN[int]()
 	require.PanicsWithValue(t, "index out of range: 0, valid: [0,-1]", func() {
 		tn2.At(0)
 	})
 }
 
 func TestTupleNSwapSingleElement(t *testing.T) {
-	tn := tuple.NewTupleN(42)
+	tn := tuple.NewN(42)
 	swapped := tn.Swap()
 	require.Equal(t, 42, swapped.First())
 	require.Equal(t, 1, swapped.Dim())
 }
 
 func TestTupleNSwapTwoElements(t *testing.T) {
-	tn := tuple.NewTupleN("first", "second")
+	tn := tuple.NewN("first", "second")
 	swapped := tn.Swap()
 	require.Equal(t, "second", swapped.First())
 	require.Equal(t, "first", swapped.Second())
@@ -724,7 +724,7 @@ func TestTupleImmutabilityWithMutableTypes(t *testing.T) {
 	// Test with slice field
 	slice1 := []int{1, 2, 3}
 	slice2 := []int{4, 5, 6}
-	t1 := tuple.NewTuple(slice1, slice2)
+	t1 := tuple.New(slice1, slice2)
 
 	// Modify original slices
 	slice1[0] = 999
@@ -737,7 +737,7 @@ func TestTupleImmutabilityWithMutableTypes(t *testing.T) {
 }
 
 func TestTupleSwapImmutability(t *testing.T) {
-	original := tuple.NewTuple(42, "hello")
+	original := tuple.New(42, "hello")
 	swapped := original.Swap()
 
 	// Verify original is unchanged
@@ -750,7 +750,7 @@ func TestTupleSwapImmutability(t *testing.T) {
 }
 
 func TestTupleCloneImmutability(t *testing.T) {
-	original := tuple.NewTuple(42, "hello")
+	original := tuple.New(42, "hello")
 	cloned := original.Clone()
 
 	// They should be equal but independent
@@ -760,7 +760,7 @@ func TestTupleCloneImmutability(t *testing.T) {
 	// Test with mutable types
 	slice1 := []int{1, 2, 3}
 	slice2 := []int{4, 5, 6}
-	t1 := tuple.NewTuple(slice1, slice2)
+	t1 := tuple.New(slice1, slice2)
 	t2 := t1.Clone()
 
 	// Both reference same underlying slices (shallow copy)
@@ -774,7 +774,7 @@ func TestTuple3ImmutabilityWithMutableTypes(t *testing.T) {
 	map1 := map[string]int{"a": 1}
 	map2 := map[string]int{"b": 2}
 	slice1 := []int{1, 2, 3}
-	t3 := tuple.NewTuple3(map1, map2, slice1)
+	t3 := tuple.New3(map1, map2, slice1)
 
 	// Modify original map and slice
 	map1["a"] = 999
@@ -786,7 +786,7 @@ func TestTuple3ImmutabilityWithMutableTypes(t *testing.T) {
 }
 
 func TestTuple3SwapImmutability(t *testing.T) {
-	original := tuple.NewTuple3(1, 2, 3)
+	original := tuple.New3(1, 2, 3)
 	swapped := original.Swap()
 
 	// Verify original is unchanged
@@ -801,7 +801,7 @@ func TestTuple3SwapImmutability(t *testing.T) {
 }
 
 func TestTuple3CloneImmutability(t *testing.T) {
-	original := tuple.NewTuple3(1, "hello", true)
+	original := tuple.New3(1, "hello", true)
 	cloned := original.Clone()
 
 	// They should be equal but independent for value types
@@ -810,7 +810,7 @@ func TestTuple3CloneImmutability(t *testing.T) {
 
 func TestTupleNImmutabilityWithMutableSlice(t *testing.T) {
 	// Create tuple with slice elements
-	tn := tuple.NewTupleN([]int{1, 2, 3}, []int{4, 5, 6}, []int{7, 8, 9})
+	tn := tuple.NewN([]int{1, 2, 3}, []int{4, 5, 6}, []int{7, 8, 9})
 
 	// Get first element and modify it
 	first := tn.First()
@@ -821,7 +821,7 @@ func TestTupleNImmutabilityWithMutableSlice(t *testing.T) {
 }
 
 func TestTupleNToSliceImmutability(t *testing.T) {
-	tn := tuple.NewTupleN(1, 2, 3, 4, 5)
+	tn := tuple.NewN(1, 2, 3, 4, 5)
 	slice := tn.ToSlice()
 
 	// Modify the returned slice
@@ -834,7 +834,7 @@ func TestTupleNToSliceImmutability(t *testing.T) {
 }
 
 func TestTupleNSwapImmutability(t *testing.T) {
-	original := tuple.NewTupleN(1, 2, 3, 4, 5)
+	original := tuple.NewN(1, 2, 3, 4, 5)
 	swapped := original.Swap()
 
 	// Verify original is unchanged
@@ -849,7 +849,7 @@ func TestTupleNSwapImmutability(t *testing.T) {
 }
 
 func TestTupleNCloneImmutability(t *testing.T) {
-	original := tuple.NewTupleN(1, 2, 3, 4, 5)
+	original := tuple.NewN(1, 2, 3, 4, 5)
 	cloned := original.Clone()
 
 	// Get slices from both
@@ -866,7 +866,7 @@ func TestTupleNCloneImmutability(t *testing.T) {
 
 func TestTupleNCloneDeepIndependence(t *testing.T) {
 	// Create tuple with slice of integers
-	tn := tuple.NewTupleN(10, 20, 30)
+	tn := tuple.NewN(10, 20, 30)
 	cloned := tn.Clone()
 
 	// Both should be equal
