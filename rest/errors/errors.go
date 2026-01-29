@@ -43,8 +43,12 @@ func mapErrorToHTTPCode(ctx context.Context, err *errors.Error) int {
 		log.GetLoggerFromCtx(ctx).Debugf("Custom error code mapper returned 0 for error: %v, using default mapping", err)
 	}
 
-	// Default mapping
-	switch err.Code {
+	// Default mapping using fw deep cause
+	cause := err.FWDeepCause()
+	if cause == nil {
+		cause = err
+	}
+	switch cause.Code {
 	case errors.ErrCodeNotAuthenticated:
 		return http.StatusUnauthorized
 	case errors.ErrCodeNotAllowed:
