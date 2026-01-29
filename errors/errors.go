@@ -135,6 +135,74 @@ func (e *Error) Unwrap() []error {
 	return e.wrappedErrs
 }
 
+// DeepCause returns the deepest cause of the error, if any.
+// It will follow the chain of the first wrapped error.
+func (e *Error) DeepCause() error {
+	return DeepCause(e)
+}
+
+// FWCause returns the next framework error in the cause chain, if any.
+func (e *Error) FWCause() *Error {
+	if len(e.wrappedErrs) == 0 {
+		return nil
+	}
+	cause := e.wrappedErrs[0]
+	if fwCause, ok := cause.(*Error); ok {
+		return fwCause
+	} else {
+		//Continue looking down
+		for {
+			cause = Cause(cause)
+			if cause == nil {
+				return nil
+			}
+			if fwCause, ok := cause.(*Error); ok {
+				return fwCause
+			}
+		}
+	}
+}
+
+// FWDeepCause returns the deepest framework error cause of the error, if any.
+func (e *Error) FWDeepCause() *Error {
+	lastFwCause := e.FWCause()
+	fwCause := lastFwCause
+	if fwCause == nil {
+		return nil
+	}
+	for {
+		fwCause = fwCause.FWCause()
+		if fwCause == nil {
+			return lastFwCause
+		}
+		lastFwCause = fwCause
+	}
+}
+
+// Cause returns the first wrapped error in the chain, if any.
+func Cause(err error) error {
+	errors := UnwrapMulti(err)
+	if len(errors) == 0 {
+		return nil
+	}
+	return errors[0]
+}
+
+// DeepCause returns the deepest cause of the error, if any.
+// It will follow the chain of the first wrapped error.
+func DeepCause(err error) error {
+	errors := UnwrapMulti(err)
+	if len(errors) == 0 {
+		return nil
+	}
+	cause := errors[0]
+	deepCause := DeepCause(cause)
+	if deepCause != nil {
+		return deepCause
+	}
+	return cause
+}
+
 // Stacktrace returns the error stack trace as a string. The output us produced by calling WriteStacktrace.
 func (e *Error) Stacktrace() string {
 	buf := strings.Builder{}
