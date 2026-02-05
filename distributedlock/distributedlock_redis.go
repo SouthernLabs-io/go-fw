@@ -94,9 +94,9 @@ func (l *DistributedRedisLock) TryLock(ctx context.Context) (bool, error) {
 		// Lua scripts can't return more than one value, so we pull the ttl in milliseconds separately.
 		pttl := rdb.PTTL(ctx, l.resource).Val()
 		l.expiration = time.Now().Add(pttl)
-		logger.Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	} else {
-		logger.Debugf("Lock not aquired: %s, lockID: %s", l.resource, l.id)
+		logger.Debugf("Lock not acquired: %s, lockID: %s", l.resource, l.id)
 	}
 
 	return set, nil
@@ -129,7 +129,7 @@ func (l *DistributedRedisLock) Unlock(ctx context.Context) error {
 	if unlocked {
 		logger.Debugf("lock unlocked: %s, lockID: %s", l.resource, l.id)
 	} else {
-		logger.Debugf("lock not aquired and unlocked: %s, lockID: %s", l.resource, l.id)
+		logger.Debugf("lock not acquired and unlocked: %s, lockID: %s", l.resource, l.id)
 	}
 
 	l.extendedCount = 0

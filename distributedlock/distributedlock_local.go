@@ -70,7 +70,7 @@ func (l *LocalLock) Lock(ctx context.Context) error {
 		return errors.NewUnknownf("failed to lock file: %s, error: %w", l.path, err)
 	}
 	l.doLock(ctx)
-	log.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+	log.GetLoggerFromCtx(ctx).Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	return nil
 }
 
@@ -118,7 +118,7 @@ func (l *LocalLock) TryLock(ctx context.Context) (bool, error) {
 		return false, errors.NewUnknownf("failed to lock: %s file: %s, error: %w", l.resource, l.path, err)
 	}
 	l.doLock(ctx)
-	log.GetLoggerFromCtx(ctx).Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+	log.GetLoggerFromCtx(ctx).Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	return true, nil
 }
 

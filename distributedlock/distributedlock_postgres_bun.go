@@ -134,8 +134,10 @@ func (l *DistributedPostgresBunLock) TryLock(ctx context.Context) (locked bool, 
 
 	if currLockID != "" {
 		err = tx.NewRaw(
-			`UPDATE distributed_lock.lock SET instance_id = ?, expiration = now() + INTERVAL '1 second' * ?
-		 			WHERE resource = ? AND instance_id = ? AND expiration < now() RETURNING expiration`,
+			`UPDATE distributed_lock.lock
+SET instance_id = ?, expiration = now() + INTERVAL '1 second' * ?, extended_count = 0
+WHERE resource = ? AND instance_id = ? AND expiration < now()
+RETURNING expiration`,
 			l.id,
 			l.ttl.Seconds(),
 			l.resource,
@@ -143,8 +145,8 @@ func (l *DistributedPostgresBunLock) TryLock(ctx context.Context) (locked bool, 
 		).Scan(ctx, &until)
 	} else {
 		err = tx.NewRaw(
-			`INSERT INTO distributed_lock.lock (resource, instance_id, expiration)
-					VALUES(?, ?, now() + INTERVAL '1 second' * ?)
+			`INSERT INTO distributed_lock.lock (resource, instance_id, expiration, extended_count)
+					VALUES(?, ?, now() + INTERVAL '1 second' * ?, 0)
 					ON CONFLICT DO NOTHING RETURNING expiration`,
 			l.resource,
 			l.id,
@@ -160,7 +162,7 @@ func (l *DistributedPostgresBunLock) TryLock(ctx context.Context) (locked bool, 
 	logger := log.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
 		l.expiration = until
-		logger.Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 		return true, nil
 	}
 

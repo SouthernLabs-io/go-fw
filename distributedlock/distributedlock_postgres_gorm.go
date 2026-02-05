@@ -140,7 +140,7 @@ func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err
 	logger := log.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
 		l.expiration = until
-		logger.Debugf("Lock aquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 		return true, nil
 	}
 
