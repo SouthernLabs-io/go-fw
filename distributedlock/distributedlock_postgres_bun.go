@@ -96,12 +96,12 @@ func (l *DistributedPostgresBunLock) TryLock(ctx context.Context) (locked bool, 
 
 	err = idb.NewRaw(
 		`INSERT INTO distributed_lock.lock (resource, instance_id, expiration, extended_count)
-VALUES (?, ?, now() + INTERVAL '1 second' * ?, 0)
+VALUES (?, ?, clock_timestamp() + INTERVAL '1 second' * ?, 0)
 ON CONFLICT (resource) DO UPDATE
 SET instance_id = EXCLUDED.instance_id,
     expiration = EXCLUDED.expiration,
     extended_count = 0
-WHERE distributed_lock.lock.expiration < now()
+WHERE distributed_lock.lock.expiration < clock_timestamp()
 RETURNING expiration`,
 		l.resource,
 		l.id,
@@ -126,7 +126,7 @@ RETURNING expiration`,
 
 func (l *DistributedPostgresBunLock) Unlock(ctx context.Context) error {
 	res, err := database.GetDBFromCtx(ctx).NewRaw(
-		"UPDATE distributed_lock.lock SET expiration = now() WHERE resource = ? AND instance_id = ? AND expiration > now()",
+		"UPDATE distributed_lock.lock SET expiration = clock_timestamp() WHERE resource = ? AND instance_id = ? AND expiration > clock_timestamp()",
 		l.resource,
 		l.id,
 	).Exec(ctx)
@@ -154,11 +154,11 @@ func (l *DistributedPostgresBunLock) Extend(ctx context.Context) (bool, error) {
 	var extendedCount int
 	err := database.GetDBFromCtx(ctx).NewRaw(
 		`UPDATE distributed_lock.lock
-				SET expiration = now() + INTERVAL '1 second' * ?,
+				SET expiration = clock_timestamp() + INTERVAL '1 second' * ?,
 				    extended_count = extended_count + 1 
                 WHERE resource = ?
                   AND instance_id = ?
-                  AND expiration > now()
+                  AND expiration > clock_timestamp()
                 RETURNING expiration, extended_count`,
 		l.ttl.Seconds(),
 		l.resource,
