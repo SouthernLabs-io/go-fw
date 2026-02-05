@@ -10,12 +10,12 @@ services:
   # ----------------------------------------------------------------------------
   # Setup the local postgres database.
   #
-  postgres:
+  fw_postgres:
     image: postgres:15-alpine
     container_name: fw_postgres
     command: ["postgres", "-c", "log_statement=all"]
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - "fw_pg_data:/data"
     environment: *common-variables

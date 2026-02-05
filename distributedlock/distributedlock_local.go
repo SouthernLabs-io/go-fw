@@ -75,7 +75,7 @@ func (l *LocalLock) Lock(ctx context.Context) error {
 }
 
 func (l *LocalLock) doLock(ctx context.Context) {
-	l.expiration = time.Now().Add(l.ttl)
+	l.setExpiration(time.Now().Add(l.ttl))
 	l.locked = true
 
 	go func() {
@@ -131,13 +131,8 @@ func (l *LocalLock) Unlock(ctx context.Context) error {
 		return errors.NewUnknownf("failed to unlock file: %s, error: %w", l.path, err)
 	}
 
-	if l.autoExtenderCancel != nil {
-		l.autoExtenderCancel(context.Canceled)
-		l.autoExtenderCancel = nil
-	}
-
-	l.extendedCount = 0
-	l.expiration = time.Time{}
+	l.cancelAndResetAutoExtender(context.Canceled)
+	l.resetLockState()
 	l.locked = false
 
 	log.GetLoggerFromCtx(ctx).Debugf("Lock unlocked: %s, lockID: %s, file: %s", l.resource, l.id, l.path)
@@ -157,14 +152,15 @@ func (l *LocalLock) Extend(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	l.extendedCount++
-	l.expiration = time.Now().Add(l.ttl)
+	expiration := time.Now().Add(l.ttl)
+	count := l.ExtendedCount() + 1
+	l.setLockState(expiration, count)
 	log.GetLoggerFromCtx(ctx).Tracef(
 		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,
 		l.id,
-		l.expiration,
-		l.extendedCount,
+		expiration,
+		count,
 	)
 	return true, nil
 }

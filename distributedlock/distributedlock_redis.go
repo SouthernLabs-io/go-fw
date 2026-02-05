@@ -90,11 +90,10 @@ func (l *DistributedRedisLock) TryLock(ctx context.Context) (bool, error) {
 	set := setInt.(int64) != 0
 
 	if set {
-		l.extendedCount = 0
 		// Lua scripts can't return more than one value, so we pull the ttl in milliseconds separately.
 		pttl := rdb.PTTL(ctx, l.resource).Val()
-		l.expiration = time.Now().Add(pttl)
-		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		l.setLockState(time.Now().Add(pttl), 0)
+		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, time.Now().Add(pttl))
 	} else {
 		logger.Debugf("Lock not acquired: %s, lockID: %s", l.resource, l.id)
 	}
@@ -119,10 +118,7 @@ func (l *DistributedRedisLock) Unlock(ctx context.Context) error {
 		return err
 	}
 
-	if l.autoExtenderCancel != nil {
-		l.autoExtenderCancel(context.Canceled)
-		l.autoExtenderCancel = nil
-	}
+	l.cancelAndResetAutoExtender(context.Canceled)
 
 	unlocked := deletedCount.(int64) != 0
 
@@ -132,8 +128,7 @@ func (l *DistributedRedisLock) Unlock(ctx context.Context) error {
 		logger.Debugf("lock not acquired and unlocked: %s, lockID: %s", l.resource, l.id)
 	}
 
-	l.extendedCount = 0
-	l.expiration = time.Time{}
+	l.resetLockState()
 
 	return nil
 }
@@ -164,20 +159,20 @@ func (l *DistributedRedisLock) Extend(ctx context.Context) (bool, error) {
 	set := extendedCount.(int64) != 0
 
 	if set {
-		l.extendedCount = int(extendedCount.(int64))
 		// Lua scripts can't return more than one value, so we pull the ttl in milliseconds separately.
 		pttl := rdb.PTTL(ctx, l.resource).Val()
-		l.expiration = time.Now().Add(pttl)
+		expiration := time.Now().Add(pttl)
+		count := int(extendedCount.(int64))
+		l.setLockState(expiration, count)
 		logger.Tracef(
 			"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 			l.resource,
 			l.id,
-			l.expiration,
-			l.extendedCount,
+			expiration,
+			count,
 		)
 	} else {
-		l.expiration = time.Time{}
-		l.extendedCount = 0
+		l.resetLockState()
 		logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
 	}
 

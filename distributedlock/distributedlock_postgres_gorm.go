@@ -43,8 +43,8 @@ func NewDistributedPostgresGORMLock(resource string, ttl time.Duration) *Distrib
 	}
 }
 
-func setupDBGORM(tx *database.DBTx) error {
-	err := tx.Exec(`
+func setupDBGORM(db *database.DBTx) error {
+	err := db.Exec(`
 		CREATE SCHEMA IF NOT EXISTS distributed_lock;
 		CREATE TABLE IF NOT EXISTS distributed_lock.lock (
 			resource TEXT PRIMARY KEY,
@@ -83,64 +83,41 @@ func (l *DistributedPostgresLock) Lock(ctx context.Context) error {
 }
 
 func (l *DistributedPostgresLock) TryLock(ctx context.Context) (locked bool, err error) {
-	tx, _ := database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	// we wrap the deferred call so it is not bound to this tx in case we have to re create
-	// the tx due to schema initialization race
-	defer func() {
-		tx.DeferredCommitOrRollback(&err)
-	}()
+	db := database.CurrentTx(ctx)
 	var until time.Time
-	var currLockID string
 
-	err = setupDBGORM(tx)
+	err = setupDBGORM(db)
 	if err != nil {
 		if errors.Is(err, errSchemaAlreadyInitialized) {
 			log.GetLoggerFromCtx(ctx).Debug("Another instance has already initialized the distributed_lock schema")
-			// The transaction is dead. We need to roll it back and create a new one
-			if err = tx.Rollback().Error; err != nil {
-				return false, err
-			}
-			tx, _ = database.NewTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		} else {
 			return false, err
 		}
 	}
 
-	err = tx.Raw(
-		"SELECT instance_id FROM distributed_lock.lock WHERE resource = ? FOR UPDATE",
+	err = db.Raw(
+		`INSERT INTO distributed_lock.lock (resource, instance_id, expiration, extended_count)
+VALUES (?, ?, now() + INTERVAL '1 second' * ?, 0)
+ON CONFLICT (resource) DO UPDATE
+SET instance_id = EXCLUDED.instance_id,
+    expiration = EXCLUDED.expiration,
+    extended_count = 0
+WHERE distributed_lock.lock.expiration < now()
+RETURNING expiration`,
 		l.resource,
-	).Scan(&currLockID).Error
+		l.id,
+		l.ttl.Seconds(),
+	).Scan(&until).Error
 	if err != nil {
-		return false, err
-	}
-
-	if currLockID != "" {
-		err = tx.Raw(
-			`UPDATE distributed_lock.lock SET instance_id = ?, expiration = now() + INTERVAL '1 second' * ?
-		 			WHERE resource = ? AND instance_id = ? AND expiration < now() RETURNING expiration`,
-			l.id,
-			l.ttl.Seconds(),
-			l.resource,
-			currLockID,
-		).Scan(&until).Error
-	} else {
-		err = tx.Raw(
-			`INSERT INTO distributed_lock.lock (resource, instance_id, expiration)
-					VALUES(?, ?, now() + INTERVAL '1 second' * ?)
-					ON CONFLICT DO NOTHING RETURNING expiration`,
-			l.resource,
-			l.id,
-			l.ttl.Seconds(),
-		).Scan(&until).Error
-	}
-	if err != nil {
-		return false, err
+		if !errors.Is(err, sql.ErrNoRows) {
+			return false, errors.NewUnknownf("failed to acquire lock, error: %w", err)
+		}
 	}
 
 	logger := log.GetLoggerFromCtx(ctx)
 	if !until.IsZero() {
-		l.expiration = until
-		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+		l.setExpiration(until)
+		logger.Debugf("Lock acquired: %s, lockID: %s, expiration: %s", l.resource, l.id, until)
 		return true, nil
 	}
 
@@ -158,12 +135,8 @@ func (l *DistributedPostgresLock) Unlock(ctx context.Context) error {
 		return res.Error
 	}
 
-	if l.autoExtenderCancel != nil {
-		l.autoExtenderCancel(context.Canceled)
-		l.autoExtenderCancel = nil
-	}
-	l.expiration = time.Time{}
-	l.extendedCount = 0
+	l.cancelAndResetAutoExtender(context.Canceled)
+	l.resetLockState()
 	logger := log.GetLoggerFromCtx(ctx)
 	if res.RowsAffected != 0 {
 		logger.Debugf("Lock unlocked: %s, lockID: %s", l.resource, l.id)
@@ -192,16 +165,14 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	logger := log.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			l.expiration = time.Time{}
-			l.extendedCount = 0
-			logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, l.expiration)
+			l.resetLockState()
+			logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, time.Time{})
 			return false, nil
 		}
 		return false, err
 	}
 
-	l.expiration = until
-	l.extendedCount = extendedCount
+	l.setLockState(until, extendedCount)
 	logger.Tracef(
 		"Lock extended: %s, lockID: %s, expiration: %s, extendedCount: %d",
 		l.resource,

@@ -2,6 +2,7 @@ package distributedlock
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/southernlabs-io/go-fw/di"
@@ -76,6 +77,7 @@ type DistributedLock interface {
 }
 
 type BaseDistributedLock struct {
+	mu                 sync.RWMutex
 	resource           string
 	id                 string
 	ttl                time.Duration
@@ -93,11 +95,62 @@ func (dl *BaseDistributedLock) TTL() time.Duration {
 }
 
 func (dl *BaseDistributedLock) Expiration() time.Time {
+	dl.mu.RLock()
+	defer dl.mu.RUnlock()
 	return dl.expiration
 }
 
 func (dl *BaseDistributedLock) ExtendedCount() int {
+	dl.mu.RLock()
+	defer dl.mu.RUnlock()
 	return dl.extendedCount
+}
+
+// setExpiration sets the lock expiration time with proper locking
+func (dl *BaseDistributedLock) setExpiration(expiration time.Time) {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	dl.expiration = expiration
+}
+
+// setExtendedCount sets the extended count with proper locking
+func (dl *BaseDistributedLock) setExtendedCount(count int) {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	dl.extendedCount = count
+}
+
+// setLockState sets both expiration and extended count atomically
+func (dl *BaseDistributedLock) setLockState(expiration time.Time, extendedCount int) {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	dl.expiration = expiration
+	dl.extendedCount = extendedCount
+}
+
+// resetLockState resets the lock state (sets expiration to zero and extended count to 0)
+func (dl *BaseDistributedLock) resetLockState() {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	dl.expiration = time.Time{}
+	dl.extendedCount = 0
+}
+
+// setAutoExtenderCancel sets the auto extender cancel function with proper locking
+func (dl *BaseDistributedLock) setAutoExtenderCancel(cancel context.CancelCauseFunc) {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	dl.autoExtenderCancel = cancel
+}
+
+// cancelAndResetAutoExtender safely cancels the auto extender and clears the reference
+func (dl *BaseDistributedLock) cancelAndResetAutoExtender(cause error) {
+	dl.mu.Lock()
+	defer dl.mu.Unlock()
+	if dl.autoExtenderCancel != nil {
+		dl.autoExtenderCancel(cause)
+		dl.autoExtenderCancel = nil
+	}
 }
 
 func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributedLock) (context.Context, error) {
@@ -114,7 +167,7 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
-	baseDL.autoExtenderCancel = cancel
+	baseDL.setAutoExtenderCancel(cancel)
 	ttl := dl.TTL()
 	go func() {
 		for {

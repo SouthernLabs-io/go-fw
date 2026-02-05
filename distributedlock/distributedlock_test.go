@@ -2,6 +2,7 @@ package distributedlock_test
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -400,4 +401,364 @@ func testAutoExtenderStopWhenUnlocked(t *testing.T, ctx context.Context, dLock d
 
 	// Check auto extender stopped
 	require.ErrorIs(t, context.Cause(aeCtx), context.Canceled)
+}
+
+func TestConcurrentLockAcquisition(t *testing.T) {
+	ttl := time.Second * 5
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "concurrent_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		}
+		testConcurrentLockAcquisition(t, ctx, factory)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "concurrent_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		}
+		testConcurrentLockAcquisition(t, ctx, factory)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "concurrent_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedLocalLock(resource, ttl)
+		}
+		testConcurrentLockAcquisition(t, ctx, factory)
+	})
+}
+
+func testConcurrentLockAcquisition(
+	t *testing.T,
+	ctx context.Context,
+	factory func() distributedlock.DistributedLock,
+) {
+	const numGoroutines = 20
+	successCount := atomic.Int32{}
+	failCount := atomic.Int32{}
+	startBarrier := make(chan struct{})
+
+	// Launch all goroutines to wait at the barrier
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			<-startBarrier // Wait for signal to start simultaneously
+
+			dLock := factory()
+			locked, err := dLock.TryLock(ctx)
+			require.NoError(t, err, "goroutine %d got error", id)
+
+			if locked {
+				successCount.Add(1)
+				// Hold lock briefly
+				time.Sleep(50 * time.Millisecond)
+				err = dLock.Unlock(ctx)
+				require.NoError(t, err, "goroutine %d failed to unlock", id)
+			} else {
+				failCount.Add(1)
+			}
+		}(i)
+	}
+
+	// Give goroutines time to reach the barrier
+	time.Sleep(100 * time.Millisecond)
+
+	// Release all goroutines simultaneously
+	close(startBarrier)
+
+	// Wait for all to complete
+	time.Sleep(time.Second * 2)
+
+	// Exactly ONE should have succeeded
+	require.Equal(t, int32(1), successCount.Load(), "expected exactly 1 lock acquisition")
+	require.Equal(t, int32(numGoroutines-1), failCount.Load(), "expected %d failures", numGoroutines-1)
+}
+
+func TestConcurrentLockWithBlocking(t *testing.T) {
+	ttl := time.Second * 2
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "blocking_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		}
+		testConcurrentLockWithBlocking(t, ctx, factory)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "blocking_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		}
+		testConcurrentLockWithBlocking(t, ctx, factory)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "blocking_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedLocalLock(resource, ttl)
+		}
+		testConcurrentLockWithBlocking(t, ctx, factory)
+	})
+}
+
+func testConcurrentLockWithBlocking(
+	t *testing.T,
+	ctx context.Context,
+	factory func() distributedlock.DistributedLock,
+) {
+	const numGoroutines = 5
+	successCount := atomic.Int32{}
+	startBarrier := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// Each goroutine will call Lock() which blocks until it can acquire
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			<-startBarrier
+
+			dLock := factory()
+
+			// Lock() blocks until acquired
+			err := dLock.Lock(ctx)
+			require.NoError(t, err, "goroutine %d failed to lock", id)
+
+			successCount.Add(1)
+
+			// Hold lock briefly
+			time.Sleep(100 * time.Millisecond)
+
+			err = dLock.Unlock(ctx)
+			require.NoError(t, err, "goroutine %d failed to unlock", id)
+		}(i)
+	}
+
+	// Give goroutines time to reach the barrier
+	time.Sleep(50 * time.Millisecond)
+
+	// Release all goroutines simultaneously
+	close(startBarrier)
+
+	// Wait for all goroutines to complete with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All goroutines completed successfully
+		require.Equal(t, int32(numGoroutines), successCount.Load())
+	case <-time.After(15 * time.Second):
+		t.Fatalf("timeout waiting for locks, only %d/%d acquired", successCount.Load(), numGoroutines)
+	}
+}
+
+func TestConcurrentExtend(t *testing.T) {
+	ttl := time.Second * 2
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "extend_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		testConcurrentExtend(t, ctx, dLock)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "extend_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		testConcurrentExtend(t, ctx, dLock)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "extend_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedLocalLock(resource, ttl)
+		testConcurrentExtend(t, ctx, dLock)
+	})
+}
+
+func testConcurrentExtend(
+	t *testing.T,
+	ctx context.Context,
+	dLock distributedlock.DistributedLock,
+) {
+	// Acquire the lock
+	err := dLock.Lock(ctx)
+	require.NoError(t, err)
+
+	const numExtenders = 10
+	successCount := atomic.Int32{}
+	startBarrier := make(chan struct{})
+
+	// Multiple goroutines try to extend simultaneously
+	for i := 0; i < numExtenders; i++ {
+		go func(id int) {
+			<-startBarrier
+
+			extended, err := dLock.Extend(ctx)
+			require.NoError(t, err, "goroutine %d got error during extend", id)
+
+			if extended {
+				successCount.Add(1)
+			}
+		}(i)
+	}
+
+	// Give goroutines time to reach the barrier
+	time.Sleep(50 * time.Millisecond)
+
+	// Release all goroutines simultaneously
+	close(startBarrier)
+
+	// Wait for all to complete
+	time.Sleep(500 * time.Millisecond)
+
+	// At least one should have succeeded (may be more due to timing)
+	require.GreaterOrEqual(t, successCount.Load(), int32(1), "at least one extend should succeed")
+
+	// Cleanup
+	err = dLock.Unlock(ctx)
+	require.NoError(t, err)
+}
+
+func TestConcurrentUnlock(t *testing.T) {
+	ttl := time.Second * 3
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "unlock_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		testConcurrentUnlock(t, ctx, dLock)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "unlock_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		testConcurrentUnlock(t, ctx, dLock)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "unlock_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedLocalLock(resource, ttl)
+		testConcurrentUnlock(t, ctx, dLock)
+	})
+}
+
+func testConcurrentUnlock(
+	t *testing.T,
+	ctx context.Context,
+	dLock distributedlock.DistributedLock,
+) {
+	// Acquire the lock
+	err := dLock.Lock(ctx)
+	require.NoError(t, err)
+
+	const numUnlockers = 5
+	startBarrier := make(chan struct{})
+	errorCount := atomic.Int32{}
+
+	// Multiple goroutines try to unlock simultaneously
+	for i := 0; i < numUnlockers; i++ {
+		go func(id int) {
+			<-startBarrier
+
+			err := dLock.Unlock(ctx)
+			// Unlock should not fail, it just won't affect anything if already unlocked
+			if err != nil {
+				errorCount.Add(1)
+			}
+		}(i)
+	}
+
+	// Give goroutines time to reach the barrier
+	time.Sleep(50 * time.Millisecond)
+
+	// Release all goroutines simultaneously
+	close(startBarrier)
+
+	// Wait for all to complete
+	time.Sleep(500 * time.Millisecond)
+
+	// No errors should occur
+	require.Equal(t, int32(0), errorCount.Load(), "concurrent unlocks should not error")
+}
+
+func TestRaceConditionExpiredLock(t *testing.T) {
+	ttl := time.Millisecond * 500 // Short TTL to ensure expiration
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "expired_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		}
+		testRaceConditionExpiredLock(t, ctx, factory)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "expired_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		}
+		testRaceConditionExpiredLock(t, ctx, factory)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "expired_" + uuid.NewString()
+		factory := func() distributedlock.DistributedLock {
+			return distributedlock.NewDistributedLocalLock(resource, ttl)
+		}
+		testRaceConditionExpiredLock(t, ctx, factory)
+	})
+}
+
+func testRaceConditionExpiredLock(
+	t *testing.T,
+	ctx context.Context,
+	factory func() distributedlock.DistributedLock,
+) {
+	// First goroutine acquires the lock
+	dLock1 := factory()
+	err := dLock1.Lock(ctx)
+	require.NoError(t, err)
+
+	lockTTL := dLock1.TTL()
+
+	// Wait for lock to expire
+	time.Sleep(lockTTL + 100*time.Millisecond)
+
+	const numCompetitors = 10
+	successCount := atomic.Int32{}
+	startBarrier := make(chan struct{})
+
+	// Multiple goroutines try to acquire the expired lock simultaneously
+	for i := 0; i < numCompetitors; i++ {
+		go func(id int) {
+			<-startBarrier
+
+			dLock := factory()
+			locked, err := dLock.TryLock(ctx)
+			require.NoError(t, err, "goroutine %d got error", id)
+
+			if locked {
+				successCount.Add(1)
+				time.Sleep(50 * time.Millisecond)
+				dLock.Unlock(ctx)
+			}
+		}(i)
+	}
+
+	// Give goroutines time to reach the barrier
+	time.Sleep(50 * time.Millisecond)
+
+	// Release all goroutines simultaneously
+	close(startBarrier)
+
+	// Wait for completion
+	time.Sleep(time.Second)
+
+	// Exactly ONE should have succeeded in acquiring the expired lock
+	require.Equal(t, int32(1), successCount.Load(), "exactly one should acquire expired lock")
 }
