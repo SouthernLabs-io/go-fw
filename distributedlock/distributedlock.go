@@ -113,13 +113,6 @@ func (dl *BaseDistributedLock) setExpiration(expiration time.Time) {
 	dl.expiration = expiration
 }
 
-// setExtendedCount sets the extended count with proper locking
-func (dl *BaseDistributedLock) setExtendedCount(count int) {
-	dl.mu.Lock()
-	defer dl.mu.Unlock()
-	dl.extendedCount = count
-}
-
 // setLockState sets both expiration and extended count atomically
 func (dl *BaseDistributedLock) setLockState(expiration time.Time, extendedCount int) {
 	dl.mu.Lock()
