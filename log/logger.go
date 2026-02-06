@@ -63,7 +63,7 @@ func NewLoggerWithWriter(conf config.RootConfig, name string, writer io.Writer) 
 			Level:      logger.hOpts.Leveler,
 			AddSource:  logger.hOpts.AddSource,
 			TimeFormat: time.RFC3339Nano,
-			Theme:      console.NewBrightTheme(),
+			Theme:      newConsoleTheme(),
 		}
 		logger.hOpts.IsConsole = true
 		logger.h = console.NewHandler(writer, &consoleHOpts)
