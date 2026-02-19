@@ -43,30 +43,45 @@ func mapErrorToHTTPCode(ctx context.Context, err *errors.Error) int {
 		log.GetLoggerFromCtx(ctx).Debugf("Custom error code mapper returned 0 for error: %v, using default mapping", err)
 	}
 
-	// Default mapping using fw deep cause
-	cause := err.FWDeepCause()
-	if cause == nil {
-		cause = err
+	bestStatus := http.StatusInternalServerError
+	bestPriority := 5 // 1 is highest priority
+
+	// Default mapping using priority list outside-in
+	currError := err
+	for currError != nil {
+		status, priority := getHTTPStatusAndPriority(currError.Code)
+		if priority < bestPriority {
+			bestStatus = status
+			bestPriority = priority
+		}
+		currError = currError.FWCause()
 	}
-	switch cause.Code {
+
+	if bestStatus == http.StatusInternalServerError {
+		log.GetLoggerFromCtx(ctx).Debugf("No specific HTTP mapping for error code chain starting with: %s, using 500", err.Code)
+	}
+	return bestStatus
+}
+
+func getHTTPStatusAndPriority(code string) (int, int) {
+	switch code {
 	case errors.ErrCodeNotAuthenticated:
-		return http.StatusUnauthorized
+		return http.StatusUnauthorized, 1
 	case errors.ErrCodeNotAllowed:
-		return http.StatusForbidden
+		return http.StatusForbidden, 2
 	case errors.ErrCodeNotFound:
-		return http.StatusNotFound
+		return http.StatusNotFound, 3
 	case errors.ErrCodeConflict:
-		return http.StatusConflict
+		return http.StatusConflict, 3
 	case errors.ErrCodeBadArgument:
-		return http.StatusBadRequest
+		return http.StatusBadRequest, 3
 	case errors.ErrCodeValidationFailed:
-		return http.StatusUnprocessableEntity
+		return http.StatusUnprocessableEntity, 3
 	case errors.ErrCodeBadState:
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, 4
 	case errors.ErrCodeUnknown:
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, 4
 	default:
-		log.GetLoggerFromCtx(ctx).Debugf("No specific HTTP mapping for error code: %s, using 500", err.Code)
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, 4
 	}
 }
