@@ -18,7 +18,7 @@ import (
 )
 
 var ErrWorkerHandlerNoWorkers = errors.Newf("WORKER_HANDLER_NO_WORKERS", "worker handler has no workers")
-var errWorkerHandlerStopped = errors.Newf("WORKER_HANDLER_STOPPED", "worker handler stopped")
+var ErrWorkerHandlerStopped = errors.Newf("WORKER_HANDLER_STOPPED", "worker handler stopped")
 
 var ErrCodeWorkerError = "WORKER_ERROR"
 
@@ -122,7 +122,7 @@ func (h *LongRunningWorkerHandler) Start() {
 	go func() {
 		err := h.Run()
 		if err != nil {
-			if errors.Is(err, errWorkerHandlerStopped) {
+			if errors.Is(err, ErrWorkerHandlerStopped) {
 				h.logger.Infof("Long running worker handler stopped")
 			} else if errors.Is(err, ErrWorkerHandlerNoWorkers) {
 				h.shutdownFxApp(err)
@@ -162,8 +162,8 @@ func (h *LongRunningWorkerHandler) Run() error {
 				)
 			}
 			if err != nil {
-				if errors.Is(err, errWorkerHandlerStopped) {
-					handlerErrChn <- errWorkerHandlerStopped
+				if errors.Is(err, ErrWorkerHandlerStopped) {
+					handlerErrChn <- ErrWorkerHandlerStopped
 				} else {
 					handlerErrChn <- err
 				}
@@ -232,7 +232,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			return worker.Run(wCtx)
 		}()
 		if err != nil {
-			if errors.Is(err, errWorkerHandlerStopped) || errors.IsCode(err, errors.ErrCodePanic) {
+			if errors.Is(err, ErrWorkerHandlerStopped) || errors.IsCode(err, errors.ErrCodePanic) {
 				return err
 			}
 			var fwErr *errors.Error
@@ -279,7 +279,7 @@ func (h *LongRunningWorkerHandler) shutdownFxApp(err error) {
 
 func (h *LongRunningWorkerHandler) Stop(ctx context.Context) {
 	h.logger.Infof("Stop: long running worker handler, workers: %d", len(h.workers))
-	h.cancelCauseFunc(errWorkerHandlerStopped)
+	h.cancelCauseFunc(ErrWorkerHandlerStopped)
 
 	if _, ok := ctx.Deadline(); ok {
 		select {
