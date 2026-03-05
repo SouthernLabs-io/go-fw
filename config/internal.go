@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -196,25 +198,7 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 		envMap[strings.ToLower(key)] = val
 	}
 
-	// Bind environment variables to the config map
-	var bindEnvVars func(acc string, m map[string]any)
-	bindEnvVars = func(acc string, m map[string]any) {
-		for key, val := range m {
-			switch v := val.(type) {
-			case map[string]any:
-				bindEnvVars(acc+strings.ToLower(key)+"_", v)
-			default:
-				envKey := acc + strings.ToLower(key)
-				if envVal, ok := envMap[envKey]; ok {
-					logger.Info(fmt.Sprintf("[%T] Using env key: %s", *conf, envKey))
-					m[key] = envVal
-				} else {
-					logger.Debug(fmt.Sprintf("[%T] Env key: %s not found", *conf, envKey))
-				}
-			}
-		}
-	}
-	bindEnvVars("", confMap)
+	bindEnvVars(confMap, envMap, logger, *conf)
 
 	if preprocess != nil {
 		preprocess(confMap)
@@ -238,6 +222,142 @@ func loadConfig[T any](conf *T, preprocess func(confMap map[string]any)) {
 	if err != nil {
 		panic(errors.NewUnknownf("failed to decode config map to struct: %T, error: %w", conf, err))
 	}
+}
+
+func bindEnvVars[T any](confMap map[string]any, envMap map[string]string, logger *slog.Logger, conf T) {
+	type envItem struct {
+		key    string
+		val    string
+		weight int
+	}
+
+	envItems := make([]envItem, 0, len(envMap))
+	for key, val := range envMap {
+		envItems = append(envItems, envItem{
+			key:    key,
+			val:    val,
+			weight: strings.Count(key, "_") + 1,
+		})
+	}
+
+	sort.SliceStable(envItems, func(i, j int) bool {
+		if envItems[i].weight != envItems[j].weight {
+			return envItems[i].weight < envItems[j].weight
+		}
+		return envItems[i].key < envItems[j].key
+	})
+
+	for _, env := range envItems {
+		tokens := strings.Split(env.key, "_")
+		if len(tokens) == 0 {
+			continue
+		}
+
+		rootKey, found := findMapKey(confMap, tokens[0])
+		if !found {
+			continue
+		}
+
+		updated, applied, err := applyEnvPath(confMap[rootKey], tokens[1:], env.val)
+		if err != nil {
+			panic(errors.NewUnknownf("failed to apply env key: %s, error: %w", env.key, err))
+		}
+		if !applied {
+			logger.Debug(fmt.Sprintf("[%T] Env key: %s not applied", conf, env.key))
+			continue
+		}
+
+		confMap[rootKey] = updated
+		logger.Info(fmt.Sprintf("[%T] Using env key: %s", conf, env.key))
+	}
+}
+
+func applyEnvPath(current any, tokens []string, value string) (any, bool, error) {
+	if len(tokens) == 0 {
+		return value, true, nil
+	}
+
+	token := tokens[0]
+	if index, isIndex := parseIndexToken(token); isIndex {
+		slice, ok := current.([]any)
+		if !ok {
+			if current == nil {
+				slice = make([]any, 0)
+			} else {
+				return current, false, nil
+			}
+		}
+
+		for len(slice) <= index {
+			slice = append(slice, nil)
+		}
+
+		child := slice[index]
+		if child == nil && len(tokens) > 1 {
+			if _, nextIsIndex := parseIndexToken(tokens[1]); nextIsIndex {
+				child = make([]any, 0)
+			} else {
+				child = map[string]any{}
+			}
+		}
+
+		updatedChild, applied, err := applyEnvPath(child, tokens[1:], value)
+		if err != nil || !applied {
+			return slice, applied, err
+		}
+
+		slice[index] = updatedChild
+		return slice, true, nil
+	}
+
+	mapValue, ok := current.(map[string]any)
+	if !ok {
+		if current == nil {
+			mapValue = map[string]any{}
+		} else {
+			return current, false, nil
+		}
+	}
+
+	fieldKey, found := findMapKey(mapValue, token)
+	if !found {
+		fieldKey = token
+		mapValue[fieldKey] = nil
+	}
+
+	child := mapValue[fieldKey]
+	if child == nil && len(tokens) > 1 {
+		if _, nextIsIndex := parseIndexToken(tokens[1]); nextIsIndex {
+			child = make([]any, 0)
+		} else {
+			child = map[string]any{}
+		}
+	}
+
+	updatedChild, applied, err := applyEnvPath(child, tokens[1:], value)
+	if err != nil || !applied {
+		return mapValue, applied, err
+	}
+
+	mapValue[fieldKey] = updatedChild
+	return mapValue, true, nil
+}
+
+func findMapKey(m map[string]any, lookup string) (string, bool) {
+	for key := range m {
+		if strings.EqualFold(key, lookup) {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+func parseIndexToken(token string) (int, bool) {
+	index, err := strconv.Atoi(token)
+	if err != nil || index < 0 {
+		return 0, false
+	}
+	return index, true
 }
 
 func loadSecrets(secretsMgr SecretsManager) func(map[string]any) {
