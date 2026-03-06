@@ -9,6 +9,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/errors"
+	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/queue"
 )
 
@@ -490,6 +491,7 @@ func (e *DefaultExecutor) executeTask(task *_Task) {
 		// handle panic
 		defer func() {
 			if r := recover(); r != nil {
+				log.GetLoggerFromCtx(task.ctx).Warnf("Task failed with panic: r=%v", r)
 				task.setDone(nil, errors.Newf(ErrCodeTaskPanic, "task failed with panic: %v", r))
 			}
 		}()
