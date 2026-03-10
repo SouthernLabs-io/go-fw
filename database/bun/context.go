@@ -76,9 +76,16 @@ func WithLane(ctx context.Context, lane string) context.Context {
 		return ctx
 	}
 
-	// Lanes must start with *bun.DB, so we need to get the parent DB if we are in a transaction.
-	if tx, ok := idb.(Tx); ok {
+	// Lanes must start with *bun.DB, so we need to unwrap it until we get the *bun.DB
+	for {
+		tx, ok := idb.(Tx)
+		if !ok {
+			break
+		}
 		idb = tx.parentDB
+	}
+	if _, ok := idb.(*bun.DB); !ok {
+		panic(errors.NewBadStatef("*bun.DB not found in the context, make sure you are adding it before calling"))
 	}
 
 	return AddToCtxWithLane(ctx, idb, lane)
