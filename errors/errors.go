@@ -378,9 +378,15 @@ func UnwrapMulti(err error) []error {
 }
 
 // NewUnknownf creates a new error with the ErrCodeUnknown code and the given message format/args.
-// This errors should be mapped to HTTP 500.
+// This errors should be mapped to HTTP 5xx.
 func NewUnknownf(format string, args ...any) *Error {
 	return Newf(ErrCodeUnknown, format, args...)
+}
+
+// NewBadState creates a new error with the ErrCodeBadState code and the given message format/args.
+// This errors should be mapped to HTTP 5xx.
+func NewBadStatef(format string, args ...any) *Error {
+	return Newf(ErrCodeBadState, format, args...)
 }
 
 // NewBadArgumentf creates a new error with the ErrCodeBadArgument code and the given message format/args.
