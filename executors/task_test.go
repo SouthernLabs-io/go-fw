@@ -177,7 +177,7 @@ func TestTask_Periodic_ConfigureNextRun(t *testing.T) {
 var seq = atomic.Uint64{}
 
 func newTaskOnce(t *testing.T, delay time.Duration) *_Task {
-	task := newTask(seq.Add(1), _TaskTypeOnce, delay, delay, make(chan _Event, 1))
+	task := newTask(seq.Add(1), _TaskTypeOnce, delay, delay, func(_Event) bool { return true })
 	require.NotNil(t, task)
 	require.False(t, task.Periodic())
 	require.False(t, task.Done())
@@ -189,7 +189,7 @@ func newTaskOnce(t *testing.T, delay time.Duration) *_Task {
 }
 
 func newTaskFixedDelay(t *testing.T, delay time.Duration) *_Task {
-	task := newTask(seq.Add(1), _TaskTypeFixedDelay, delay, delay, make(chan _Event, 1))
+	task := newTask(seq.Add(1), _TaskTypeFixedDelay, delay, delay, func(_Event) bool { return true })
 	require.NotNil(t, task)
 	require.True(t, task.Periodic())
 	require.False(t, task.Done())
@@ -202,7 +202,7 @@ func newTaskFixedDelay(t *testing.T, delay time.Duration) *_Task {
 }
 
 func newTaskFixedRate(t *testing.T, delay time.Duration) *_Task {
-	task := newTask(seq.Add(1), _TaskTypeFixedRate, delay, delay, make(chan _Event, 1))
+	task := newTask(seq.Add(1), _TaskTypeFixedRate, delay, delay, func(_Event) bool { return true })
 	require.NotNil(t, task)
 	require.True(t, task.Periodic())
 	require.False(t, task.Done())

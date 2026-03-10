@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"math"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -88,6 +89,9 @@ type DefaultExecutor struct {
 
 	terminationChn chan struct{}
 	eventChn       chan _Event
+	eventLoopDone  chan struct{}
+	eventMu        sync.RWMutex
+	eventLoopEnded bool
 }
 
 var _ Executor = (*DefaultExecutor)(nil)
@@ -126,6 +130,7 @@ func NewDefaultExecutor(ctx context.Context, rootConf config.RootConfig, concurr
 
 		terminationChn: make(chan struct{}),
 		eventChn:       make(chan _Event),
+		eventLoopDone:  make(chan struct{}),
 	}
 
 	e.status.Store(_ExecutorStatusRunning)
@@ -142,7 +147,10 @@ func (e *DefaultExecutor) Concurrency() int {
 
 func (e *DefaultExecutor) SetConcurrency(concurrency int) {
 	event := _UpdateConcurrencyEvent{Concurrency: concurrency, Wait: make(chan struct{})}
-	e.eventChn <- event
+	if !e.emitEvent(event) {
+		close(event.Wait)
+		return
+	}
 	<-event.Wait
 }
 
@@ -156,7 +164,10 @@ func (e *DefaultExecutor) QueueCapacity() int {
 
 func (e *DefaultExecutor) SetQueueCapacity(capacity int) {
 	event := _UpdateQueueCapacityEvent{Capacity: capacity, Wait: make(chan struct{})}
-	e.eventChn <- event
+	if !e.emitEvent(event) {
+		close(event.Wait)
+		return
+	}
 	<-event.Wait
 }
 
@@ -225,10 +236,13 @@ func (e *DefaultExecutor) schedule(
 	}
 
 	taskID := e.taskCount.Add(1)
-	task := newTask(taskID, taskType, initialDelay, delay, e.eventChn)
+	task := newTask(taskID, taskType, initialDelay, delay, e.emitEvent)
 	task.execute = callable
 	task.configureContext(e.ctx, e.rootConf, "default-executor-task")
-	e.eventChn <- _TaskSubmittedEvent{Task: task}
+	if !e.emitEvent(_TaskSubmittedEvent{Task: task}) {
+		task.setDone(nil, ErrExecutorCanceled)
+		return nil, ErrExecutorCanceled
+	}
 	return task, nil
 }
 
@@ -245,7 +259,10 @@ func (e *DefaultExecutor) Cancel() bool {
 		return false
 	}
 	event := _CancelEvent{Wait: make(chan bool)}
-	e.eventChn <- event
+	if !e.emitEvent(event) {
+		close(event.Wait)
+		return false
+	}
 	return <-event.Wait
 }
 
@@ -259,7 +276,10 @@ func (e *DefaultExecutor) CancelNow() []Future {
 	event := _CancelNowEvent{
 		Wait: make(chan []Future),
 	}
-	e.eventChn <- event
+	if !e.emitEvent(event) {
+		close(event.Wait)
+		return nil
+	}
 	futures := <-event.Wait
 	return futures
 }
@@ -277,7 +297,37 @@ func (e *DefaultExecutor) AwaitTermination(timeout time.Duration) bool {
 	}
 }
 
+func (e *DefaultExecutor) emitEvent(event _Event) bool {
+	e.eventMu.RLock()
+	eventChn := e.eventChn
+	eventLoopDone := e.eventLoopDone
+	eventLoopEnded := e.eventLoopEnded
+	e.eventMu.RUnlock()
+
+	if eventLoopEnded {
+		return false
+	}
+
+	select {
+	case eventChn <- event:
+		return true
+	case <-eventLoopDone:
+		return false
+	}
+}
+
+func (e *DefaultExecutor) closeEventLoop() {
+	e.eventMu.Lock()
+	defer e.eventMu.Unlock()
+	if e.eventLoopEnded {
+		return
+	}
+	e.eventLoopEnded = true
+	close(e.eventLoopDone)
+}
+
 func (e *DefaultExecutor) eventLoop() {
+	defer e.closeEventLoop()
 	for {
 		select {
 
@@ -487,7 +537,7 @@ func (e *DefaultExecutor) executeTask(task *_Task) {
 	}
 	e.running++
 	go func() {
-		defer func() { e.eventChn <- _TaskCompletedEvent{Task: task} }()
+		defer func() { e.emitEvent(_TaskCompletedEvent{Task: task}) }()
 		// handle panic
 		defer func() {
 			if r := recover(); r != nil {

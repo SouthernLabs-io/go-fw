@@ -358,6 +358,31 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 	require.True(t, exec.Terminated())
 }
 
+func TestDefaultExecutor_SetConcurrencyAfterTerminationDoesNotHang(t *testing.T) {
+	conf := test.NewTestConfig(test.NewTestRootConfig(t))
+	ctx := context.Background()
+	exec := executors.NewDefaultExecutor(ctx, conf.RootConfig, 1, 0)
+	require.NotNil(t, exec)
+
+	require.True(t, exec.Cancel())
+	require.Eventually(t, func() bool {
+		return exec.AwaitTermination(time.Millisecond * 50)
+	}, time.Second, time.Millisecond)
+
+	done := make(chan struct{})
+	go func() {
+		exec.SetConcurrency(2)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// pass
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("SetConcurrency hung after executor termination")
+	}
+}
+
 func TestDefaultExecutor_ScheduleAtFixedRateWithSlowTask(t *testing.T) {
 	conf := test.NewTestConfig(test.NewTestRootConfig(t))
 	logger := test.GetTestLogger(t)

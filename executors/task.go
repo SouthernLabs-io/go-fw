@@ -46,8 +46,8 @@ type _Task struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
-	// executor events channel, it will be used to communicate back changes of state of the task
-	eventChn chan _Event
+	// executor event sink used to communicate task state changes
+	eventEmitter func(_Event) bool
 
 	id      uint64
 	_type   _TaskType
@@ -76,7 +76,7 @@ func newTask(
 	taskType _TaskType,
 	initialDelay time.Duration,
 	delay time.Duration,
-	eventChn chan _Event,
+	eventEmitter func(_Event) bool,
 ) *_Task {
 	return &_Task{
 		id:    id,
@@ -85,7 +85,7 @@ func newTask(
 		nextRun: time.Now().Add(initialDelay), // First run is after the initial delay
 		delay:   delay,
 
-		eventChn: eventChn,
+		eventEmitter: eventEmitter,
 
 		queueElement:  nil,
 		sQueueElement: nil,
@@ -128,8 +128,10 @@ func (t *_Task) Cancel() bool {
 			close(doneChn.(chan struct{}))
 		}
 
-		// Notify the executor
-		t.eventChn <- _TaskCanceledEvent{Task: t}
+		// Best effort notification; executor may already be terminated.
+		if t.eventEmitter != nil {
+			t.eventEmitter(_TaskCanceledEvent{Task: t})
+		}
 
 		return true
 	}
@@ -139,8 +141,10 @@ func (t *_Task) Cancel() bool {
 		if t.ctxCancel != nil {
 			t.ctxCancel()
 		}
-		// Notify the executor
-		t.eventChn <- _TaskCanceledEvent{Task: t}
+		// Best effort notification; executor may already be terminated.
+		if t.eventEmitter != nil {
+			t.eventEmitter(_TaskCanceledEvent{Task: t})
+		}
 
 		return true
 	}
