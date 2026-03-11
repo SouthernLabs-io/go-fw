@@ -187,9 +187,10 @@ func (l LogLevel) MarshalText() ([]byte, error) {
 }
 
 type LogConfig struct {
-	Level  LogLevel
-	Levels map[string]LogLevel
-	Writer LogConfigWriter
+	Level      LogLevel
+	Levels     map[string]LogLevel
+	Writer     LogConfigWriter
+	Structured bool
 }
 
 type SecretsConfig struct {

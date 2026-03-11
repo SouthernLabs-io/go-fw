@@ -58,7 +58,10 @@ func NewLoggerWithWriter(conf config.RootConfig, name string, writer io.Writer) 
 		},
 	}
 	logger.SetLevel(conf.Log.Level)
-	if conf.Env.Type == config.EnvTypeLocal || conf.Env.Type == config.EnvTypeTest {
+
+	// Structured logging is enabled by default for sandbox and prod environments, but can be enabled for other environments as well.
+	structured := conf.Log.Structured || conf.Env.Type == config.EnvTypeSandbox || conf.Env.Type == config.EnvTypeProd
+	if !structured {
 		consoleHOpts := console.HandlerOptions{
 			Level:      logger.hOpts.Leveler,
 			AddSource:  logger.hOpts.AddSource,
