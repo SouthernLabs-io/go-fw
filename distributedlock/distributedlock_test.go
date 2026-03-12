@@ -377,6 +377,22 @@ func TestAutoExtenderStopWhenUnlocked(t *testing.T) {
 	})
 }
 
+func TestAutoExtenderInvalidTTL(t *testing.T) {
+	ctx := setupLocal(t)
+	dLock := distributedlock.NewDistributedLocalLock("myResource_"+uuid.NewString(), 0)
+
+	err := dLock.Lock(ctx)
+	require.NoError(t, err)
+
+	aeCtx, err := dLock.AutoExtend(ctx)
+	require.Error(t, err)
+	require.True(t, errors.IsCode(err, errors.ErrCodeBadState))
+	require.Nil(t, aeCtx)
+
+	err = dLock.Unlock(ctx)
+	require.NoError(t, err)
+}
+
 func testAutoExtenderStopWhenUnlocked(t *testing.T, ctx context.Context, dLock distributedlock.DistributedLock) {
 	require.NotNil(t, dLock)
 	require.Zero(t, dLock.Expiration())
@@ -712,6 +728,63 @@ func TestRaceConditionExpiredLock(t *testing.T) {
 		}
 		testRaceConditionExpiredLock(t, ctx, factory)
 	})
+}
+
+func TestAutoExtenderPreventsCompetingWorker(t *testing.T) {
+	ttl := time.Second * 2
+	t.Run("Postgres", func(t *testing.T) {
+		ctx := setupDBBun(t)
+		resource := "autoextend_competing_" + uuid.NewString()
+		dLock1 := distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		dLock2 := distributedlock.NewDistributedPostgresBunLock(resource, ttl)
+		testAutoExtenderPreventsCompetingWorker(t, ctx, dLock1, dLock2)
+	})
+	t.Run("Redis", func(t *testing.T) {
+		rds, ctx := setupRedis(t)
+		resource := "autoextend_competing_" + uuid.NewString()
+		dLock1 := distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		dLock2 := distributedlock.NewDistributedRedisLock(rds, resource, ttl)
+		testAutoExtenderPreventsCompetingWorker(t, ctx, dLock1, dLock2)
+	})
+	t.Run("Local", func(t *testing.T) {
+		ctx := setupLocal(t)
+		resource := "autoextend_competing_" + uuid.NewString()
+		dLock1 := distributedlock.NewDistributedLocalLock(resource, ttl)
+		dLock2 := distributedlock.NewDistributedLocalLock(resource, ttl)
+		testAutoExtenderPreventsCompetingWorker(t, ctx, dLock1, dLock2)
+	})
+}
+
+func testAutoExtenderPreventsCompetingWorker(
+	t *testing.T,
+	ctx context.Context,
+	dLock1 distributedlock.DistributedLock,
+	dLock2 distributedlock.DistributedLock,
+) {
+	err := dLock1.Lock(ctx)
+	require.NoError(t, err)
+
+	aeCtx, err := dLock1.AutoExtend(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, aeCtx)
+
+	// Wait longer than a full TTL to ensure the lock would have expired without auto extension.
+	time.Sleep(dLock1.TTL() + time.Second)
+
+	locked, err := dLock2.TryLock(ctx)
+	require.NoError(t, err)
+	require.False(t, locked)
+
+	err = dLock1.Unlock(ctx)
+	require.NoError(t, err)
+	require.ErrorIs(t, context.Cause(aeCtx), context.Canceled)
+
+	locked, err = dLock2.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, locked)
+
+	err = dLock2.Unlock(ctx)
+	require.NoError(t, err)
 }
 
 func testRaceConditionExpiredLock(

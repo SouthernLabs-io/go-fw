@@ -198,7 +198,17 @@ func (h *LongRunningWorkerHandler) Run() error {
 
 func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worker LongRunningWorker) error {
 	logger := log.GetLoggerFromCtx(ctx)
-	dl := h.dlFactory.NewDistributedLock(worker.GetName(), worker.GetConcurrency().SingleLockTTL)
+	concurrency := worker.GetConcurrency()
+	if concurrency.SingleLockTTL <= 0 {
+		return errors.Newf(
+			errors.ErrCodeBadState,
+			"worker: %s has invalid single lock ttl: %s",
+			worker.GetName(),
+			concurrency.SingleLockTTL,
+		)
+	}
+
+	dl := h.dlFactory.NewDistributedLock(worker.GetName(), concurrency.SingleLockTTL)
 	for {
 		// Use a function closure to use defer to unlock the lock
 		err := func() (err error) {

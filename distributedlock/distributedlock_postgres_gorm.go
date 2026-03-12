@@ -154,8 +154,8 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 				SET expiration = clock_timestamp() + INTERVAL '1 second' * ?,
 				    extended_count = extended_count + 1 
                 WHERE resource = ?
-                  AND instance_id = ?
-                  AND expiration > clock_timestamp()
+	                  AND instance_id = ?
+	                  AND expiration > clock_timestamp()
                 RETURNING expiration, extended_count`,
 		l.ttl.Seconds(),
 		l.resource,
@@ -165,8 +165,9 @@ func (l *DistributedPostgresLock) Extend(ctx context.Context) (bool, error) {
 	logger := log.GetLoggerFromCtx(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			expiration := l.Expiration()
 			l.resetLockState()
-			logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, time.Time{})
+			logger.Warnf("Lock not extended: %s, lockID: %s, expiration: %s", l.resource, l.id, expiration)
 			return false, nil
 		}
 		return false, err

@@ -151,6 +151,16 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 		return ctx, context.Cause(ctx)
 	}
 
+	ttl := dl.TTL()
+	if ttl <= 0 {
+		return nil, errors.Newf(
+			errors.ErrCodeBadState,
+			"could not auto extend lock: %s, invalid ttl: %s",
+			dl.Resource(),
+			ttl,
+		)
+	}
+
 	if dl.Expiration().IsZero() {
 		return nil, errors.Newf(
 			errors.ErrCodeBadState,
@@ -161,13 +171,44 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 
 	ctx, cancel := context.WithCancelCause(ctx)
 	baseDL.setAutoExtenderCancel(cancel)
-	ttl := dl.TTL()
+
+	lead := ttl / 2
+	// Keep a minimum lead time so scheduler/GC pauses are less likely to miss renewal.
+	if lead < 100*time.Millisecond {
+		lead = 100 * time.Millisecond
+	}
+	if lead > ttl {
+		lead = ttl
+	}
+
 	go func() {
 		for {
+			expiration := dl.Expiration()
+			if expiration.IsZero() {
+				cancel(errors.Newf(
+					ErrCodeLockNotAutoExtended,
+					"could not extend lock: %s, lock state was reset",
+					dl.Resource(),
+				))
+				return
+			}
+
+			wait := time.Until(expiration.Add(-lead))
+			if wait < 0 {
+				wait = 0
+			}
+
+			timer := time.NewTimer(wait)
 			select {
 			case <-ctx.Done():
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
 				return
-			case <-time.After(ttl / 2):
+			case <-timer.C:
 				extend, err := dl.Extend(ctx)
 				if err != nil {
 					cancel(err)

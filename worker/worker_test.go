@@ -96,6 +96,26 @@ func TestLongRunningWorkerNoWorker(t *testing.T) {
 	require.Equal(t, 1, sig.ExitCode)
 }
 
+func TestLongRunningWorkerInvalidSingleLockTTL(t *testing.T) {
+	var longRunningWorkerHandler *worker.LongRunningWorkerHandler
+	app := test.FxUnit(
+		t,
+		distributedlock.FxExportLocal,
+		worker.FxExport,
+		worker.ProvideAsLongRunningWorker(func() *TestLongRunningWorker {
+			w := NewTestLongRunningWorker("invalid-ttl-worker")
+			w.concurrencyConfig.SingleLockTTL = 0
+			return w
+		}),
+	).Populate(
+		&longRunningWorkerHandler,
+	)
+	require.NotNil(t, longRunningWorkerHandler)
+
+	sig := <-app.Wait()
+	require.Equal(t, 1, sig.ExitCode)
+}
+
 type TestLongRunningWorker struct {
 	name              string
 	id                string
