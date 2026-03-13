@@ -240,6 +240,14 @@ func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm
 		dsn = strings.ReplaceAll(dsn, "'"+dbConf.Pass+"'", "*")
 		panic(errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err))
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(errors.NewUnknownf("failed to access sql db for %s: %w", dbName, err))
+	}
+	sqlDB.SetMaxOpenConns(dbConf.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(dbConf.MaxIdleConns)
+	sqlDB.SetConnMaxIdleTime(dbConf.ConnMaxIdleTime)
+	sqlDB.SetConnMaxLifetime(dbConf.ConnMaxLifetime)
 	lf.GetLogger().Infof("DB connection established: \"%s\"", dbName)
 	return db
 }
