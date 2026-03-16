@@ -140,6 +140,13 @@ func (t TestLongRunningWorker) GetConcurrency() worker.ConcurrencyConfig {
 	return t.concurrencyConfig
 }
 
+func (t TestLongRunningWorker) GetRetry() worker.RetryConfig {
+	return worker.RetryConfig{
+		MaxRetries: 2,
+		Delay:      time.Millisecond * 10,
+	}
+}
+
 func (t TestLongRunningWorker) Run(ctx context.Context) error {
 	logger := log.GetLoggerFromCtx(ctx)
 	for {

@@ -15,6 +15,7 @@ import (
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/panics"
+	"github.com/southernlabs-io/go-fw/sync"
 )
 
 var ErrWorkerHandlerNoWorkers = errors.Newf("WORKER_HANDLER_NO_WORKERS", "worker handler has no workers")
@@ -38,10 +39,40 @@ type ConcurrencyConfig struct {
 	SingleLockTTL time.Duration
 }
 
+type RetryConfig struct {
+	NoTransientError     bool          // Do not retry on transient errors.
+	AllErrors            bool          // Retry on all errors, including non-transient errors
+	Delay                time.Duration // Delay before retrying, zero means use default delay of 1 second.
+	MaxRetries           int           // Max retry times, zero means use default max retry of 3 times.
+	ResetRetryCountDelay time.Duration // How long after a run without error before the retry count is reset, zero means use default of 1 second.
+}
+
+func (rc RetryConfig) GetDelay() time.Duration {
+	if rc.Delay <= 0 {
+		return time.Second
+	}
+	return rc.Delay
+}
+
+func (rc RetryConfig) GetMaxRetries() int {
+	if rc.MaxRetries <= 0 {
+		return 3
+	}
+	return rc.MaxRetries
+}
+
+func (rlc RetryConfig) GetResetRetryCountDelay() time.Duration {
+	if rlc.ResetRetryCountDelay <= 0 {
+		return time.Second
+	}
+	return rlc.ResetRetryCountDelay
+}
+
 type LongRunningWorker interface {
 	GetName() string
 	GetID() string
 	GetConcurrency() ConcurrencyConfig
+	GetRetry() RetryConfig
 	Run(ctx context.Context) error
 }
 
@@ -209,8 +240,17 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 	}
 
 	dl := h.dlFactory.NewDistributedLock(worker.GetName(), concurrency.SingleLockTTL)
+
+	retryConf := worker.GetRetry()
+	retryCount := 0
+	maxRetries := retryConf.GetMaxRetries()
+	retryDelay := retryConf.GetDelay()
+	retryCountResetMillis := retryConf.GetResetRetryCountDelay().Milliseconds()
+
+	runExecTime := int64(0)
 	for {
 		// Use a function closure to use defer to unlock the lock
+		t0 := time.Now()
 		err := func() (err error) {
 			defer panics.DeferredPanicToError(
 				&err,
@@ -239,8 +279,15 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			}
 
 			logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
+
 			return worker.Run(wCtx)
 		}()
+		runExecTime = time.Since(t0).Milliseconds()
+		if runExecTime > retryCountResetMillis {
+			logger.Debugf("Resetting retry count for worker: %s because run execution time: %d ms exceeded reset retry count delay: %d ms", worker.GetName(), runExecTime, retryConf.ResetRetryCountDelay.Milliseconds())
+			retryCount = 0
+			retryDelay = retryConf.GetDelay()
+		}
 		if err != nil {
 			if errors.Is(err, ErrWorkerHandlerStopped) || errors.IsCode(err, errors.ErrCodePanic) {
 				return err
@@ -250,6 +297,31 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 				logger.Info(fwErr.Message)
 				continue
 			}
+
+			if retryCount < maxRetries {
+				// Check if all errores is enabled
+				willRetry := false
+				if retryConf.AllErrors {
+					logger.Warnf("Worker: %s will be retried because retry on all errors is enabled. Error: %s", worker.GetName(), err)
+					willRetry = true
+				} else if !retryConf.NoTransientError && errors.IsTransient(err) {
+					logger.Warnf("Worker: %s will be retried because error is transient. Error: %s", worker.GetName(), err)
+					willRetry = true
+				}
+
+				if willRetry {
+					sleepErr := sync.Sleep(ctx, retryDelay)
+					if sleepErr != nil {
+						return errors.Newf(ErrCodeWorkerError, "worker: %s sleep interrupted during retry delay: %s", worker.GetName(), sleepErr)
+					}
+					retryCount++
+					retryDelay *= 2
+					continue
+				}
+			} else {
+				logger.Warnf("Worker: %s reached max retry count: %d. Error: %s", worker.GetName(), maxRetries, err)
+			}
+
 			return errors.Newf(ErrCodeWorkerError, "single worker: %s error: %w", worker.GetName(), err)
 		}
 		return nil
@@ -263,10 +335,59 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 		}
 	}()
 	defer panics.DeferredPanicToError(&err, "worker: %s panicked", worker.GetName())
+
+	retryConf := worker.GetRetry()
+	retryCount := 0
+	maxRetries := retryConf.GetMaxRetries()
+	retryDelay := retryConf.GetDelay()
+	retryCountResetMillis := retryConf.GetResetRetryCountDelay().Milliseconds()
+
 	logger := log.GetLoggerFromCtx(ctx)
-	logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
-	err = worker.Run(ctx)
-	return
+	for {
+		t0 := time.Now()
+		logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
+		err = worker.Run(ctx)
+
+		runExecTime := time.Since(t0).Milliseconds()
+		if runExecTime > retryCountResetMillis {
+			logger.Debugf("Resetting retry count for worker: %s because run execution time: %d ms exceeded reset retry count delay: %d ms", worker.GetName(), runExecTime, retryCountResetMillis)
+			retryCount = 0
+			retryDelay = retryConf.GetDelay()
+		}
+
+		if err != nil {
+			if errors.Is(err, ErrWorkerHandlerStopped) || errors.IsCode(err, errors.ErrCodePanic) {
+				return err
+			}
+
+			if retryCount < maxRetries {
+				willRetry := false
+				if retryConf.AllErrors {
+					logger.Warnf("Worker: %s will be retried because retry on all errors is enabled. Error: %s", worker.GetName(), err)
+					willRetry = true
+				} else if !retryConf.NoTransientError && errors.IsTransient(err) {
+					logger.Warnf("Worker: %s will be retried because error is transient. Error: %s", worker.GetName(), err)
+					willRetry = true
+				}
+
+				if willRetry {
+					sleepErr := sync.Sleep(ctx, retryDelay)
+					if sleepErr != nil {
+						return errors.Newf(ErrCodeWorkerError, "worker: %s sleep interrupted during retry delay: %s", worker.GetName(), sleepErr)
+					}
+					retryCount++
+					retryDelay *= 2
+					continue
+				}
+			} else {
+				logger.Warnf("Worker: %s reached max retry count: %d. Error: %s", worker.GetName(), maxRetries, err)
+			}
+
+			return err
+		}
+
+		return nil
+	}
 }
 
 func (h *LongRunningWorkerHandler) shutdownFxApp(err error) {
