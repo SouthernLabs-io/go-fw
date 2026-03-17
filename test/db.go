@@ -17,27 +17,25 @@ var dbNameReplacer = strings.NewReplacer(
 func CreateTestDBName(conf config.Config) string {
 	// Postgres max length for db name is 63
 	const maxLen = 63
-	s := dbNameReplacer.Replace(strings.ToLower(conf.Name))
-	parts := strings.Split(s, "_")
-	// Account for the extra "_" between parts
-	maxCutLen := (maxLen - len(parts)) / len(parts)
-	s = ""
-	for _, part := range parts {
-		if len(part) > maxCutLen {
-			s += part[0:maxCutLen]
-		} else {
-			s += part
-		}
-		s += "_"
+	prefix := strings.Trim(dbNameReplacer.Replace(strings.ToLower(conf.Name)), "_")
+	envName := strings.Trim(dbNameReplacer.Replace(strings.ToLower(conf.Env.Name)), "_")
+	if envName == "" {
+		envName = "test"
 	}
 
-	return fmt.Sprintf(
-		"%s%.*x_%s",
-		s,
-		// Plus one to account for the final "_"
-		// Each byte uses 2 characters, so we need to divide by 2
-		(maxLen-(len(s)+len(conf.Env.Name)+1))/2,
-		sha256.Sum256([]byte(conf.Name)),
-		conf.Env.Name,
-	)
+	const hashLen = 16
+	hashStr := fmt.Sprintf("%x", sha256.Sum256([]byte(conf.Name)))
+	availablePrefixLen := maxLen - len(envName) - hashLen - 2
+	if availablePrefixLen < 0 {
+		availablePrefixLen = 0
+	}
+	if len(prefix) > availablePrefixLen {
+		prefix = strings.Trim(prefix[:availablePrefixLen], "_")
+	}
+
+	if prefix == "" {
+		return fmt.Sprintf("%s_%s", hashStr[:hashLen], envName)
+	}
+
+	return fmt.Sprintf("%s_%s_%s", prefix, hashStr[:hashLen], envName)
 }
