@@ -17,17 +17,24 @@ type EnvSecretsManager struct {
 
 var _ SecretsManager = (*EnvSecretsManager)(nil)
 
+func NewEnvSecretsManager(
+	rootConf config.RootConfig,
+	keyTransformer KeyTransformer,
+) *EnvSecretsManager {
+	if keyTransformer == nil {
+		keyTransformer = NewDefaultKeyTransformer(rootConf)
+	}
+
+	return &EnvSecretsManager{keyTransformer}
+}
+
 func NewEnvSecretsManagerFx(deps struct {
 	fx.In
 
 	RootConf       config.RootConfig
 	KeyTransformer KeyTransformer `optional:"true"`
 }) *EnvSecretsManager {
-	if deps.KeyTransformer == nil {
-		deps.KeyTransformer = NewDefaultKeyTransformer(deps.RootConf)
-	}
-
-	return &EnvSecretsManager{deps.KeyTransformer}
+	return NewEnvSecretsManager(deps.RootConf, deps.KeyTransformer)
 }
 
 func (e *EnvSecretsManager) GetSecret(ctx context.Context, key string) (string, error) {
