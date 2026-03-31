@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/southernlabs-io/go-fw/errors"
@@ -19,6 +20,14 @@ var ErrorCodeMapper ErrorCodeHTTPMapperFunc
 func ErrorHandler(w http.ResponseWriter, r *http.Request, err *errors.Error) {
 	ctx := r.Context()
 	httpCode := mapErrorToHTTPCode(ctx, err)
+
+	// Inject error field into logger context for 5xx and non-401/403 4xx errors
+	if !(httpCode == http.StatusUnauthorized || httpCode == http.StatusForbidden) {
+		if httpCode >= 400 {
+			ctx = log.CtxAppendLoggerAttrs(ctx, slog.Any("error", err))
+		}
+	}
+
 	jsonStr, jsonErr := json.Marshal(err)
 	if jsonErr != nil {
 		log.GetLoggerFromCtx(ctx).Errorf("failed to marshal error response, sending text as is: %v", jsonErr)
