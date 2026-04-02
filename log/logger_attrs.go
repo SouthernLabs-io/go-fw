@@ -22,9 +22,31 @@ func CtxWithLoggerAttrs(ctx context.Context, attrs ...slog.Attr) context.Context
 }
 
 // CtxAppendLoggerAttrs adds the given attributes to the context, it will append to any existing attributes.
+// If an attribute with the same key already exists, it is replaced if the value differs, or skipped if identical.
 func CtxAppendLoggerAttrs(ctx context.Context, attrs ...slog.Attr) context.Context {
-	if oldAttrs, present := ctx.Value(loggerAttrsCtxKey).([]slog.Attr); present {
-		attrs = append(oldAttrs, attrs...)
+	oldAttrs, _ := ctx.Value(loggerAttrsCtxKey).([]slog.Attr)
+	if oldAttrs == nil {
+		return context.WithValue(ctx, loggerAttrsCtxKey, attrs)
 	}
-	return context.WithValue(ctx, loggerAttrsCtxKey, attrs)
+
+	merged := make([]slog.Attr, len(oldAttrs))
+	copy(merged, oldAttrs)
+
+	for _, newAttr := range attrs {
+		found := false
+		for i, existing := range merged {
+			if existing.Key == newAttr.Key {
+				if !existing.Value.Equal(newAttr.Value) {
+					merged[i] = newAttr
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			merged = append(merged, newAttr)
+		}
+	}
+
+	return context.WithValue(ctx, loggerAttrsCtxKey, merged)
 }
