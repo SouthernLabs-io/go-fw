@@ -283,7 +283,11 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 
 			logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 
-			wCtx = log.CtxAppendLoggerAttrs(wCtx, slog.String("worker.run_id", newRunID()))
+			wCtx = log.CtxAppendLoggerAttrs(wCtx, slog.Group("worker",
+				slog.String("name", worker.GetName()),
+				slog.String("id", worker.GetID()),
+				slog.String("run_id", newRunID()),
+			))
 			return worker.Run(wCtx)
 		}()
 		runExecTime = time.Since(t0).Milliseconds()
@@ -349,7 +353,11 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 	logger := log.GetLoggerFromCtx(ctx)
 	for {
 		t0 := time.Now()
-		runCtx := log.CtxAppendLoggerAttrs(ctx, slog.String("worker.run_id", newRunID()))
+		runCtx := log.CtxAppendLoggerAttrs(ctx, slog.Group("worker",
+			slog.String("name", worker.GetName()),
+			slog.String("id", worker.GetID()),
+			slog.String("run_id", newRunID()),
+		))
 		runLogger := log.GetLoggerFromCtx(runCtx)
 		runLogger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 		err = worker.Run(runCtx)
