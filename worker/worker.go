@@ -1,6 +1,9 @@
 package worker
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"log/slog"
 	"time"
 
 	"github.com/uptrace/bun"
@@ -280,6 +283,7 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 
 			logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 
+			wCtx = log.CtxAppendLoggerAttrs(wCtx, slog.String("worker.run_id", newRunID()))
 			return worker.Run(wCtx)
 		}()
 		runExecTime = time.Since(t0).Milliseconds()
@@ -345,8 +349,10 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 	logger := log.GetLoggerFromCtx(ctx)
 	for {
 		t0 := time.Now()
-		logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
-		err = worker.Run(ctx)
+		runCtx := log.CtxAppendLoggerAttrs(ctx, slog.String("worker.run_id", newRunID()))
+		runLogger := log.GetLoggerFromCtx(runCtx)
+		runLogger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
+		err = worker.Run(runCtx)
 
 		runExecTime := time.Since(t0).Milliseconds()
 		if runExecTime > retryCountResetMillis {
@@ -388,6 +394,12 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 
 		return nil
 	}
+}
+
+func newRunID() string {
+	b := make([]byte, 4)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func (h *LongRunningWorkerHandler) shutdownFxApp(err error) {
