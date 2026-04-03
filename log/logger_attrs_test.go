@@ -1,12 +1,15 @@
 package log_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/log"
 )
 
@@ -104,4 +107,43 @@ func TestCtxWithLoggerAttrs_Overwrites(t *testing.T) {
 	attrs := log.GetLoggerAttrsFromCtx(ctx)
 	require.Len(t, attrs, 1)
 	require.Equal(t, "c", attrs[0].Key)
+}
+
+// TestCtxAppendLoggerAttrs_WorkerGroupReplacement demonstrates that when a worker
+// runner loop replaces the "worker" group to add run_id, only one "worker" key
+// appears in JSON output and it contains all three fields: name, id, and run_id.
+func TestCtxAppendLoggerAttrs_WorkerGroupReplacement(t *testing.T) {
+	buf := &bytes.Buffer{}
+	lf := log.NewLoggerFactoryWithWriter(
+		config.RootConfig{Log: config.LogConfig{Level: config.LogLevelDebug, Structured: true}},
+		buf,
+	)
+
+	// Simulate NewWorkerContext (static worker identity added once on startup)
+	ctx := lf.AddToCtx(context.Background())
+	ctx = log.CtxAppendLoggerAttrs(ctx, slog.Group("worker",
+		slog.String("name", "ai-persona-answer-worker"),
+		slog.String("id", "host-123"),
+	))
+
+	// Simulate runner loop: replaces the worker group to add a per-run ID
+	ctx = log.CtxAppendLoggerAttrs(ctx, slog.Group("worker",
+		slog.String("name", "ai-persona-answer-worker"),
+		slog.String("id", "host-123"),
+		slog.String("run_id", "a1b2c3d4"),
+	))
+
+	log.GetLoggerFromCtx(ctx).Infof("Running worker task")
+
+	t.Logf("Log output: %s", buf.String())
+
+	var entry map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &entry))
+
+	worker, ok := entry["worker"].(map[string]any)
+	require.True(t, ok, "worker group should be present as a JSON object")
+	require.Equal(t, "ai-persona-answer-worker", worker["name"])
+	require.Equal(t, "host-123", worker["id"])
+	require.Equal(t, "a1b2c3d4", worker["run_id"], "run_id should appear inside worker group after replacement")
+	require.Len(t, worker, 3, "worker group should have exactly 3 fields — no duplication")
 }
