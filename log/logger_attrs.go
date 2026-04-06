@@ -32,20 +32,20 @@ func CtxAppendLoggerAttrs(ctx context.Context, attrs ...slog.Attr) context.Conte
 	merged := make([]slog.Attr, len(oldAttrs))
 	copy(merged, oldAttrs)
 
+	attrIndexByKey := make(map[string]int, len(merged)+len(attrs))
+	for i, existing := range merged {
+		attrIndexByKey[existing.Key] = i
+	}
+
 	for _, newAttr := range attrs {
-		found := false
-		for i, existing := range merged {
-			if existing.Key == newAttr.Key {
-				if !existing.Value.Equal(newAttr.Value) {
-					merged[i] = newAttr
-				}
-				found = true
-				break
+		if i, found := attrIndexByKey[newAttr.Key]; found {
+			if !merged[i].Value.Equal(newAttr.Value) {
+				merged[i] = newAttr
 			}
+			continue
 		}
-		if !found {
-			merged = append(merged, newAttr)
-		}
+		attrIndexByKey[newAttr.Key] = len(merged)
+		merged = append(merged, newAttr)
 	}
 
 	return context.WithValue(ctx, loggerAttrsCtxKey, merged)
