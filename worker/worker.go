@@ -1,11 +1,10 @@
 package worker
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 	"go.uber.org/fx"
 
@@ -281,13 +280,12 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 				return err
 			}
 
-			logger.Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
-
 			wCtx = log.CtxAppendLoggerAttrs(wCtx, slog.Group("worker",
 				slog.String("name", worker.GetName()),
 				slog.String("id", worker.GetID()),
 				slog.String("run_id", newRunID()),
 			))
+			log.GetLoggerFromCtx(wCtx).Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 			return worker.Run(wCtx)
 		}()
 		runExecTime = time.Since(t0).Milliseconds()
@@ -350,7 +348,6 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 	retryDelay := retryConf.GetDelay()
 	retryCountResetMillis := retryConf.GetResetRetryCountDelay().Milliseconds()
 
-	logger := log.GetLoggerFromCtx(ctx)
 	for {
 		t0 := time.Now()
 		runCtx := log.CtxAppendLoggerAttrs(ctx, slog.Group("worker",
@@ -364,7 +361,7 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 
 		runExecTime := time.Since(t0).Milliseconds()
 		if runExecTime > retryCountResetMillis {
-			logger.Debugf("Resetting retry count for worker: %s because run execution time: %d ms exceeded reset retry count delay: %d ms", worker.GetName(), runExecTime, retryCountResetMillis)
+			runLogger.Debugf("Resetting retry count for worker: %s because run execution time: %d ms exceeded reset retry count delay: %d ms", worker.GetName(), runExecTime, retryCountResetMillis)
 			retryCount = 0
 			retryDelay = retryConf.GetDelay()
 		}
@@ -377,10 +374,10 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 			if retryCount < maxRetries {
 				willRetry := false
 				if retryConf.AllErrors {
-					logger.Warnf("Worker: %s will be retried because retry on all errors is enabled. Error: %s", worker.GetName(), err)
+					runLogger.Warnf("Worker: %s will be retried because retry on all errors is enabled. Error: %s", worker.GetName(), err)
 					willRetry = true
 				} else if !retryConf.NoTransientError && errors.IsTransient(err) {
-					logger.Warnf("Worker: %s will be retried because error is transient. Error: %s", worker.GetName(), err)
+					runLogger.Warnf("Worker: %s will be retried because error is transient. Error: %s", worker.GetName(), err)
 					willRetry = true
 				}
 
@@ -394,7 +391,7 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 					continue
 				}
 			} else {
-				logger.Warnf("Worker: %s reached max retry count: %d. Error: %s", worker.GetName(), maxRetries, err)
+				runLogger.Warnf("Worker: %s reached max retry count: %d. Error: %s", worker.GetName(), maxRetries, err)
 			}
 
 			return err
@@ -405,9 +402,7 @@ func (h *LongRunningWorkerHandler) multiWorkerRunner(ctx context.Context, worker
 }
 
 func newRunID() string {
-	b := make([]byte, 4)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+	return uuid.New().String()
 }
 
 func (h *LongRunningWorkerHandler) shutdownFxApp(err error) {
