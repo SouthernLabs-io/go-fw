@@ -122,6 +122,13 @@ func (e *Error) Error() string {
 	return e.buildFullErrorString()
 }
 
+func ErrorMessageWithoutStacktrace(err error) string {
+	if fwErr, is := err.(*Error); is {
+		return fwErr.shortErrorString
+	}
+	return err.Error()
+}
+
 func (e *Error) buildFullErrorString() string {
 	buf := strings.Builder{}
 	buf.WriteString(e.shortErrorString)
