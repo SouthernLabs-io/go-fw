@@ -2,6 +2,7 @@ package sync_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,4 +35,33 @@ func TestSleepCanceledWithCause(t *testing.T) {
 	err := sync.Sleep(ctx, time.Millisecond)
 	require.Error(t, err)
 	require.ErrorIs(t, err, causeErr)
+}
+
+func TestOnceValue(t *testing.T) {
+	count := &atomic.Int32{}
+	onceValue := sync.OnceValue(func() string {
+		count.Add(1)
+		return "value"
+	})
+
+	require.Equal(t, "value", onceValue())
+	require.Equal(t, "value", onceValue())
+	require.Equal(t, int32(1), count.Load())
+}
+
+func TestOnceValues(t *testing.T) {
+	count := &atomic.Int32{}
+	onceValues := sync.OnceValues(func() (string, int) {
+		count.Add(1)
+		return "value", 42
+	})
+
+	value, number := onceValues()
+	require.Equal(t, "value", value)
+	require.Equal(t, 42, number)
+
+	value, number = onceValues()
+	require.Equal(t, "value", value)
+	require.Equal(t, 42, number)
+	require.Equal(t, int32(1), count.Load())
 }

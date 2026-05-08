@@ -23,21 +23,35 @@ func (m *Map[K, V]) Store(key K, value V) {
 // it calls the generator function to create the value and stores it in the map.
 // The generator function is guaranteed to be called synchronously and only once for the same key.
 func (m *Map[K, V]) LoadOrStoreFunc(key K, generator func(key K) (value V)) (value V) {
+	val, _ := m.LoadOrStoreFuncErr(key, func(k K) (V, error) {
+		return generator(k), nil
+	})
+	return val
+}
+
+// LoadOrStoreFuncErr loads the value for the given key, if it exists. If the key does not exist,
+// it calls the generator function to create the value and stores it in the map.
+// If the generator function returns an error, the value is not stored and the error is returned.
+// The generator function is guaranteed to be called synchronously and only once for the same key.
+func (m *Map[K, V]) LoadOrStoreFuncErr(key K, generator func(key K) (value V, err error)) (value V, err error) {
 	var present bool
 	if value, present = m.Load(key); present {
-		return value
+		return value, nil
 	}
 
 	// Lock to avoid calling the generator multiple times for the same key
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if value, present = m.Load(key); present {
-		return value
+		return value, nil
 	}
-	value = generator(key)
+	value, err = generator(key)
+	if err != nil {
+		var zero V
+		return zero, err
+	}
 	m.Store(key, value)
-
-	return value
+	return value, nil
 }
 
 func (m *Map[K, V]) LoadOrStore(key K, store V) (V, bool) {

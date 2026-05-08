@@ -1,6 +1,7 @@
 package sync_test
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestConcurrent(t *testing.T) {
-	for i := 0; i < 1_000; i++ {
+	for range 1_000 {
 		testConcurrent(t)
 	}
 }
@@ -93,4 +94,31 @@ func TestAPI(t *testing.T) {
 	require.Contains(t, keys, "key")
 	require.Contains(t, keys, "key2")
 	require.Contains(t, keys, "key3")
+}
+
+func TestLoadOrStoreVariants(t *testing.T) {
+	m := sync.NewMap[string, string]()
+
+	value, loaded := m.LoadOrStore("key", "value")
+	require.False(t, loaded)
+	require.Equal(t, "value", value)
+
+	value, loaded = m.LoadOrStore("key", "other")
+	require.True(t, loaded)
+	require.Equal(t, "value", value)
+}
+
+func TestLoadOrStoreFuncErr(t *testing.T) {
+	m := sync.NewMap[string, string]()
+	expectedErr := errors.New("boom")
+
+	value, err := m.LoadOrStoreFuncErr("key", func(key string) (string, error) {
+		return "value", expectedErr
+	})
+	require.ErrorIs(t, err, expectedErr)
+	require.Empty(t, value)
+
+	value, present := m.Load("key")
+	require.False(t, present)
+	require.Empty(t, value)
 }
