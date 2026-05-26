@@ -17,6 +17,7 @@ import (
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/log"
+	resterrors "github.com/southernlabs-io/go-fw/rest/errors"
 )
 
 type RequestLoggerMiddleware struct {
@@ -161,6 +162,9 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		level := config.LogLevelInfo
 		if status >= 500 {
 			level = config.LogLevelError
+		} else if status == resterrors.StatusClientClosed {
+			// Client closed the request (499): normal browser/client behavior, not a server error.
+			level = config.LogLevelDebug
 		} else if status >= 400 {
 			level = config.LogLevelWarn
 		}

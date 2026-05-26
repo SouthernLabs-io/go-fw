@@ -2,11 +2,15 @@ package resterrors
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/southernlabs-io/go-fw/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMapErrorToHTTPCode_Priority(t *testing.T) {
@@ -95,6 +99,16 @@ func TestMapErrorToHTTPCode_Priority(t *testing.T) {
 			),
 			expected: http.StatusInternalServerError,
 		},
+		{
+			name:     "Canceled maps to 499",
+			err:      errors.NewCanceledf("request canceled"),
+			expected: StatusClientClosed,
+		},
+		{
+			name:     "Canceled wrapped in Unknown maps to 499 (higher priority)",
+			err:      errors.NewUnknownf("response error: %w", errors.NewCanceledf("request canceled")),
+			expected: StatusClientClosed,
+		},
 	}
 
 	for _, tt := range tests {
@@ -128,4 +142,66 @@ func TestMapErrorToHTTPCode_Priority(t *testing.T) {
 		actual := mapErrorToHTTPCode(ctx, err)
 		assert.Equal(t, http.StatusNotFound, actual)
 	})
+}
+
+func TestErrorHandler_ContextCanceled_Returns499(t *testing.T) {
+	// Simulate the DS responseErrorHandler wrapping context.Canceled as ErrCodeUnknown.
+	fwErr := errors.NewUnknownf("response error: %w", fmt.Errorf("wrapped: %w", context.Canceled))
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	ErrorHandler(w, r, fwErr)
+
+	require.Equal(t, StatusClientClosed, w.Code)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, errors.ErrCodeCanceled, body["kind"])
+}
+
+func TestErrorHandler_ContextCanceled_AlreadyCanceled_NotDoubleWrapped(t *testing.T) {
+	fwErr := errors.NewCanceledf("already canceled: %w", context.Canceled)
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	ErrorHandler(w, r, fwErr)
+
+	require.Equal(t, StatusClientClosed, w.Code)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, errors.ErrCodeCanceled, body["kind"])
+}
+
+func TestErrorHandler_RegularError_Returns500(t *testing.T) {
+	fwErr := errors.NewUnknownf("something went wrong")
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	ErrorHandler(w, r, fwErr)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, errors.ErrCodeUnknown, body["kind"])
+}
+
+func TestErrorHandler_DeadlineExceeded_Returns500(t *testing.T) {
+	// DeadlineExceeded is a server-side concern and must NOT be reclassified to 499.
+	fwErr := errors.NewUnknownf("response error: %w", fmt.Errorf("wrapped: %w", context.DeadlineExceeded))
+
+	w := httptest.NewRecorder()
+	r, err := http.NewRequest(http.MethodGet, "/test", nil)
+	require.NoError(t, err)
+
+	ErrorHandler(w, r, fwErr)
+
+	require.Equal(t, http.StatusInternalServerError, w.Code)
 }

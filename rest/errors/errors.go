@@ -11,6 +11,10 @@ import (
 	"github.com/southernlabs-io/go-fw/log"
 )
 
+// StatusClientClosed is the de-facto status code for when the client closes the request before the server responds.
+// It is not part of the HTTP standard but is widely recognized by reverse proxies (e.g. nginx) and observability tools.
+const StatusClientClosed = 499
+
 // ErrorCodeHTTPMapperFunc is a function that maps an error to an HTTP status code.
 // It should return 0 if it cannot map the error, in which case the default mapping will be used.
 type ErrorCodeHTTPMapperFunc func(ctx context.Context, err error) int
@@ -19,10 +23,17 @@ var ErrorCodeMapper ErrorCodeHTTPMapperFunc
 
 func ErrorHandler(w http.ResponseWriter, r *http.Request, err *errors.Error) {
 	ctx := r.Context()
+
+	// Reclassify any error that wraps context.Canceled as CANCELED so it maps to 499 and logs at Debug.
+	if !errors.IsCode(err, errors.ErrCodeCanceled) && errors.Is(err, context.Canceled) {
+		err = errors.NewCanceledf("request canceled: %w", err)
+	}
+
 	httpCode := mapErrorToHTTPCode(ctx, err)
 
-	// Inject error field into logger context for 5xx and non-401/403 4xx errors
-	if !(httpCode == http.StatusUnauthorized || httpCode == http.StatusForbidden) {
+	// Inject error field into logger context for 5xx and non-401/403/499 4xx errors.
+	// CANCELED (499) is a normal client-side event, not a server failure.
+	if httpCode != http.StatusUnauthorized && httpCode != http.StatusForbidden && httpCode != StatusClientClosed {
 		if httpCode >= 400 {
 			ctx = log.CtxAppendLoggerAttrs(ctx, slog.Any("error", err))
 		}
@@ -78,6 +89,8 @@ func getHTTPStatusAndPriority(code string) (int, int) {
 		return http.StatusUnauthorized, 1
 	case errors.ErrCodeNotAllowed:
 		return http.StatusForbidden, 2
+	case errors.ErrCodeCanceled:
+		return StatusClientClosed, 2
 	case errors.ErrCodeNotFound:
 		return http.StatusNotFound, 3
 	case errors.ErrCodeConflict:

@@ -432,6 +432,12 @@ func NewNotAllowedf(format string, args ...any) *Error {
 	return Newf(ErrCodeNotAllowed, format, args...)
 }
 
+// NewCanceledf creates a new error with the ErrCodeCanceled code and the given message format/args.
+// This error should be mapped to HTTP 499 and signals that the request was canceled by the client.
+func NewCanceledf(format string, args ...any) *Error {
+	return Newf(ErrCodeCanceled, format, args...)
+}
+
 //#region copy from errors.go
 
 // ErrUnsupported is a copy of the errors.ErrUnsupported variable from the go std core.

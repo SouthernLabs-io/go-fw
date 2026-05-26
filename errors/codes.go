@@ -30,4 +30,7 @@ const (
 
 	// ErrCodeConflict is used when there is a conflict with the current state. This error will be mapped to HTTP 409.
 	ErrCodeConflict = "CONFLICT"
+
+	// ErrCodeCanceled is used when a request is canceled by the client. This error will be mapped to HTTP 499.
+	ErrCodeCanceled = "CANCELED"
 )

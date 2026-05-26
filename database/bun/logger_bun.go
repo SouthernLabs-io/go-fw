@@ -29,7 +29,7 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	now := time.Now()
 	dur := now.Sub(event.StartTime)
 	if !logger.Enabled(config.LogLevelDebug) {
-		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) {
+		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) || errors.Is(event.Err, context.Canceled) {
 			return
 		}
 	}
@@ -43,6 +43,8 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	if event.Err != nil {
 		if errors.Is(event.Err, sql.ErrNoRows) || errors.Is(event.Err, sql.ErrTxDone) {
 			logger.Debug(fmt.Sprintf("Bun query terminated with: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
+		} else if errors.Is(event.Err, context.Canceled) {
+			logger.Debug(fmt.Sprintf("Bun query canceled: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
 		} else {
 			err := event.Err
 			var pgErr pgdriver.Error
