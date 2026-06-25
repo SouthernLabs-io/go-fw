@@ -187,10 +187,7 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 				return
 			}
 
-			wait := time.Until(expiration.Add(-lead))
-			if wait < 0 {
-				wait = 0
-			}
+			wait := max(time.Until(expiration.Add(-lead)), 0)
 
 			timer := time.NewTimer(wait)
 			select {
