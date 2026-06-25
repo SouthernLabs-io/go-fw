@@ -45,6 +45,8 @@ func (l *BunLogger) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 			logger.Debug(fmt.Sprintf("Bun query terminated with: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
 		} else if errors.Is(event.Err, context.Canceled) {
 			logger.Debug(fmt.Sprintf("Bun query canceled: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
+		} else if errors.Is(event.Err, context.DeadlineExceeded) {
+			logger.Debug(fmt.Sprintf("Bun query deadline exceeded: %s", event.Err.Error()), slog.GroupAttrs("sql", attrs...))
 		} else {
 			err := event.Err
 			var pgErr pgdriver.Error
