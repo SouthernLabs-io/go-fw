@@ -172,14 +172,8 @@ func autoExtend(ctx context.Context, dl DistributedLock, baseDL *BaseDistributed
 	ctx, cancel := context.WithCancelCause(ctx)
 	baseDL.setAutoExtenderCancel(cancel)
 
-	lead := ttl / 2
-	// Keep a minimum lead time so scheduler/GC pauses are less likely to miss renewal.
-	if lead < 100*time.Millisecond {
-		lead = 100 * time.Millisecond
-	}
-	if lead > ttl {
-		lead = ttl
-	}
+	// Keep a minimum lead time of 100ms so scheduler/GC pauses are less likely to miss renewal.
+	lead := min(max(ttl/2, 100*time.Millisecond), ttl)
 
 	go func() {
 		for {
