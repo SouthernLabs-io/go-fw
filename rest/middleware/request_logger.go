@@ -54,12 +54,35 @@ func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 type responseWriter struct {
 	http.ResponseWriter
 	http.Flusher
-	statusCode int
+	statusCode  int
+	wroteHeader bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
+	if rw.wroteHeader {
+		return
+	}
 	rw.statusCode = code
+	rw.wroteHeader = true
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(p []byte) (int, error) {
+	if !rw.wroteHeader {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.ResponseWriter.Write(p)
+}
+
+func (rw *responseWriter) Status() int {
+	if rw.statusCode == 0 {
+		return http.StatusOK
+	}
+	return rw.statusCode
+}
+
+func (rw *responseWriter) Unwrap() http.ResponseWriter {
+	return rw.ResponseWriter
 }
 
 func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
@@ -142,9 +165,9 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 		var rw *responseWriter
 		if flusher, ok := w.(http.Flusher); ok {
 			// Wrap the writer to capture status code
-			rw = &responseWriter{w, flusher, 0}
+			rw = &responseWriter{ResponseWriter: w, Flusher: flusher}
 		} else {
-			rw = &responseWriter{w, nil, 0}
+			rw = &responseWriter{ResponseWriter: w}
 		}
 
 		if ctx != r.Context() {
@@ -158,7 +181,7 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 
 		latency := time.Since(start)
 		logger = log.GetLoggerFromCtx(ctx)
-		status := rw.statusCode
+		status := rw.Status()
 		level := config.LogLevelInfo
 		if status >= 500 {
 			level = config.LogLevelError
