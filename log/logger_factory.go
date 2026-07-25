@@ -23,6 +23,7 @@ var defaultLoggerFactory LoggerFactory = NewLoggerFactory(config.GetRootConfig()
 // SetDefaultLoggerFactory sets the default logger factory to use for the package-level functions.
 func SetDefaultLoggerFactory(f LoggerFactory) {
 	defaultLoggerFactory = f
+	bridgeStdlibDefaults(f.GetRootLogger())
 }
 
 // GetDefaultLoggerFactory returns the default logger factory used by the package-level functions.
@@ -49,8 +50,33 @@ type _LoggerFactory struct {
 	writer        io.Writer
 }
 
+func resolveLogWriter(writerType config.LogConfigWriter, customWriter io.Writer) io.Writer {
+	if customWriter != nil {
+		return customWriter
+	}
+	switch writerType {
+	case "", config.LogConfigWriterStdout:
+		return os.Stdout
+	case config.LogConfigWriterStderr:
+		return os.Stderr
+	case config.LogConfigWriterBuffer:
+		return new(bytes.Buffer)
+	default:
+		panic(errors.Newf(errors.ErrCodeBadArgument, "unknown log writer: %s", writerType))
+	}
+}
+
 // NewLoggerFactory creates a new logger factory with the given core configuration.
 func NewLoggerFactory(coreConfig config.RootConfig) LoggerFactory {
+	return newLoggerFactory(coreConfig, nil)
+}
+
+// NewLoggerFactoryWithWriter creates a new logger factory with the given core configuration and writer.
+func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) LoggerFactory {
+	return newLoggerFactory(coreConfig, writer)
+}
+
+func newLoggerFactory(coreConfig config.RootConfig, writer io.Writer) LoggerFactory {
 	normalized := make(map[string]config.LogLevel, len(coreConfig.Log.Levels))
 	for pth, level := range coreConfig.Log.Levels {
 		normalized[path.Clean(pth)] = level
@@ -60,14 +86,8 @@ func NewLoggerFactory(coreConfig config.RootConfig) LoggerFactory {
 	return &_LoggerFactory{
 		loggersByPath: sync.NewMap[string, Logger](),
 		coreConfig:    coreConfig,
+		writer:        newSyncWriter(resolveLogWriter(coreConfig.Log.Writer, writer)),
 	}
-}
-
-// NewLoggerFactoryWithWriter creates a new logger factory with the given core configuration and writer.
-func NewLoggerFactoryWithWriter(coreConfig config.RootConfig, writer io.Writer) LoggerFactory {
-	factory := NewLoggerFactory(coreConfig).(*_LoggerFactory)
-	factory.writer = writer
-	return factory
 }
 
 func (lf *_LoggerFactory) AddToCtx(ctx context.Context) context.Context {
@@ -224,22 +244,7 @@ func GetLoggerFromCtxForPath(ctx ValueContext, pth string) Logger {
 
 // newLogger creates a new logger for the given path and sets the level based on the configuration.
 func (lf *_LoggerFactory) newLogger(pth string) Logger {
-	var writer io.Writer
-	if lf.writer != nil {
-		writer = lf.writer
-	} else {
-		switch lf.coreConfig.Log.Writer {
-		case "", config.LogConfigWriterStdout:
-			writer = os.Stdout
-		case config.LogConfigWriterStderr:
-			writer = os.Stderr
-		case config.LogConfigWriterBuffer:
-			writer = new(bytes.Buffer)
-		default:
-			panic(errors.Newf(errors.ErrCodeBadArgument, "unknown log writer: %s", lf.coreConfig.Log.Writer))
-		}
-	}
-	logger := NewLoggerWithWriter(lf.coreConfig, pth, writer)
+	logger := NewLoggerWithWriter(lf.coreConfig, pth, lf.writer)
 
 	// Check if there is a configured level for this path
 	for idx := len(pth); idx > 0; idx = strings.LastIndexAny(pth, "/.") {

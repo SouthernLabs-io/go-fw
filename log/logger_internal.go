@@ -1,8 +1,32 @@
 package log
 
 import (
+	"io"
 	"log/slog"
+	"sync"
 )
+
+type syncWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func newSyncWriter(w io.Writer) io.Writer {
+	if sw, ok := w.(*syncWriter); ok {
+		return sw
+	}
+	return &syncWriter{w: w}
+}
+
+func (s *syncWriter) Write(p []byte) (n int, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.w.Write(p)
+}
+
+func (s *syncWriter) Unwrap() io.Writer {
+	return s.w
+}
 
 type _HandlerOptionsAdapter struct {
 	IsSlogJSON bool

@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -157,6 +161,14 @@ func TestLevels(t *testing.T) {
 	require.Equal(t, config.LogLevelTrace, l.Level())
 }
 
+func getBuffer(w io.Writer) (*bytes.Buffer, bool) {
+	if u, ok := w.(interface{ Unwrap() io.Writer }); ok {
+		w = u.Unwrap()
+	}
+	b, ok := w.(*bytes.Buffer)
+	return b, ok
+}
+
 func TestContext(t *testing.T) {
 	lf := log.NewLoggerFactory(config.RootConfig{
 		Log: config.LogConfig{
@@ -171,7 +183,7 @@ func TestContext(t *testing.T) {
 	l := lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
 	require.Equal(t, config.LogLevelDebug, l.Level())
-	buffer, isBuffer := l.Writer().(*bytes.Buffer)
+	buffer, isBuffer := getBuffer(l.Writer())
 	require.True(t, isBuffer)
 	l.Info("an info message")
 	require.Greater(t, buffer.Len(), 0)
@@ -190,7 +202,7 @@ func TestContext(t *testing.T) {
 	l = lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
 	require.Equal(t, config.LogLevelDebug, l.Level())
-	buffer, isBuffer = l.Writer().(*bytes.Buffer)
+	buffer, isBuffer = getBuffer(l.Writer())
 	require.True(t, isBuffer)
 	buffer.Reset()
 	l.Info("an info message")
@@ -208,7 +220,7 @@ func TestContext(t *testing.T) {
 	l = lf.GetLoggerFromCtx(ctx)
 	require.NotZero(t, l)
 	require.Equal(t, config.LogLevelDebug, l.Level())
-	buffer, isBuffer = l.Writer().(*bytes.Buffer)
+	buffer, isBuffer = getBuffer(l.Writer())
 	require.True(t, isBuffer)
 	buffer.Reset()
 	l.Info("an info message")
@@ -222,4 +234,44 @@ func TestContext(t *testing.T) {
 	require.Equal(t, "GET", msg["method"])
 	require.Contains(t, msg, "duration")
 	require.Equal(t, float64(time.Second.Milliseconds()), msg["duration"])
+}
+
+func TestConcurrentLogging(t *testing.T) {
+	buf := new(bytes.Buffer)
+	lf := log.NewLoggerFactoryWithWriter(config.RootConfig{
+		Log: config.LogConfig{
+			Level:      config.LogLevelInfo,
+			Structured: true,
+		},
+	}, buf)
+
+	const numGoroutines = 20
+	const numLogsPerGoroutine = 50
+	largePayload := strings.Repeat("A", 10*1024)
+
+	var wg sync.WaitGroup
+	for i := range numGoroutines {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+			logger := lf.GetLoggerForPath(fmt.Sprintf("worker-%d", id))
+			for j := range numLogsPerGoroutine {
+				logger.Info("concurrent log message",
+					slog.Int("worker_id", id),
+					slog.Int("iteration", j),
+					slog.String("payload", largePayload),
+				)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	require.Equal(t, numGoroutines*numLogsPerGoroutine, len(lines))
+
+	for idx, line := range lines {
+		var entry map[string]any
+		err := json.Unmarshal([]byte(line), &entry)
+		require.NoError(t, err, "line %d is corrupted JSON: %s", idx, line[:min(len(line), 100)])
+	}
 }

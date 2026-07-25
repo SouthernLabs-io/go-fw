@@ -23,7 +23,12 @@ var (
 
 func init() {
 	// Set a default logger for slog/log
-	logger := GetRootLogger()
+	bridgeStdlibDefaults(GetRootLogger())
+}
+
+// bridgeStdlibDefaults points the standard library's log/slog defaults at the given logger, so that
+// code using log.Print* or slog's package-level functions is routed through the same handler.
+func bridgeStdlibDefaults(logger Logger) {
 	slog.SetDefault(NewSlogLogger(logger))
 	logLogger := slog.NewLogLogger(logger.h, slog.Level(logger.Level()))
 	log.Default().SetFlags(0)
@@ -48,6 +53,7 @@ func NewLogger(conf config.RootConfig, name string) Logger {
 
 // NewLoggerWithWriter creates a new logger with the given core configuration and writer.
 func NewLoggerWithWriter(conf config.RootConfig, name string, writer io.Writer) Logger {
+	writer = newSyncWriter(writer)
 	logger := Logger{
 		ctx:    context.Background(),
 		name:   name,
@@ -59,8 +65,8 @@ func NewLoggerWithWriter(conf config.RootConfig, name string, writer io.Writer) 
 	}
 	logger.SetLevel(conf.Log.Level)
 
-	// Structured logging is enabled by default for sandbox and prod environments, but can be enabled for other environments as well.
-	structured := conf.Log.Structured || conf.Env.Type == config.EnvTypeSandbox || conf.Env.Type == config.EnvTypeProd
+	// Structured logging is enabled by default for sandbox and prod environments, or when buffer writer is configured, but can be enabled for other environments as well.
+	structured := conf.Log.Structured || conf.Env.Type == config.EnvTypeSandbox || conf.Env.Type == config.EnvTypeProd || conf.Log.Writer == config.LogConfigWriterBuffer
 	if !structured {
 		consoleHOpts := console.HandlerOptions{
 			Level:      logger.hOpts.Leveler,
