@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"runtime"
 	"strings"
-	"sync"
+	"sync/atomic"
 )
 
 // Error is this framework's error type. It adds on top of the go std lib errors package:
@@ -21,8 +21,7 @@ type Error struct {
 	Message          string
 	shortErrorString string
 	wrappedErrs      []error
-	mu               sync.Mutex
-	hideStack        bool
+	hideStack        atomic.Bool
 	stack            _Stack
 
 	codeKey    string
@@ -68,16 +67,14 @@ func Newf(code string, format string, args ...any) *Error {
 	// Hide the stacktrace from the Error() function for errors that are going to be wrapped
 	for _, errArg := range args {
 		if fwErr, ok := errArg.(*Error); ok {
-			fwErr.mu.Lock()
-			fwErr.hideStack = true
+			fwErr.hideStack.Store(true)
 		}
 	}
 	defer func() {
 		// Show the stacktrace from the Error() function
 		for _, errArg := range args {
 			if fwErr, ok := errArg.(*Error); ok {
-				fwErr.hideStack = false
-				fwErr.mu.Unlock()
+				fwErr.hideStack.Store(false)
 			}
 		}
 	}()
@@ -106,7 +103,7 @@ func Newf(code string, format string, args ...any) *Error {
 }
 
 func (e *Error) Error() string {
-	if e.hideStack {
+	if e.hideStack.Load() {
 		return e.shortErrorString
 	}
 
