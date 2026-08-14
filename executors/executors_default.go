@@ -328,6 +328,7 @@ func (e *DefaultExecutor) closeEventLoop() {
 
 func (e *DefaultExecutor) eventLoop() {
 	defer e.closeEventLoop()
+	defer e.schedulerTimer.Stop()
 	for {
 		select {
 
