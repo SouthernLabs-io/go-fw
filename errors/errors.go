@@ -245,7 +245,7 @@ func (e *Error) WriteSelfStacktrace(w io.Writer) error {
 				return err
 			}
 			if more {
-				_, err := w.Write([]byte("\n"))
+				_, err := io.WriteString(w, "\n")
 				if err != nil {
 					return err
 				}

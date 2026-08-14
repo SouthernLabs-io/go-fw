@@ -20,12 +20,12 @@ func writeWrappedStacktrace(err error, w io.Writer, indent string) error {
 	}
 	for i, wErr := range UnwrapMulti(err) {
 		curIndent := indent + strconv.Itoa(i+1)
-		_, err := w.Write([]byte("\n" + curIndent))
+		_, err := io.WriteString(w, "\n"+curIndent)
 		if err != nil {
 			return err
 		}
 		if fwErr, is := wErr.(*Error); is {
-			_, err := w.Write([]byte("] wrapped stacktrace:\n"))
+			_, err := io.WriteString(w, "] wrapped stacktrace:\n")
 			if err != nil {
 				return err
 			}
@@ -34,11 +34,11 @@ func writeWrappedStacktrace(err error, w io.Writer, indent string) error {
 				return err
 			}
 		} else {
-			_, err := w.Write([]byte("] wrapped stacktrace not available for error type: "))
+			_, err := io.WriteString(w, "] wrapped stacktrace not available for error type: ")
 			if err != nil {
 				return err
 			}
-			_, err = w.Write([]byte(reflect.TypeOf(wErr).String()))
+			_, err = io.WriteString(w, reflect.TypeOf(wErr).String())
 			if err != nil {
 				return err
 			}
