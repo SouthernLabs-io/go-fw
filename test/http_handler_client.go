@@ -215,7 +215,19 @@ func (r *Response) RequireJSONBodyAs(target any) {
 }
 
 func (r *Response) RequireStatus(status int) {
-	require.Equalf(r.t, status, r.rr.StatusCode, "expected status %d, got %d, url: %s, body: %s", status, r.rr.StatusCode, r.rr.Request.RequestURI, r.BodyString())
+	if r.rr.StatusCode == status {
+		return
+	}
+
+	require.Failf(
+		r.t,
+		"unexpected HTTP status",
+		"expected status %d, got %d, url: %s, body: %s",
+		status,
+		r.rr.StatusCode,
+		r.rr.Request.RequestURI,
+		r.BodyString(),
+	)
 }
 
 func (r *Response) RequireHeader(header, value string) {
