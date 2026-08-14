@@ -240,7 +240,7 @@ func (e *Error) WriteSelfStacktrace(w io.Writer) error {
 	for {
 		f, more := frames.Next()
 		if f.Function != "" && !strings.HasPrefix(f.Function, prefix) {
-			_, err := w.Write([]byte(fmt.Sprintf("%s\n\t%s:%d", f.Function, f.File, f.Line)))
+			_, err := fmt.Fprintf(w, "%s\n\t%s:%d", f.Function, f.File, f.Line)
 			if err != nil {
 				return err
 			}
