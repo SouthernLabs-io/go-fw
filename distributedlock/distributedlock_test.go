@@ -2,6 +2,7 @@ package distributedlock_test
 
 import (
 	"context"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -834,4 +835,92 @@ func testRaceConditionExpiredLock(
 
 	// Exactly ONE should have succeeded in acquiring the expired lock
 	require.Equal(t, int32(1), successCount.Load(), "exactly one should acquire expired lock")
+}
+
+func countOpenFileDescriptors(t *testing.T) int {
+	t.Helper()
+	dir := "/dev/fd"
+	if _, err := os.Stat(dir); err != nil {
+		dir = "/proc/self/fd"
+	}
+	f, err := os.Open(dir)
+	if err != nil {
+		t.Skipf("skipping OS-level fd check, cannot open %s: %v", dir, err)
+	}
+	defer f.Close()
+	names, err := f.Readdirnames(-1)
+	if err != nil {
+		t.Skipf("skipping OS-level fd check, cannot read %s: %v", dir, err)
+	}
+	return len(names)
+}
+
+func TestLocalLockFileDescriptorClosed(t *testing.T) {
+	var ctx context.Context
+	test.FxUnit(t).Populate(&ctx)
+	ttl := 200 * time.Millisecond
+
+	// 1. Direct OS-level verification of FD count before, during, and after Lock / Unlock
+	initialFDs := countOpenFileDescriptors(t)
+
+	resource1 := "fd_direct_check_" + uuid.NewString()
+	dLock := distributedlock.NewDistributedLocalLock(resource1, ttl)
+
+	afterInstantiateFDs := countOpenFileDescriptors(t)
+	require.Equal(t, initialFDs, afterInstantiateFDs, "instantiating a lock should not open any OS file descriptors")
+
+	err := dLock.Lock(ctx)
+	require.NoError(t, err)
+
+	duringLockFDs := countOpenFileDescriptors(t)
+	require.Equal(t, initialFDs+1, duringLockFDs, "acquiring lock should hold exactly 1 open OS file descriptor")
+
+	err = dLock.Unlock(ctx)
+	require.NoError(t, err)
+
+	afterUnlockFDs := countOpenFileDescriptors(t)
+	require.Equal(t, initialFDs, afterUnlockFDs, "unlocking should close the OS file descriptor")
+
+	// 2. Direct OS-level verification on failed TryLock
+	dLock1 := distributedlock.NewDistributedLocalLock(resource1, ttl)
+	locked1, err := dLock1.TryLock(ctx)
+	require.NoError(t, err)
+	require.True(t, locked1)
+	require.Equal(t, initialFDs+1, countOpenFileDescriptors(t))
+
+	dLock2 := distributedlock.NewDistributedLocalLock(resource1, ttl)
+	locked2, err := dLock2.TryLock(ctx)
+	require.NoError(t, err)
+	require.False(t, locked2)
+	require.Equal(t, initialFDs+1, countOpenFileDescriptors(t), "failed TryLock should immediately close its OS file descriptor")
+
+	err = dLock1.Unlock(ctx)
+	require.NoError(t, err)
+	require.Equal(t, initialFDs, countOpenFileDescriptors(t), "unlocking should return OS open FD count to baseline")
+
+	// 3. Direct OS-level verification on TTL expiration
+	shortTTL := 50 * time.Millisecond
+	resourceExpiry := "fd_expiry_check_" + uuid.NewString()
+	dLockExpiry := distributedlock.NewDistributedLocalLock(resourceExpiry, shortTTL)
+	err = dLockExpiry.Lock(ctx)
+	require.NoError(t, err)
+	require.Equal(t, initialFDs+1, countOpenFileDescriptors(t))
+
+	time.Sleep(shortTTL + 50*time.Millisecond)
+	require.Equal(t, initialFDs, countOpenFileDescriptors(t), "TTL expiration should automatically close the OS file descriptor")
+
+	// 4. Repeated cycles to confirm no cumulative FD leak over 2000 iterations
+	const numIterations = 2000
+	for range numIterations {
+		resource := "fd_leak_test_" + uuid.NewString()
+		dLock := distributedlock.NewDistributedLocalLock(resource, ttl)
+		err := dLock.Lock(ctx)
+		require.NoError(t, err)
+
+		err = dLock.Unlock(ctx)
+		require.NoError(t, err)
+	}
+
+	finalFDs := countOpenFileDescriptors(t)
+	require.Equal(t, initialFDs, finalFDs, "cumulative OS file descriptors should remain constant after 2000 lock/unlock cycles")
 }
