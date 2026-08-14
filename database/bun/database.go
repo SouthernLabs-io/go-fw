@@ -69,6 +69,7 @@ func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB
 		db, err = gorm.Open(postgres.Open(dsn), &gormConf)
 	}*/
 	if err != nil {
+		_ = sqlDB.Close()
 		dsn = strings.ReplaceAll(dsn, dbConf.Pass, "*")
 		return nil, errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err)
 	}
