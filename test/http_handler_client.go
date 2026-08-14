@@ -215,7 +215,7 @@ func (r *Response) RequireJSONBodyAs(target any) {
 }
 
 func (r *Response) RequireStatus(status int) {
-	require.Equalf(r.t, status, r.rr.StatusCode, "expected status %d, got %d, url: %s, body: %s", status, r.rr.StatusCode, r.rr.Request.RequestURI, r.body.String())
+	require.Equalf(r.t, status, r.rr.StatusCode, "expected status %d, got %d, url: %s, body: %s", status, r.rr.StatusCode, r.rr.Request.RequestURI, r.BodyString())
 }
 
 func (r *Response) RequireHeader(header, value string) {
