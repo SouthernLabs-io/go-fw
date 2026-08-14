@@ -924,3 +924,52 @@ func TestLocalLockFileDescriptorClosed(t *testing.T) {
 	finalFDs := countOpenFileDescriptors(t)
 	require.Equal(t, initialFDs, finalFDs, "cumulative OS file descriptors should remain constant after 2000 lock/unlock cycles")
 }
+
+func TestLocalLockHighTTLAcquisitionLatency(t *testing.T) {
+	var ctx context.Context
+	test.FxUnit(t).Populate(&ctx)
+
+	// Typical production TTL is minutes (e.g. 5m, 10m).
+	ttl := 10 * time.Minute
+	resource := "high_ttl_" + uuid.NewString()
+
+	dLock1 := distributedlock.NewDistributedLocalLock(resource, ttl)
+	dLock2 := distributedlock.NewDistributedLocalLock(resource, ttl)
+
+	// Goroutine 1 acquires the lock
+	err := dLock1.Lock(ctx)
+	require.NoError(t, err)
+
+	acquiredCh := make(chan time.Time, 1)
+	errCh := make(chan error, 1)
+
+	// Goroutine 2 tries to acquire the lock concurrently
+	go func() {
+		err := dLock2.Lock(ctx)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		acquiredCh <- time.Now()
+		_ = dLock2.Unlock(ctx)
+	}()
+
+	// Hold lock briefly (50ms)
+	time.Sleep(50 * time.Millisecond)
+
+	unlockTime := time.Now()
+	err = dLock1.Unlock(ctx)
+	require.NoError(t, err)
+
+	// Goroutine 2 should acquire the lock promptly after dLock1 unlocks (e.g. within 200ms)
+	select {
+	case acquiredTime := <-acquiredCh:
+		latency := acquiredTime.Sub(unlockTime)
+		require.Less(t, latency, 200*time.Millisecond, "waiting lock should be acquired promptly after release, got latency %v", latency)
+	case err := <-errCh:
+		t.Fatalf("unexpected error: %v", err)
+	case <-time.After(1 * time.Second):
+		t.Fatalf("timeout: Goroutine 2 failed to acquire released lock within 1s (likely sleeping for ttl/10 = 60s)")
+	}
+}
+

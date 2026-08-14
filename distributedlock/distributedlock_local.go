@@ -73,11 +73,10 @@ func (l *LocalLock) Lock(ctx context.Context) error {
 			return nil
 		}
 
-		jitter := time.Duration(0)
-		if l.ttl > 10 {
-			jitter = time.Duration(rand.Int63n(int64(l.ttl) / 10))
-		}
-		sleepDuration := max(l.ttl/10+jitter, 10*time.Millisecond)
+		// Cap retry sleep duration between 5ms and 50ms so local locks are re-checked promptly
+		baseSleep := min(max(l.ttl/100, 5*time.Millisecond), 40*time.Millisecond)
+		jitter := time.Duration(rand.Int63n(int64(min(baseSleep, 10*time.Millisecond) + 1)))
+		sleepDuration := min(baseSleep+jitter, 50*time.Millisecond)
 		err = fwsync.Sleep(ctx, sleepDuration)
 		if err != nil {
 			return err
