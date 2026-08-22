@@ -286,7 +286,14 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 				slog.String("run_id", newRunID()),
 			))
 			log.GetLoggerFromCtx(wCtx).Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
-			return worker.Run(wCtx)
+			err = worker.Run(wCtx)
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				// Dependencies commonly return ctx.Err(), which drops the lease-loss cancellation cause.
+				if cause := context.Cause(wCtx); cause != nil {
+					return cause
+				}
+			}
+			return err
 		}()
 		runExecTime = time.Since(t0).Milliseconds()
 		if runExecTime > retryCountResetMillis {
