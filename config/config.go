@@ -26,6 +26,7 @@ type DatabaseConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxIdleTime time.Duration
+	ConnMaxLifetime time.Duration
 }
 
 type CORS struct {
