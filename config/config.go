@@ -53,10 +53,34 @@ func (c CORS) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+type RequestLoggerConfig struct {
+	QueryParameterAllowlist []string
+	ReferrerMode            RequestLoggerReferrerMode
+}
+
+type RequestLoggerReferrerMode string
+
+const (
+	RequestLoggerReferrerOmit       RequestLoggerReferrerMode = ""
+	RequestLoggerReferrerOriginPath RequestLoggerReferrerMode = "origin_path"
+)
+
+func (m *RequestLoggerReferrerMode) UnmarshalText(text []byte) error {
+	mode := RequestLoggerReferrerMode(string(text))
+	switch mode {
+	case RequestLoggerReferrerOmit, RequestLoggerReferrerOriginPath:
+		*m = mode
+		return nil
+	default:
+		return fmt.Errorf("invalid request logger referrer mode: %q", mode)
+	}
+}
+
 type HttpServerConfig struct {
 	BindAddress       string
 	Port              int
 	ReqLoggerExcludes []string
+	RequestLogger     RequestLoggerConfig
 	BasePath          string
 	CORS              CORS
 }

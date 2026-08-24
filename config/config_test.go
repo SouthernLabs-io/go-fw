@@ -90,3 +90,31 @@ func TestLoadConfig_OverrideWholeSliceStillWorks(t *testing.T) {
 	config.LoadConfig(config.GetRootConfig(), &conf, nil)
 	require.Equal(t, []string{"one", "two", "three"}, conf.Tags)
 }
+
+func TestRequestLoggerConfig_DefaultsAreSecure(t *testing.T) {
+	conf := config.HttpServerConfig{}
+
+	require.Empty(t, conf.RequestLogger.QueryParameterAllowlist)
+	require.Equal(t, config.RequestLoggerReferrerOmit, conf.RequestLogger.ReferrerMode)
+}
+
+func TestRequestLoggerReferrerMode_UnmarshalText(t *testing.T) {
+	var mode config.RequestLoggerReferrerMode
+
+	require.NoError(t, mode.UnmarshalText([]byte("origin_path")))
+	require.Equal(t, config.RequestLoggerReferrerOriginPath, mode)
+	require.NoError(t, mode.UnmarshalText(nil))
+	require.Equal(t, config.RequestLoggerReferrerOmit, mode)
+	require.Error(t, mode.UnmarshalText([]byte("full")))
+}
+
+func TestLoadConfig_RequestLoggerValues(t *testing.T) {
+	t.Setenv("HTTPSERVER_REQUESTLOGGER_QUERYPARAMETERALLOWLIST_0", "view")
+	t.Setenv("HTTPSERVER_REQUESTLOGGER_REFERRERMODE", "origin_path")
+
+	conf := config.Config{}
+	config.LoadConfig(config.GetRootConfig(), &conf, nil)
+
+	require.Equal(t, []string{"view"}, conf.HttpServer.RequestLogger.QueryParameterAllowlist)
+	require.Equal(t, config.RequestLoggerReferrerOriginPath, conf.HttpServer.RequestLogger.ReferrerMode)
+}
