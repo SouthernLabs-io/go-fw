@@ -42,6 +42,37 @@ DATABASE_PASS=no_password
 LOG_LEVEL=debug
 ```
 
+## Request logging
+
+Request logging is secure by default. The logged URL contains only the request path;
+the query string is not logged. Referrer metadata is also omitted by default. These
+defaults apply to both the standard `net/http` middleware and the Gin middleware.
+
+If an application needs a small, known set of non-sensitive query parameters for
+diagnostics, name them explicitly in the allowlist:
+
+```yaml
+httpServer:
+  requestLogger:
+    queryParameterAllowlist: ["page", "sort"]
+    referrerMode: origin_path
+```
+
+`queryParameterAllowlist` logs only the named parameters. All other query parameters
+remain excluded. `referrerMode: origin_path` enables sanitized referrer metadata using
+the referrer's origin and path; the default empty value omits it.
+
+The corresponding environment variables are:
+
+```shell
+HTTPSERVER_REQUESTLOGGER_QUERYPARAMETERALLOWLIST_0=page
+HTTPSERVER_REQUESTLOGGER_QUERYPARAMETERALLOWLIST_1=sort
+HTTPSERVER_REQUESTLOGGER_REFERRERMODE=origin_path
+```
+
+There is no compatibility switch for logging a raw URL or the full query string.
+Keep the allowlist limited to values that are safe to include in logs.
+
 ## Secrets
 > [!CAUTION] 
 >Secrets should never be stored in `config.yaml` nor in `.env` files.

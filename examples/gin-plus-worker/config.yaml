@@ -11,6 +11,11 @@ httpServer:
   bindAddress:
   basePath: /api/v1/
   reqLoggerExcludes: [ "/health", "/ready" ]
+  requestLogger:
+    # Query parameters are excluded unless explicitly listed here.
+    queryParameterAllowlist: []
+    # Referrer metadata is omitted by default; the opt-in value is origin_path.
+    referrerMode: ""
   cors:
     allowOrigins: ["http://localhost:3000"]
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]

@@ -71,6 +71,10 @@ httpServer:
   bindAddress:
   basePath: /api/v1/
   reqLoggerExcludes: [ "/health", "/ready" ]
+  requestLogger:
+    queryParameterAllowlist: []
+    # Referrer metadata is omitted by default. The opt-in value is origin_path.
+    referrerMode: ""
 
 database:
   user: postgres
@@ -78,6 +82,11 @@ database:
   host: localhost
   port: 5432
 ```
+
+Request logs contain path-only URLs by default; query parameters and referrer metadata
+are excluded unless explicitly configured. See [CONFIG.md](CONFIG.md#request-logging)
+for the query-parameter allowlist, the optional `origin_path` referrer mode, and the
+matching environment variables. Raw/full-query URL logging is not supported.
 
 Now we can create a `.env` file for use locally:
 ```shell    
