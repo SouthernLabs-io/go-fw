@@ -27,6 +27,22 @@ type RequestLoggerMiddleware struct {
 	excludeMap map[string]bool
 }
 
+const redactedQueryValue = "[REDACTED]"
+
+var sensitiveQueryParameters = map[string]bool{
+	"access_token":  true,
+	"api_key":       true,
+	"apikey":        true,
+	"id_token":      true,
+	"passwd":        true,
+	"password":      true,
+	"refresh_token": true,
+	"secret":        true,
+	"sig":           true,
+	"signature":     true,
+	"token":         true,
+}
+
 func NewRequestLogger(conf config.Config, lf log.LoggerFactory) *RequestLoggerMiddleware {
 	excludes := conf.HttpServer.ReqLoggerExcludes
 	excludeMap := make(map[string]bool, len(excludes))
@@ -85,6 +101,38 @@ func (rw *responseWriter) Unwrap() http.ResponseWriter {
 	return rw.ResponseWriter
 }
 
+func redactURLQuery(original *url.URL) (*url.URL, url.Values) {
+	query := original.Query()
+	didRedact := false
+	for key, values := range query {
+		if !sensitiveQueryParameters[strings.ToLower(key)] {
+			continue
+		}
+		didRedact = true
+		for i := range values {
+			values[i] = redactedQueryValue
+		}
+	}
+	if !didRedact {
+		return original, query
+	}
+	redacted := *original
+	redacted.RawQuery = query.Encode()
+	return &redacted, query
+}
+
+func redactURLString(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "[INVALID URL]"
+	}
+	redacted, _ := redactURLQuery(parsed)
+	if redacted == parsed {
+		return rawURL
+	}
+	return redacted.String()
+}
+
 func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -121,19 +169,21 @@ func (m *RequestLoggerMiddleware) Handle(next http.Handler) http.Handler {
 			}
 		}
 
+		_, redactedQuery := redactURLQuery(r.URL)
+
 		attrs := []slog.Attr{
 			slog.GroupAttrs("http",
 				slog.String("method", r.Method),
-				slog.String("url", r.RequestURI),
+				slog.String("url", redactURLString(r.RequestURI)),
 				slog.String("request_id", requestID),
-				slog.String("referer", r.Referer()),
+				slog.String("referer", redactURLString(r.Referer())),
 				slog.String("useragent", r.UserAgent()),
 				slog.String("version", r.Proto),
 				slog.GroupAttrs("url_details",
 					slog.String("host", hostname),
 					portAttr,
 					slog.String("path", urlPath),
-					slog.Any("queryString", r.URL.Query()),
+					slog.Any("queryString", redactedQuery),
 				),
 			),
 			slog.String("network.client.ip", clientIP),

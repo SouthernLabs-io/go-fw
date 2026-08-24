@@ -286,7 +286,15 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 				slog.String("run_id", newRunID()),
 			))
 			log.GetLoggerFromCtx(wCtx).Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
-			return worker.Run(wCtx)
+			err = worker.Run(wCtx)
+			if wCtx.Err() != nil {
+				// The runner owns wCtx, so its lifecycle cause takes precedence over errors
+				// returned by dependencies while cancellation is unwinding.
+				if cause := context.Cause(wCtx); cause != nil {
+					return cause
+				}
+			}
+			return err
 		}()
 		runExecTime = time.Since(t0).Milliseconds()
 		if runExecTime > retryCountResetMillis {
