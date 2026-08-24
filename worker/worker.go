@@ -287,8 +287,9 @@ func (h *LongRunningWorkerHandler) singleWorkerRunner(ctx context.Context, worke
 			))
 			log.GetLoggerFromCtx(wCtx).Infof("Running worker: %s, with concurrency: %+v", worker.GetName(), worker.GetConcurrency())
 			err = worker.Run(wCtx)
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-				// Dependencies commonly return ctx.Err(), which drops the lease-loss cancellation cause.
+			if wCtx.Err() != nil {
+				// The runner owns wCtx, so its lifecycle cause takes precedence over errors
+				// returned by dependencies while cancellation is unwinding.
 				if cause := context.Cause(wCtx); cause != nil {
 					return cause
 				}

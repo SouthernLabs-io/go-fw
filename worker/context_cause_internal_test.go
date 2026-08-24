@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -50,8 +51,9 @@ func (l *lockLossLock) AutoExtend(ctx context.Context) (context.Context, error) 
 }
 
 type cancellationCauseWorker struct {
-	runs     int
-	finalErr error
+	runs           int
+	interruptedErr error
+	finalErr       error
 }
 
 func (w *cancellationCauseWorker) GetName() string { return "cancellation-cause-worker" }
@@ -64,6 +66,9 @@ func (w *cancellationCauseWorker) Run(ctx context.Context) error {
 	w.runs++
 	if w.runs == 1 {
 		<-ctx.Done()
+		if w.interruptedErr != nil {
+			return w.interruptedErr
+		}
 		return ctx.Err()
 	}
 	return w.finalErr
@@ -74,6 +79,19 @@ func TestSingleWorkerRunnerPreservesLockLossCancellationCause(t *testing.T) {
 	finalErr := errors.New("stop after lock reacquisition")
 	factory := &lockLossFactory{cause: lockLossErr}
 	probe := &cancellationCauseWorker{finalErr: finalErr}
+	h := &LongRunningWorkerHandler{ctx: context.Background(), dlFactory: factory}
+
+	err := h.singleWorkerRunner(NewWorkerContext(context.Background(), probe.GetName(), probe.GetID()), probe)
+
+	require.ErrorIs(t, err, finalErr)
+	require.Equal(t, 2, probe.runs)
+}
+
+func TestSingleWorkerRunnerPreservesLockLossCauseWhenDependencyMasksCancellation(t *testing.T) {
+	lockLossErr := fwerrors.Newf(distributedlock.ErrCodeLockNotAutoExtended, "lock lease expired")
+	finalErr := errors.New("stop after lock reacquisition")
+	factory := &lockLossFactory{cause: lockLossErr}
+	probe := &cancellationCauseWorker{interruptedErr: sql.ErrTxDone, finalErr: finalErr}
 	h := &LongRunningWorkerHandler{ctx: context.Background(), dlFactory: factory}
 
 	err := h.singleWorkerRunner(NewWorkerContext(context.Background(), probe.GetName(), probe.GetID()), probe)
