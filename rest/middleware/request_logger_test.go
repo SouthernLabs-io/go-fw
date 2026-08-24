@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/mocktracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/southernlabs-io/go-fw/config"
+	fwcontext "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/log"
 	"github.com/southernlabs-io/go-fw/rest/middleware"
 )
@@ -159,15 +163,113 @@ func TestRequestLoggerMiddleware_SanitizesConfiguredReferrer(t *testing.T) {
 	require.NotContains(t, output.String(), "referer-secret")
 }
 
+func TestRequestLoggerMiddleware_MalformedReferrerIsOmitted(t *testing.T) {
+	var output bytes.Buffer
+	conf := config.Config{}
+	conf.HttpServer.RequestLogger.ReferrerMode = config.RequestLoggerReferrerOriginPath
+	lf := log.NewLoggerFactoryWithWriter(config.RootConfig{
+		Log: config.LogConfig{Level: config.LogLevelInfo, Structured: true},
+	}, &output)
+	mw := middleware.NewRequestLogger(conf, lf)
+
+	req := httptest.NewRequest(http.MethodGet, "/upload", nil)
+	req.Header.Set("Referer", "https://example.com/%ZZ?token=referer-secret")
+	req = req.WithContext(lf.AddToCtx(req.Context()))
+	mw.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(httptest.NewRecorder(), req)
+
+	requestLog := requestEndLog(t, output.String())
+	httpAttrs := requestLog["http"].(map[string]any)
+	require.NotContains(t, httpAttrs, "referer")
+	require.NotContains(t, output.String(), "referer-secret")
+}
+
+func TestRequestLoggerMiddleware_PreservesRequestIDTracingRoutePatternAndStatus(t *testing.T) {
+	var output bytes.Buffer
+	conf := config.Config{}
+	conf.Datadog.Tracing = true
+	lf := log.NewLoggerFactoryWithWriter(config.RootConfig{
+		Log: config.LogConfig{Level: config.LogLevelInfo, Structured: true},
+	}, &output)
+	mw := middleware.NewRequestLogger(conf, lf)
+
+	mt := mocktracer.Start()
+	t.Cleanup(mt.Stop)
+	span, spanCtx := tracer.StartSpanFromContext(fwcontext.Background(), "request")
+	t.Cleanup(func() { span.Finish() })
+
+	calledWithRequestID := ""
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /items/{id}", func(w http.ResponseWriter, r *http.Request) {
+		calledWithRequestID = fwcontext.GetRequestIDFromCtx(r.Context())
+		w.WriteHeader(http.StatusCreated)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/items/42", nil)
+	req.Header.Set("Request-ID", "request-id-123")
+	req = req.WithContext(lf.AddToCtx(spanCtx))
+	recorder := httptest.NewRecorder()
+	mw.Handle(mux).ServeHTTP(recorder, req)
+
+	require.Equal(t, http.StatusCreated, recorder.Code)
+	require.Equal(t, "request-id-123", calledWithRequestID)
+
+	requestLog := requestEndLogForPath(t, output.String(), "/items/42")
+	require.Equal(t, float64(http.StatusCreated), requestLog["http.status_code"])
+	require.Equal(t, "GET /items/{id}", requestLog["http.url_details.pattern"])
+	require.Equal(t, strconv.FormatUint(span.Context().TraceID(), 10), requestLogNumber(t, requestLog, "dd.trace_id"))
+	require.Equal(t, strconv.FormatUint(span.Context().SpanID(), 10), requestLogNumber(t, requestLog, "dd.span_id"))
+}
+
+func TestRequestLoggerMiddleware_ExcludedRouteStillExecutesWithoutRequestLog(t *testing.T) {
+	var output bytes.Buffer
+	conf := config.Config{}
+	conf.HttpServer.ReqLoggerExcludes = []string{"/health"}
+	lf := log.NewLoggerFactoryWithWriter(config.RootConfig{
+		Log: config.LogConfig{Level: config.LogLevelInfo, Structured: true},
+	}, &output)
+	mw := middleware.NewRequestLogger(conf, lf)
+
+	handlerCalled := false
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req = req.WithContext(lf.AddToCtx(req.Context()))
+	recorder := httptest.NewRecorder()
+	mw.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(recorder, req)
+
+	require.True(t, handlerCalled)
+	require.Equal(t, http.StatusNoContent, recorder.Code)
+	require.NotContains(t, output.String(), "Req End: /health")
+}
+
 func requestEndLog(t *testing.T, logs string) map[string]any {
+	return requestEndLogForPath(t, logs, "/upload")
+}
+
+func requestEndLogForPath(t *testing.T, logs string, path string) map[string]any {
 	t.Helper()
 	for _, line := range strings.Split(strings.TrimSpace(logs), "\n") {
 		var entry map[string]any
 		require.NoError(t, json.Unmarshal([]byte(line), &entry))
-		if entry["msg"] == "Req End: /upload" {
+		if entry["msg"] == "Req End: "+path {
+			entry["_raw"] = line
 			return entry
 		}
 	}
 	t.Fatal("request end log not found")
 	return nil
+}
+
+func requestLogNumber(t *testing.T, entry map[string]any, key string) string {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(entry["_raw"].(string)))
+	decoder.UseNumber()
+	var decoded map[string]any
+	require.NoError(t, decoder.Decode(&decoded))
+	value, ok := decoded[key].(json.Number)
+	require.Truef(t, ok, "log attribute %q not found", key)
+	return value.String()
 }

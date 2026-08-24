@@ -118,3 +118,20 @@ func TestLoadConfig_RequestLoggerValues(t *testing.T) {
 	require.Equal(t, []string{"view"}, conf.HttpServer.RequestLogger.QueryParameterAllowlist)
 	require.Equal(t, config.RequestLoggerReferrerOriginPath, conf.HttpServer.RequestLogger.ReferrerMode)
 }
+
+func TestLoadConfig_RequestLoggerYAMLValues(t *testing.T) {
+	var conf config.Config
+	config.LoadConfig(config.GetRootConfig(), &conf, nil)
+
+	require.Equal(t, []string{"fixture-safe"}, conf.HttpServer.RequestLogger.QueryParameterAllowlist)
+	require.Equal(t, config.RequestLoggerReferrerOriginPath, conf.HttpServer.RequestLogger.ReferrerMode)
+}
+
+func TestLoadConfig_RequestLoggerRejectsInvalidReferrerMode(t *testing.T) {
+	t.Setenv("HTTPSERVER_REQUESTLOGGER_REFERRERMODE", "full")
+
+	require.Panics(t, func() {
+		var conf config.Config
+		config.LoadConfig(config.GetRootConfig(), &conf, nil)
+	})
+}

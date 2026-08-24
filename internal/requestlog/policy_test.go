@@ -66,3 +66,14 @@ func TestPolicy_InvalidReferrerModeOmitsReferrer(t *testing.T) {
 
 	require.Empty(t, metadata.Referrer)
 }
+
+func TestPolicy_MalformedReferrerOmitsReferrer(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/editor", nil)
+	req.Header.Set("Referer", "https://example.com/%ZZ?token=referer-secret")
+
+	metadata := requestlog.NewPolicy(config.RequestLoggerConfig{
+		ReferrerMode: config.RequestLoggerReferrerOriginPath,
+	}).Metadata(req)
+
+	require.Empty(t, metadata.Referrer)
+}

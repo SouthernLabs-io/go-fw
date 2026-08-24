@@ -1,3 +1,8 @@
 MapConfig:
   key1: true
   key2: false
+
+httpServer:
+  requestLogger:
+    queryParameterAllowlist: ["fixture-safe"]
+    referrerMode: origin_path
