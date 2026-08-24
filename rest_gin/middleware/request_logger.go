@@ -14,6 +14,7 @@ import (
 
 	"github.com/southernlabs-io/go-fw/config"
 	"github.com/southernlabs-io/go-fw/context"
+	"github.com/southernlabs-io/go-fw/internal/requestlog"
 	"github.com/southernlabs-io/go-fw/log"
 	rest "github.com/southernlabs-io/go-fw/rest_gin"
 )
@@ -23,6 +24,7 @@ type RequestLoggerMiddleware struct {
 
 	lf         log.LoggerFactory
 	excludeMap map[string]bool
+	policy     requestlog.Policy
 }
 
 func NewRequestLogger(conf config.Config, lf log.LoggerFactory) *RequestLoggerMiddleware {
@@ -42,6 +44,7 @@ func NewRequestLogger(conf config.Config, lf log.LoggerFactory) *RequestLoggerMi
 		BaseMiddleware{conf, logger},
 		lf,
 		excludeMap,
+		requestlog.NewPolicy(conf.HttpServer.RequestLogger),
 	}
 }
 
@@ -54,9 +57,10 @@ func (m *RequestLoggerMiddleware) Priority() MiddlewarePriority {
 }
 
 func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
-	m.lf.AddToCtx(ctx)
+	loggerCtx := m.lf.AddToCtx(ctx)
 
-	urlPath := ctx.Request.URL.Path
+	metadata := m.policy.Metadata(ctx.Request)
+	urlPath := metadata.Path
 	start := time.Now()
 	requestID := ctx.GetHeader("Request-ID")
 	if requestID == "" {
@@ -76,21 +80,27 @@ func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
 		}
 	}
 
+	urlDetails := []slog.Attr{
+		slog.String("host", hostname),
+		portAttr,
+		slog.String("path", urlPath),
+	}
+	if metadata.Query != nil {
+		urlDetails = append(urlDetails, slog.Any("queryString", metadata.Query))
+	}
+	httpAttrs := []slog.Attr{
+		slog.String("method", ctx.Request.Method),
+		slog.String("url", urlPath),
+		slog.String("request_id", requestID),
+		slog.String("useragent", ctx.Request.UserAgent()),
+		slog.String("version", ctx.Request.Proto),
+		slog.GroupAttrs("url_details", urlDetails...),
+	}
+	if metadata.Referrer != "" {
+		httpAttrs = append(httpAttrs, slog.String("referer", metadata.Referrer))
+	}
 	attrs := []slog.Attr{
-		slog.Group("http",
-			slog.String("method", ctx.Request.Method),
-			slog.String("url", ctx.Request.RequestURI),
-			slog.String("request_id", requestID),
-			slog.String("referer", ctx.Request.Referer()),
-			slog.String("useragent", ctx.Request.UserAgent()),
-			slog.String("version", ctx.Request.Proto),
-			slog.Group("url_details",
-				slog.String("host", hostname),
-				portAttr,
-				slog.String("path", urlPath),
-				slog.Any("queryString", ctx.Request.URL.Query()),
-			),
-		),
+		slog.GroupAttrs("http", httpAttrs...),
 		slog.String("network.client.ip", ctx.ClientIP()),
 	}
 
@@ -105,24 +115,24 @@ func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
 			)
 		} else {
 			// Should not happen!
-			logger := log.GetLoggerFromCtx(ctx).WithAttrs(attrs...)
+			logger := log.GetLoggerFromCtx(loggerCtx).WithAttrs(attrs...)
 			logger.Errorf("tracing is enabled but there is no span in the context!")
 		}
 	}
 
-	log.CtxAppendLoggerAttrs(ctx, attrs...)
+	loggerCtx = log.CtxAppendLoggerAttrs(loggerCtx, attrs...)
 
 	if m.excludeMap[ctx.FullPath()] {
 		return
 	}
 
-	logger := log.GetLoggerFromCtxForType(ctx, m)
+	logger := log.GetLoggerFromCtxForType(loggerCtx, m)
 	logger.Debugf("Req Start: %s", urlPath)
 
 	ctx.Next()
 
 	latency := time.Since(start)
-	logger = log.GetLoggerFromCtx(ctx)
+	logger = log.GetLoggerFromCtx(loggerCtx)
 	status := ctx.Writer.Status()
 	level := config.LogLevelInfo
 	if status >= 500 {
@@ -134,6 +144,7 @@ func (m *RequestLoggerMiddleware) Run(ctx *gin.Context) {
 		slog.Int("http.status_code", status),
 		// Using "duration" to follow DataDog expectations
 		slog.Duration("duration", latency),
+		slog.String("http.url_details.pattern", ctx.FullPath()),
 	)
 }
 
