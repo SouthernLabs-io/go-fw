@@ -179,6 +179,12 @@ func (e *DefaultExecutor) QueueCapacity() (capacity int) {
 
 // inLoop runs fn on the event loop, which owns the queues and counters; once the loop has ended
 // nothing mutates them anymore, so fn runs on the caller's goroutine
+//
+// It blocks until the loop handles the event, so NEVER call it from the event loop goroutine (event
+// handlers, tryRunNextTask, etc.): the loop would wait on itself and deadlock. That includes the
+// public getters built on it: Concurrency(), QueueLength() and QueueCapacity().
+// From inside the loop read the fields directly instead: e.concurrency, e.queueCapacity, e.running
+// and e.queueLength(). Task callbacks run on their own goroutine, so they can use the public getters.
 func (e *DefaultExecutor) inLoop(fn func()) {
 	event := _InLoopEvent{Fn: fn, Done: make(chan struct{})}
 	if !e.emitEvent(event) {
