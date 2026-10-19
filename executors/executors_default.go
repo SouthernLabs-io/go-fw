@@ -44,7 +44,14 @@ type _TaskCanceledEvent struct {
 
 type _TaskSubmittedEvent struct {
 	_PrivateEvent
-	Task *_Task
+	Task     *_Task
+	Accepted chan bool // buffered; the event loop reports whether the task fit
+}
+
+type _InLoopEvent struct {
+	_PrivateEvent
+	Fn   func()
+	Done chan struct{}
 }
 
 type _CancelEvent struct {
@@ -82,6 +89,7 @@ type DefaultExecutor struct {
 	schedulerTimer       *time.Timer
 	schedulerTimerTarget time.Time
 
+	// owned by the event loop goroutine; other goroutines read them through inLoop
 	queueCapacity int
 	concurrency   int
 	running       int
@@ -141,8 +149,9 @@ func NewDefaultExecutor(ctx context.Context, rootConf config.RootConfig, concurr
 	return e
 }
 
-func (e *DefaultExecutor) Concurrency() int {
-	return e.concurrency
+func (e *DefaultExecutor) Concurrency() (concurrency int) {
+	e.inLoop(func() { concurrency = e.concurrency })
+	return concurrency
 }
 
 func (e *DefaultExecutor) SetConcurrency(concurrency int) {
@@ -154,12 +163,29 @@ func (e *DefaultExecutor) SetConcurrency(concurrency int) {
 	<-event.Wait
 }
 
-func (e *DefaultExecutor) QueueLength() int {
+func (e *DefaultExecutor) QueueLength() (length int) {
+	e.inLoop(func() { length = e.queueLength() })
+	return length
+}
+
+func (e *DefaultExecutor) queueLength() int {
 	return e.queue.Len() + e.scheduledQueue.Len()
 }
 
-func (e *DefaultExecutor) QueueCapacity() int {
-	return e.queueCapacity
+func (e *DefaultExecutor) QueueCapacity() (capacity int) {
+	e.inLoop(func() { capacity = e.queueCapacity })
+	return capacity
+}
+
+// inLoop runs fn on the event loop, which owns the queues and counters; once the loop has ended
+// nothing mutates them anymore, so fn runs on the caller's goroutine
+func (e *DefaultExecutor) inLoop(fn func()) {
+	event := _InLoopEvent{Fn: fn, Done: make(chan struct{})}
+	if !e.emitEvent(event) {
+		fn()
+		return
+	}
+	<-event.Done
 }
 
 func (e *DefaultExecutor) SetQueueCapacity(capacity int) {
@@ -229,19 +255,18 @@ func (e *DefaultExecutor) schedule(
 		return nil, ErrExecutorCanceled
 	}
 
-	// Best effort to keep the queue size under the capacity. Two concurrent goroutines adding tasks to the queue
-	// can cause the queue to grow beyond the capacity.
-	if e.remainingTotalCapacity() < 1 {
-		return nil, ErrExecutorQueueFull
-	}
-
 	taskID := e.taskCount.Add(1)
 	task := newTask(taskID, taskType, initialDelay, delay, e.emitEvent)
 	task.execute = callable
 	task.configureContext(e.ctx, e.rootConf, "default-executor-task")
-	if !e.emitEvent(_TaskSubmittedEvent{Task: task}) {
+	accepted := make(chan bool, 1)
+	if !e.emitEvent(_TaskSubmittedEvent{Task: task, Accepted: accepted}) {
 		task.setDone(nil, ErrExecutorCanceled)
 		return nil, ErrExecutorCanceled
+	}
+	if !<-accepted {
+		task.setDone(nil, ErrExecutorQueueFull)
+		return nil, ErrExecutorQueueFull
 	}
 	return task, nil
 }
@@ -347,7 +372,7 @@ func (e *DefaultExecutor) eventLoop() {
 			}
 
 			// Check if the next task is meant to be run now
-			if e.scheduledQueue.Peek().Value.nextRun.Compare(time.Now()) <= 0 {
+			if e.scheduledQueue.Peek().Value.nextRunTime().Compare(time.Now()) <= 0 {
 				task := e.scheduledQueue.Pop()
 				task.Value.sQueueElement = nil
 				e.tryExecuteTask(task.Value)
@@ -359,19 +384,26 @@ func (e *DefaultExecutor) eventLoop() {
 			switch event := eventAny.(type) {
 
 			case _TaskSubmittedEvent:
-				e.tryExecuteTask(event.Task)
+				accepted := e.remainingTotalCapacity() >= 1
+				event.Accepted <- accepted
+				if accepted {
+					e.tryExecuteTask(event.Task)
+				}
+
+			case _InLoopEvent:
+				event.Fn()
+				close(event.Done)
 
 			case _TaskCompletedEvent:
 				e.running--
 				task := event.Task
 				if !task.Done() {
-					if task.Canceled() {
+					if task.Canceled() || (task.Periodic() && !task.configureNextRun()) {
 						task.setDone(nil, context.Canceled)
 					} else if task.Periodic() {
-						task.configureNextRun()
 						task.configureContext(e.ctx, e.rootConf, "default-executor-task")
 						if task.Delay() > 0 {
-							e.scheduledQueue.Push(task, task.nextRun.UnixNano())
+							e.scheduledQueue.Push(task, task.nextRun.Load())
 							e.configureSchedulerTimer()
 						} else {
 							e.queue.PushBack(task)
@@ -384,9 +416,6 @@ func (e *DefaultExecutor) eventLoop() {
 
 			case _TaskCanceledEvent:
 				task := event.Task
-				if task.err == nil {
-					task.err = context.Canceled
-				}
 				if e.queue.Len() == 0 {
 					continue
 				}
@@ -463,7 +492,7 @@ func (e *DefaultExecutor) tryRunNextTask() (shouldContinue bool) {
 		return true
 	}
 
-	if e.QueueLength() == 0 {
+	if e.queueLength() == 0 {
 		if e.Canceled() {
 			if e.running > 0 {
 				e.status.CompareAndSwap(_ExecutorStatusShuttingDown, _ExecutorStatusWaitingTermination)
@@ -503,7 +532,7 @@ func (e *DefaultExecutor) tryExecuteTask(task *_Task) {
 
 	// Schedule if the task is meant to be run in the future
 	if task.Delay() > 0 {
-		task.sQueueElement = e.scheduledQueue.Push(task, task.nextRun.UnixNano())
+		task.sQueueElement = e.scheduledQueue.Push(task, task.nextRun.Load())
 		e.configureSchedulerTimer()
 		return
 	}
@@ -521,7 +550,7 @@ func (e *DefaultExecutor) remainingTotalCapacity() int {
 	if e.concurrency < 0 || e.queueCapacity < 0 {
 		return math.MaxInt32
 	}
-	return e.concurrency - e.running + e.queueCapacity - e.QueueLength()
+	return e.concurrency - e.running + e.queueCapacity - e.queueLength()
 }
 
 // return true if we can start a new task
@@ -558,7 +587,7 @@ func (e *DefaultExecutor) configureSchedulerTimer() {
 	if e.scheduledQueue.Len() == 0 {
 		return
 	}
-	nextRun := e.scheduledQueue.Peek().Value.nextRun
+	nextRun := e.scheduledQueue.Peek().Value.nextRunTime()
 	if nextRun.Equal(e.schedulerTimerTarget) {
 		return
 	}

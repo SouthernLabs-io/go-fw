@@ -300,13 +300,13 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 	require.EqualValues(t, 0, exec.QueueCapacity())
 	require.EqualValues(t, 0, exec.QueueLength())
 
-	// We only modify them from a single goroutine, so we don't need to use atomic
+	// start is only touched by the task; count is also read by the test goroutine
 	start := time.Now()
-	count := 0
+	count := atomic.Int32{}
 	initialDelay := time.Millisecond * 50
 	period := initialDelay * 2
 	future, err := exec.ScheduleWithFixedRate(func(ctx context.Context) error {
-		if count == 0 {
+		if count.Load() == 0 {
 			require.GreaterOrEqual(t, time.Since(start), initialDelay)
 			start = start.Add(initialDelay)
 		} else {
@@ -314,7 +314,7 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 			start = start.Add(period)
 		}
 
-		count += 1
+		count.Add(1)
 		return nil
 	}, initialDelay, period)
 	require.NoError(t, err)
@@ -334,8 +334,8 @@ func TestDefaultExecutor_ScheduleAtFixedRate(t *testing.T) {
 
 	expectedCount := 5
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		logger.Debugf("count: %d", count)
-		assert.EqualValues(c, expectedCount, count)
+		logger.Debugf("count: %d", count.Load())
+		assert.EqualValues(c, expectedCount, count.Load())
 	}, initialDelay+period*time.Duration(expectedCount+1), period)
 	require.Never(t, func() bool {
 		<-future.Await()
