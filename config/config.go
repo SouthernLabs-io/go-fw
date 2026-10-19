@@ -26,6 +26,9 @@ type DatabaseConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxIdleTime time.Duration
+	// ConnMaxLifetime closes and replaces connections older than this, so they don't go stale
+	// (e.g. after the machine sleeps). Zero means connections are not rotated.
+	ConnMaxLifetime time.Duration
 }
 
 type CORS struct {
