@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 
-	databasebun "github.com/southernlabs-io/go-fw/database/bun"
 	"github.com/southernlabs-io/go-fw/config"
+	databasebun "github.com/southernlabs-io/go-fw/database/bun"
 	"github.com/southernlabs-io/go-fw/log"
 )
 
