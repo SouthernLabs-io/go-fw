@@ -133,6 +133,9 @@ func (a *FxApp) Populate(targets ...any) *FxApp {
 
 func (a *FxApp) Stop() {
 	a.app.RequireStop()
+	// release the app graph once stopped: testing keeps a finished parallel test's cleanups reachable until
+	// its parent finishes, so this cleanup would otherwise pin every test's app for the whole package run
+	a.app = nil
 }
 
 func (a *FxApp) Wait() <-chan fx.ShutdownSignal {
