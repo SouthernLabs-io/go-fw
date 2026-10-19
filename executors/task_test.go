@@ -165,11 +165,8 @@ func TestTask_Periodic_ConfigureNextRun(t *testing.T) {
 			require.False(t, task.Cancel())
 			require.True(t, task.Canceled())
 
-			// Should panic trying to configure the next run if canceled
-			require.PanicsWithValue(t,
-				"Cannot configure next run for a task that is done or cancelling, current status: 2",
-				func() { task.configureNextRun() },
-			)
+			// Canceled while the run was finishing: must not re-arm
+			require.False(t, task.configureNextRun())
 		})
 	}
 }

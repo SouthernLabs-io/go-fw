@@ -44,7 +44,7 @@ func init() {
 
 type _Task struct {
 	ctx       context.Context
-	ctxCancel context.CancelFunc
+	ctxCancel context.CancelFunc // guarded by mu: Cancel calls it from any goroutine while the event loop re-arms periodic tasks
 
 	// executor event sink used to communicate task state changes
 	eventEmitter func(_Event) bool
@@ -52,13 +52,13 @@ type _Task struct {
 	id      uint64
 	_type   _TaskType
 	status  atomic.Int32
-	nextRun time.Time
+	nextRun atomic.Int64 // unix nanos; the event loop re-arms it while Delay() reads it from callers
 	delay   time.Duration
 
 	mu   sync.Mutex
 	done atomic.Value
 
-	canceled bool
+	canceled atomic.Bool
 	err      error
 	value    any
 
@@ -78,18 +78,19 @@ func newTask(
 	delay time.Duration,
 	eventEmitter func(_Event) bool,
 ) *_Task {
-	return &_Task{
+	t := &_Task{
 		id:    id,
 		_type: taskType,
 
-		nextRun: time.Now().Add(initialDelay), // First run is after the initial delay
-		delay:   delay,
+		delay: delay,
 
 		eventEmitter: eventEmitter,
 
 		queueElement:  nil,
 		sQueueElement: nil,
 	}
+	t.nextRun.Store(time.Now().Add(initialDelay).UnixNano()) // First run is after the initial delay
+	return t
 }
 
 func (t *_Task) Runnable() bool {
@@ -109,7 +110,20 @@ func (t *_Task) Periodic() bool {
 }
 
 func (t *_Task) Delay() time.Duration {
-	return time.Until(t.nextRun)
+	return time.Until(t.nextRunTime())
+}
+
+func (t *_Task) nextRunTime() time.Time {
+	return time.Unix(0, t.nextRun.Load())
+}
+
+func (t *_Task) cancelContext() {
+	t.mu.Lock()
+	cancel := t.ctxCancel
+	t.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }
 
 func (t *_Task) Cancel() bool {
@@ -119,10 +133,8 @@ func (t *_Task) Cancel() bool {
 
 	if t.status.CompareAndSwap(_TaskStatusNew, _TaskStatusDone) {
 		t.err = context.Canceled
-		t.canceled = true
-		if t.ctxCancel != nil {
-			t.ctxCancel()
-		}
+		t.canceled.Store(true)
+		t.cancelContext()
 		doneChn := t.done.Load()
 		if doneChn != nil && doneChn != closedChn {
 			close(doneChn.(chan struct{}))
@@ -137,10 +149,8 @@ func (t *_Task) Cancel() bool {
 	}
 
 	if t.status.CompareAndSwap(_TaskStatusRunning, _TaskStatusCancelling) {
-		t.canceled = true
-		if t.ctxCancel != nil {
-			t.ctxCancel()
-		}
+		t.canceled.Store(true)
+		t.cancelContext()
 		// Best effort notification; executor may already be terminated.
 		if t.eventEmitter != nil {
 			t.eventEmitter(_TaskCanceledEvent{Task: t})
@@ -153,7 +163,7 @@ func (t *_Task) Cancel() bool {
 }
 
 func (t *_Task) Canceled() bool {
-	return t.canceled
+	return t.canceled.Load()
 }
 
 func (t *_Task) Await() <-chan struct{} {
@@ -189,37 +199,37 @@ func (t *_Task) Value() any {
 }
 
 func (t *_Task) configureContext(parentCtx context.Context, rootConf config.RootConfig, name string) {
-	t.ctx, t.ctxCancel = context.WithCancel(worker.NewWorkerContext(
+	ctx, cancel := context.WithCancel(worker.NewWorkerContext(
 		parentCtx, name, fmt.Sprintf("%d@%s", t.id, rootConf.Env.Host),
 	))
+	t.mu.Lock()
+	t.ctx, t.ctxCancel = ctx, cancel
+	t.mu.Unlock()
 }
 
-func (t *_Task) configureNextRun() {
+// configureNextRun re-arms a periodic task after a run; it returns false when the task was canceled
+// while that run was finishing (Cancel moved it from Running to Cancelling), so it must not run again
+func (t *_Task) configureNextRun() bool {
 	if !t.Periodic() {
 		panic("Cannot configure next run for a task that is not periodic")
 	}
 
-	if t.status.Load() >= _TaskStatusCancelling {
-		panic(
-			"Cannot configure next run for a task that is done or cancelling, current status: " +
-				fmt.Sprintf("%d", t.status.Load()),
-		)
-	}
-
 	if !t.status.CompareAndSwap(_TaskStatusRunning, _TaskStatusNew) {
-		panic(
-			"Cannot configure next run, current status: " +
-				fmt.Sprintf("%d", t.status.Load()),
-		)
+		status := t.status.Load()
+		if status == _TaskStatusCancelling {
+			return false
+		}
+		panic("Cannot configure next run, current status: " + fmt.Sprintf("%d", status))
 	}
 	switch t._type {
 	case _TaskTypeFixedDelay:
-		t.nextRun = time.Now().Add(t.delay)
+		t.nextRun.Store(time.Now().Add(t.delay).UnixNano())
 	case _TaskTypeFixedRate:
-		t.nextRun = t.nextRun.Add(t.delay)
+		t.nextRun.Store(t.nextRunTime().Add(t.delay).UnixNano())
 	default:
 		panic("Unknown task type: " + fmt.Sprintf("%d", t._type))
 	}
+	return true
 }
 
 func (t *_Task) setDone(value any, err error) bool {
@@ -234,9 +244,7 @@ func (t *_Task) setDone(value any, err error) bool {
 
 	t.value = value
 	t.err = err
-	if t.ctxCancel != nil {
-		t.ctxCancel()
-	}
+	t.cancelContext()
 	doneChn := t.done.Load()
 	if doneChn != nil {
 		// quick path
