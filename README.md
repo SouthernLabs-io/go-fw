@@ -88,6 +88,9 @@ are excluded unless explicitly configured. See [CONFIG.md](CONFIG.md#request-log
 for the query-parameter allowlist, the optional `origin_path` referrer mode, and the
 matching environment variables. Raw/full-query URL logging is not supported.
 
+Several related secrets can share one Secrets Manager entry holding a JSON object; reference a
+member with `<secret#>` or `<secret:ID#/json/pointer>`. See [CONFIG.md](CONFIG.md#secrets).
+
 Now we can create a `.env` file for use locally:
 ```shell    
 DATABASE_PASS=postgres

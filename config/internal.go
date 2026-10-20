@@ -362,40 +362,25 @@ func parseIndexToken(token string) (int, bool) {
 
 func loadSecrets(secretsMgr SecretsManager) func(map[string]any) {
 	return func(confMap map[string]any) {
-		ctx := context.Background()
+		resolver := newSecretResolver(context.Background(), secretsMgr)
 
 		var traverse func(string, map[string]any)
-		traverse = func(prefix string, m map[string]any) {
+		traverse = func(parentPath string, m map[string]any) {
 			for key, val := range m {
 				switch v := val.(type) {
 				case map[string]any:
-					traverse(prefix+key+".", v)
+					traverse(joinConfigPath(parentPath, key), v)
 				case string:
-					if !strings.HasPrefix(v, "<secret") || !strings.HasSuffix(v, ">") {
+					ref, isSecret, err := parseSecretRef(v, parentPath, key)
+					if !isSecret {
 						continue
 					}
-
-					var smKey, secret string
-					var err error
-					if v == "<secret>" {
-						smKey = prefix + key
-						secret, err = secretsMgr.GetSecret(ctx, smKey)
-					} else if v[7] == ':' {
-						smKey = v[8 : len(v)-1]
-						if smKey == "" {
-							panic(errors.Newf(
-								errors.ErrCodeBadState,
-								"invalid secret value: %s, for key: %s, provide a custom key or remove ':'",
-								v,
-								key,
-							))
-						}
-						secret, err = secretsMgr.GetSecretVerbatim(ctx, smKey)
-					} else {
-						panic(errors.Newf(errors.ErrCodeBadState, "invalid secret value: %s, for key: %s", v, key))
-					}
 					if err != nil {
-						panic(errors.NewUnknownf("could not load secret: %s, error: %w", smKey, err))
+						panic(err)
+					}
+					secret, err := resolver.resolve(ref, key)
+					if err != nil {
+						panic(err)
 					}
 					m[key] = secret
 				}

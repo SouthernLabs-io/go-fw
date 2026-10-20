@@ -80,17 +80,108 @@ Keep the allowlist limited to values that are safe to include in logs.
 The only exception to this rule is when you are developing locally, and you need to provide the secrets.
 In this case they should be stored in a `.env` file and never be committed.
 
-The framework provides secrets management by setting the value to `<secret>`. 
-This will trigger a search for the secret in the configured SecretManager.
+A config value set to a `<secret…>` placeholder is replaced at load time with a value fetched from the
+configured secrets manager. Two managers ship with the framework:
+- `secrets.FxExportAWSSM` — AWS Secrets Manager.
+- `secrets.FxExportEnvSM` — environment variables (the usual choice for local development).
 
-The key in the SecretManager will be constructed using the `env.name` and the key in the `config.yaml` file.
-- Example 1: `env.name: dev1` and `database.pass: <secret>`: the key will be `dev1/database.pass`
-- Example 2: `env.name: QA2` and `Triggers.on_save.dataStorePass: <secret>`: the key will be `QA2/Triggers.on_save.dataStorePass`
+### `<secret>` — id derived from the config path
 
-You can override this behavior by using the format `<secret:{custom_key}>`. In this case no change will be
-made to the provided `custom_key`.
-- Example 1: `database.pass: <secret:Dev1@database_pass>`: the key will be `Dev1@database_pass`
-- Example 2: `Triggers.on_save.dataStorePass: <secret:Password-For-DataStore>`: the key will be `Password-For-DataStore`
+The secret id is built from the config key's path using `secrets.prefixFmt` and `secrets.keyFmt`,
+which default to `{Name}/{Env.Type}/{Env.Name}/` and `{Key}`. Supported placeholders are `{Name}`
+(service name), `{Env.Type}`, `{Env.Name}` and, in `keyFmt` only, `{Key}`.
+
+`{Key}` is the dotted path of the **Go struct fields** that hold the value (or their `json` tag names
+when present), not the spelling used in `config.yaml`. The config is normalised through the struct
+before secrets are resolved.
+
+```yaml
+name: my-service
+env:
+  type: dev
+  name: dev1
+
+database:
+  pass: <secret>     # id: my-service/dev/dev1/Database.Pass
+```
+
+```yaml
+secrets:
+  prefixFmt: "{Env.Name}/"   # id becomes: dev1/Database.Pass
+```
+
+### `<secret:ID>` — id used verbatim
+
+No transformation is applied to `ID`.
+
+```yaml
+database:
+  pass: <secret:Dev1@database_pass>          # id: Dev1@database_pass
+smtp:
+  password: <secret:Password-For-DataStore>  # id: Password-For-DataStore
+```
+
+### Grouped secrets: one JSON object, many values
+
+Related secrets can share a single secrets-manager entry whose value is a JSON object. Append `#` and
+an [RFC 6901 JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901) to select one member. The
+group is fetched **once** per config load no matter how many values reference it.
+
+| Placeholder          | Secret id                          | JSON Pointer                     |
+| -------------------- | ---------------------------------- | -------------------------------- |
+| `<secret#>`          | transformed **parent** config path | `/<config key>` (implicit)       |
+| `<secret#/ptr>`      | transformed **parent** config path | `/ptr`                           |
+| `<secret:ID#>`       | `ID` verbatim                      | `/<config key>` (implicit)       |
+| `<secret:ID#/ptr>`   | `ID` verbatim                      | `/ptr`                           |
+
+The implicit form uses the config key the value sits on as the member name, so a whole block can be
+grouped without repeating names:
+
+```yaml
+database:
+  user: <secret#>    # id: my-service/dev/dev1/Database   member: /User
+  pass: <secret#>    # same id, fetched once              member: /Pass
+  port: <secret#>    #                                    member: /Port
+```
+
+```jsonc
+// value of secret "my-service/dev/dev1/Database"
+{ "User": "app", "Pass": "s3cr3t", "Port": 5432 }
+```
+
+Member names are matched exactly (case-sensitive). With the implicit form they follow the same rule
+as `{Key}` above: Go field names, or `json` tag names when the struct declares them. Use an explicit
+Pointer when the JSON uses different names or is nested:
+
+```yaml
+llm:
+  openai:
+    apiKey: <secret:llm-keys#/openai/apiKey>       # id: llm-keys
+  anthropic:
+    apiKey: <secret:llm-keys#/anthropic/apiKey>    # same id, fetched once
+rotation:
+  current: <secret:rotation#/passwords/0>          # array index
+misc:
+  value: <secret:misc#/api~1keys/openai>           # member "api/keys": '/' is written ~1, '~' is written ~0
+```
+
+Rules:
+- The Pointer must start with `/`. `<secret#…>` is not allowed on a top-level key (there is no parent
+  path); use `<secret:ID#…>` there.
+- The secret must be a JSON object. The selected member must be a string, number or bool; numbers and
+  bools are inserted as their literal text (`5432`, `true`) and converted by the normal config
+  decoding, so they can target `int`/`bool` fields. `null`, objects and arrays are rejected.
+- `#` is split at its first occurrence; it is not a legal character in AWS secret names or env var
+  names, so ids never need escaping.
+- Plain `<secret>` / `<secret:ID>` never parse the value: a secret that happens to be JSON (for
+  example a GCP service-account key) is inserted whole.
+- Errors name the config key, the secret id and the Pointer; they never include secret content.
+
+For local development the same syntax works with `secrets.FxExportEnvSM` and a JSON blob in `.env`:
+
+```shell
+LLM_KEYS={"openai":{"apiKey":"sk-..."},"anthropic":{"apiKey":"sk-ant-..."}}
+```
 
 
 ## Tests
