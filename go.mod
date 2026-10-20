@@ -1,6 +1,6 @@
 module github.com/southernlabs-io/go-fw
 
-go 1.25.0
+go 1.26.3
 
 require (
 	github.com/allegro/bigcache v1.2.1
