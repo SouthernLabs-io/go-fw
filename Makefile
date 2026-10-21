@@ -14,10 +14,10 @@ test_short_coverage:
 	@go tool cover -html=coverage.out -o coverage.html
 
 docker_up:
-	@docker compose -f test/docker-compose.yaml up -d --wait
+	@docker compose -f testdata/docker-compose.yaml up -d --wait
 
 docker_down:
-	@docker compose -f test/docker-compose.yaml down
+	@docker compose -f testdata/docker-compose.yaml down
 
 # Run fist docker_up and then docker_down. We can't automatize this without adding more scripts
 test:

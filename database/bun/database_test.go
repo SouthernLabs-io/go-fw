@@ -91,7 +91,7 @@ func TestOpenSqlDB_InvalidTLSReturnsErrorInsteadOfPanicking(t *testing.T) {
 	}
 }
 
-// localPostgresConfig points at the fw_postgres service of test/testdata/docker-compose.yaml (no TLS).
+// localPostgresConfig points at the fw_postgres service of testdata/docker-compose.yaml (no TLS).
 func localPostgresConfig(sslMode string) config.Config {
 	return config.Config{Database: config.DatabaseConfig{
 		Host: "localhost", Port: 5433, User: "postgres", Pass: "postgres", SSLMode: sslMode,
