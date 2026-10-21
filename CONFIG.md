@@ -42,6 +42,18 @@ DATABASE_PASS=no_password
 LOG_LEVEL=debug
 ```
 
+## Database TLS
+
+PostgreSQL TLS is configured with `database.sslMode` and the optional `database.sslRootCert` CA
+file path. An empty `sslMode` defaults to `disable`; set it to `verify-full` to require TLS and
+verify the server certificate and hostname. When configured, the CA file must exist and be
+readable by the application before it connects.
+
+```shell
+DATABASE_SSLMODE=verify-full
+DATABASE_SSLROOTCERT=/etc/postgres/certs/root.crt
+```
+
 ## Request logging
 
 Request logging is secure by default. The logged URL contains only the request path;
