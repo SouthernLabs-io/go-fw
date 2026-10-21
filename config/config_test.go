@@ -137,6 +137,17 @@ func TestLoadConfig_RequestLoggerRejectsInvalidReferrerMode(t *testing.T) {
 	})
 }
 
+func TestLoadConfig_DatabaseTLSValues(t *testing.T) {
+	t.Setenv("DATABASE_SSLMODE", "verify-full")
+	t.Setenv("DATABASE_SSLROOTCERT", "/etc/postgres/certs/root ca.pem")
+
+	var conf config.Config
+	config.LoadConfig(config.GetRootConfig(), &conf, nil)
+
+	require.Equal(t, "verify-full", conf.Database.SSLMode)
+	require.Equal(t, "/etc/postgres/certs/root ca.pem", conf.Database.SSLRootCert)
+}
+
 // recordingSecretsManager serves canned secrets and records which ids were requested, in order.
 type recordingSecretsManager struct {
 	values map[string]string

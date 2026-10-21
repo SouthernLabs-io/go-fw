@@ -42,6 +42,23 @@ DATABASE_PASS=no_password
 LOG_LEVEL=debug
 ```
 
+## Database TLS
+
+PostgreSQL TLS is configured with `database.sslMode` and the optional `database.sslRootCert` CA
+file path. Both the Bun and GORM connectors honor them. An empty `sslMode` keeps each connector's
+existing default (Bun: `disable`; GORM: the pgx default, `prefer`); set it to `verify-full` to
+require TLS and verify the server certificate and hostname. The hostname check uses the configured
+`database.host`, so it must match the server certificate (for RDS, the endpoint name, not an IP).
+When configured, the CA file must exist and be readable by the application before it connects.
+Startup fails with an error (Bun) or a panic (GORM's `MustOpenGORM`) for an unsupported `sslMode`,
+for an `sslRootCert` without an `sslMode` that enables TLS, and for a CA file that is unreadable or
+contains no PEM certificate.
+
+```shell
+DATABASE_SSLMODE=verify-full
+DATABASE_SSLROOTCERT=/etc/postgres/certs/root.crt
+```
+
 ## Request logging
 
 Request logging is secure by default. The logged URL contains only the request path;

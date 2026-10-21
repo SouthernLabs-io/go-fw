@@ -3,8 +3,9 @@ package databasebun
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
+	"net"
+	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/uptrace/bun"
@@ -44,21 +45,17 @@ func WrapWithBun(conf config.Config, slqDB *sql.DB) *bun.DB {
 	bunDB.SetConnMaxIdleTime(conf.Database.ConnMaxIdleTime)
 	bunDB.SetConnMaxLifetime(conf.Database.ConnMaxLifetime)
 
-	// Add query logger
-	bunDB.AddQueryHook(&BunLogger{})
-
-	return bunDB
+	// Add query logger. WithQueryHook returns a clone that shares the same *sql.DB, so the pool settings above still apply.
+	return bunDB.WithQueryHook(&BunLogger{})
 }
 
 func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB, error) {
 	dbConf := conf.Database
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
-		dbConf.User,
-		dbConf.Pass,
-		dbConf.Host,
-		dbConf.Port,
-		dbName,
-	)
+	// pgdriver panics on an invalid TLS setting, so reject it here with an error instead.
+	if err := database.ValidateTLS(dbConf); err != nil {
+		return nil, err
+	}
+	dsn := postgresDSN(dbConf, dbName)
 	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	// Check the connection
 	err := sqlDB.Ping()
@@ -71,11 +68,45 @@ func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB
 	}*/
 	if err != nil {
 		_ = sqlDB.Close()
-		dsn = strings.ReplaceAll(dsn, dbConf.Pass, "*")
-		return nil, errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err)
+		return nil, errors.NewUnknownf("could not connect to DB: %s, error: %w", sanitizedDSN(dsn), err)
 	}
 	lf.GetLogger().Infof("DB connection established: \"%s\"", dbName)
 	return sqlDB, nil
+}
+
+func sslModeOrDefault(dbConf config.DatabaseConfig) string {
+	if dbConf.SSLMode == "" {
+		return "disable"
+	}
+	return dbConf.SSLMode
+}
+
+func postgresDSN(dbConf config.DatabaseConfig, dbName string) string {
+	query := url.Values{}
+	query.Set("sslmode", sslModeOrDefault(dbConf))
+	if dbConf.SSLRootCert != "" {
+		query.Set("sslrootcert", dbConf.SSLRootCert)
+	}
+
+	dsn := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(dbConf.User, dbConf.Pass),
+		Host:     net.JoinHostPort(dbConf.Host, strconv.Itoa(dbConf.Port)),
+		Path:     "/" + dbName,
+		RawQuery: query.Encode(),
+	}
+	return dsn.String()
+}
+
+func sanitizedDSN(dsn string) string {
+	parsed, err := url.Parse(dsn)
+	if err != nil {
+		return "postgres://[redacted]"
+	}
+	if parsed.User != nil {
+		parsed.User = url.User(parsed.User.Username())
+	}
+	return parsed.String()
 }
 
 func OnDBStop(ctx context.Context, db *bun.DB) error {

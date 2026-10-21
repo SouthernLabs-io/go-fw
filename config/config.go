@@ -18,10 +18,12 @@ import (
 )
 
 type DatabaseConfig struct {
-	Host string
-	Port int
-	User string
-	Pass string
+	Host        string
+	Port        int
+	User        string
+	Pass        string
+	SSLMode     string
+	SSLRootCert string
 
 	MaxOpenConns    int
 	MaxIdleConns    int

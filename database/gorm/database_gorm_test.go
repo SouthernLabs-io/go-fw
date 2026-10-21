@@ -19,7 +19,7 @@ func TestDBTx(t *testing.T) {
 	lf := test.NewLoggerFactory(t, conf.RootConfig)
 	conf.Database = config.DatabaseConfig{
 		Host: "localhost",
-		Port: 5432,
+		Port: 5433, // fw_postgres of testdata/docker-compose.yaml
 		User: "postgres",
 		Pass: "postgres",
 	}
