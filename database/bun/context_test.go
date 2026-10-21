@@ -9,10 +9,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/schema"
 
 	fw_context "github.com/southernlabs-io/go-fw/context"
 	"github.com/southernlabs-io/go-fw/database"
+	"github.com/southernlabs-io/go-fw/errors"
 )
 
 // MockIDB is a mock implementation of bun.IDB for testing
@@ -213,19 +216,48 @@ func TestWithLane_NoDBInContext(t *testing.T) {
 	assert.Equal(t, ctx, result)
 }
 
+// newTestBunDB returns a real *bun.DB, which WithLane requires as the lane root. It never connects
+// because the tests do not run queries.
+func newTestBunDB(t *testing.T) *bun.DB {
+	t.Helper()
+	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN("postgres://user:pass@localhost:5432/db?sslmode=disable")))
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	return bun.NewDB(sqlDB, pgdialect.New())
+}
+
 func TestWithLane_WithValidDB(t *testing.T) {
-	mockDB := &MockIDB{}
-	ctx := AddToCtx(context.Background(), mockDB)
+	db := newTestBunDB(t)
+	ctx := AddToCtx(context.Background(), db)
 
 	result := WithLane(ctx, "test-lane")
 
 	// Verify that the lane-specific DB can be retrieved
 	retrieved := GetDBFromCtxLane(result, "test-lane")
-	assert.Equal(t, mockDB, retrieved)
+	assert.Equal(t, db, retrieved)
 
 	// Verify that GetDBFromCtx returns the lane-specific DB due to custom key being set
 	retrieved2 := GetDBFromCtx(result)
-	assert.Equal(t, mockDB, retrieved2)
+	assert.Equal(t, db, retrieved2)
+}
+
+func TestWithLane_UnwrapsTxToBunDB(t *testing.T) {
+	db := newTestBunDB(t)
+	ctx := AddToCtx(context.Background(), Tx{parentDB: db})
+
+	result := WithLane(ctx, "test-lane")
+
+	assert.Equal(t, db, GetDBFromCtxLane(result, "test-lane"))
+}
+
+func TestWithLane_PanicsWhenRootIsNotBunDB(t *testing.T) {
+	ctx := AddToCtx(context.Background(), &MockIDB{})
+
+	defer func() {
+		err, ok := recover().(error)
+		require.True(t, ok, "WithLane should panic with an error")
+		assert.True(t, errors.IsCode(err, errors.ErrCodeBadState))
+	}()
+	WithLane(ctx, "test-lane")
 }
 
 func TestWithLane_ExistingLane(t *testing.T) {
@@ -429,17 +461,17 @@ func TestAddToCtx_MultipleDBs(t *testing.T) {
 }
 
 func TestWithLane_MultipleLanes(t *testing.T) {
-	mockDB := &MockIDB{}
-	ctx := AddToCtx(context.Background(), mockDB)
+	db := newTestBunDB(t)
+	ctx := AddToCtx(context.Background(), db)
 
 	// Add first lane
 	ctx = WithLane(ctx, "lane1")
 	lane1DB := GetDBFromCtxLane(ctx, "lane1")
-	assert.Equal(t, mockDB, lane1DB)
+	assert.Equal(t, db, lane1DB)
 
 	// Add second lane from original context with default DB
-	baseCtx := AddToCtx(context.Background(), mockDB)
+	baseCtx := AddToCtx(context.Background(), db)
 	ctx2 := WithLane(baseCtx, "lane2")
 	lane2DB := GetDBFromCtxLane(ctx2, "lane2")
-	assert.Equal(t, mockDB, lane2DB)
+	assert.Equal(t, db, lane2DB)
 }
