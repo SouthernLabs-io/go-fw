@@ -47,7 +47,9 @@ LOG_LEVEL=debug
 PostgreSQL TLS is configured with `database.sslMode` and the optional `database.sslRootCert` CA
 file path. An empty `sslMode` defaults to `disable`; set it to `verify-full` to require TLS and
 verify the server certificate and hostname. When configured, the CA file must exist and be
-readable by the application before it connects.
+readable by the application before it connects. Startup fails with an error for an unsupported
+`sslMode`, for an `sslRootCert` combined with `sslMode` `disable` (or empty), and for a CA file that
+is unreadable or contains no PEM certificate.
 
 ```shell
 DATABASE_SSLMODE=verify-full

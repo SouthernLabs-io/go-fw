@@ -2,9 +2,11 @@ package databasebun
 
 import (
 	"context"
+	"crypto/x509"
 	"database/sql"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"testing"
 
@@ -53,6 +55,10 @@ func WrapWithBun(conf config.Config, slqDB *sql.DB) *bun.DB {
 
 func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB, error) {
 	dbConf := conf.Database
+	// pgdriver panics on an invalid TLS setting, so reject it here with an error instead.
+	if err := validateTLS(dbConf); err != nil {
+		return nil, err
+	}
 	dsn := postgresDSN(dbConf, dbName)
 	sqlDB := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	// Check the connection
@@ -72,13 +78,45 @@ func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB
 	return sqlDB, nil
 }
 
+// sslModes are the sslmode values supported by pgdriver.
+var sslModes = map[string]bool{
+	"disable": true, "allow": true, "prefer": true, "require": true, "verify-ca": true, "verify-full": true,
+}
+
+func sslModeOrDefault(dbConf config.DatabaseConfig) string {
+	if dbConf.SSLMode == "" {
+		return "disable"
+	}
+	return dbConf.SSLMode
+}
+
+// validateTLS rejects settings pgdriver would panic on or silently ignore: an unknown sslMode, an
+// sslRootCert that would not be used because TLS is disabled, or a CA file that is unreadable or
+// holds no certificate.
+func validateTLS(dbConf config.DatabaseConfig) error {
+	sslMode := sslModeOrDefault(dbConf)
+	if !sslModes[sslMode] {
+		return errors.NewBadStatef("unsupported database.sslMode %q", dbConf.SSLMode)
+	}
+	if dbConf.SSLRootCert == "" {
+		return nil
+	}
+	if sslMode == "disable" {
+		return errors.NewBadStatef("database.sslRootCert is set but database.sslMode is %q; TLS would not be used", sslMode)
+	}
+	pem, err := os.ReadFile(dbConf.SSLRootCert)
+	if err != nil {
+		return errors.NewBadStatef("could not read database.sslRootCert: %w", err)
+	}
+	if !x509.NewCertPool().AppendCertsFromPEM(pem) {
+		return errors.NewBadStatef("database.sslRootCert %q contains no PEM certificate", dbConf.SSLRootCert)
+	}
+	return nil
+}
+
 func postgresDSN(dbConf config.DatabaseConfig, dbName string) string {
 	query := url.Values{}
-	sslMode := dbConf.SSLMode
-	if sslMode == "" {
-		sslMode = "disable"
-	}
-	query.Set("sslmode", sslMode)
+	query.Set("sslmode", sslModeOrDefault(dbConf))
 	if dbConf.SSLRootCert != "" {
 		query.Set("sslrootcert", dbConf.SSLRootCert)
 	}
