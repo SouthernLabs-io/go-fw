@@ -114,12 +114,19 @@ func RunInTxWithOpts(ctx context.Context, opts *sql.TxOptions, fn func(ctx conte
 	}
 	return idb.RunInTx(ctx, opts, func(ctxTx context.Context, tx bun.Tx) error {
 		defer func() {
-			// We need to restore the original DB in the context after the transaction ends if we are in an http request.
-			// This is because the rest package uses a mutable context.
-			if ctx == ctxTx {
-				ctx = AddToCtx(ctx, idb)
-			}
+			// Restore the original DB after the transaction ends if the context uses
+			// the mutable store used by HTTP requests. This also handles Bun returning
+			// a different callback context for nested transactions.
+			AddToCtx(ctx, idb)
 		}()
+
+		// Bun's nested RunInTx callback uses the outer transaction's context, which
+		// drops values and cancellation/deadline state from the context passed to
+		// the nested call. Keep the caller context for framework nested transactions.
+		// At the top level, keep Bun's callback context so query hooks remain visible.
+		if _, nested := idb.(Tx); nested {
+			ctxTx = ctx
+		}
 		ctxTx = AddToCtx(ctxTx, Tx{Tx: tx, parentDB: idb})
 		return fn(ctxTx)
 	})
