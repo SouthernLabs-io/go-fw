@@ -38,8 +38,7 @@ func TestRunInTx_NestedTransactionPreservesCallerContextAndRestoresDB(t *testing
 	sqlMock.ExpectExec(`ROLLBACK TO SAVEPOINT .+`).WillReturnResult(sqlmock.NewResult(0, 0))
 	sqlMock.ExpectRollback()
 
-	db := bun.NewDB(sqlDB, pgdialect.New())
-	db.AddQueryHook(beginContextHook{})
+	db := bun.NewDB(sqlDB, pgdialect.New()).WithQueryHook(beginContextHook{})
 	requestCtx := fw_context.NewContextWithStore(context.Background())
 	requestCtx = AddToCtx(requestCtx, db)
 
