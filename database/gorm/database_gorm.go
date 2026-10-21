@@ -213,12 +213,10 @@ func NewTx(ctx context.Context, txOptions ...*sql.TxOptions) (*DBTx, context.Con
 
 func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm.DB {
 	dbConf := conf.Database
-	dsn := fmt.Sprintf("host='%s' user='%s' password='%s' dbname='%s' port=%d",
-		dbConf.Host,
-		dbConf.User,
-		dbConf.Pass,
-		dbName,
-		dbConf.Port)
+	if err := database.ValidateTLS(dbConf); err != nil {
+		panic(err)
+	}
+	dsn := postgresDSN(dbConf, dbName, dbConf.Pass)
 	gormConf := gorm.Config{
 		Logger: NewGormLogger(lf.GetLoggerForType(gorm.DB{})),
 		NowFunc: func() time.Time {
@@ -237,8 +235,7 @@ func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm
 		db, err = gorm.Open(postgres.Open(dsn), &gormConf)
 	}
 	if err != nil {
-		dsn = strings.ReplaceAll(dsn, "'"+dbConf.Pass+"'", "*")
-		panic(errors.NewUnknownf("could not connect to DB: %s, error: %w", dsn, err))
+		panic(errors.NewUnknownf("could not connect to DB: %s, error: %w", postgresDSN(dbConf, dbName, "*"), err))
 	}
 	sqlDB, err := db.DB()
 	if err != nil {
@@ -247,6 +244,29 @@ func MustOpenGORM(conf config.Config, dbName string, lf log.LoggerFactory) *gorm
 	database.ApplyPoolConfig(sqlDB, dbConf)
 	lf.GetLogger().Infof("DB connection established: \"%s\"", dbName)
 	return db
+}
+
+// postgresDSN builds a pgx key/value DSN. sslmode is only set when configured, so an empty SSLMode keeps
+// the pgx default (prefer).
+func postgresDSN(dbConf config.DatabaseConfig, dbName, password string) string {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d",
+		quoteDSNValue(dbConf.Host),
+		quoteDSNValue(dbConf.User),
+		quoteDSNValue(password),
+		quoteDSNValue(dbName),
+		dbConf.Port)
+	if dbConf.SSLMode != "" {
+		dsn += " sslmode=" + quoteDSNValue(dbConf.SSLMode)
+	}
+	if dbConf.SSLRootCert != "" {
+		dsn += " sslrootcert=" + quoteDSNValue(dbConf.SSLRootCert)
+	}
+	return dsn
+}
+
+// quoteDSNValue single-quotes a key/value DSN value, escaping backslashes and single quotes.
+func quoteDSNValue(value string) string {
+	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(value) + "'"
 }
 
 func OnDBStop(db DB) error {
