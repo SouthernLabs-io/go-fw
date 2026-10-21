@@ -45,10 +45,8 @@ func WrapWithBun(conf config.Config, slqDB *sql.DB) *bun.DB {
 	bunDB.SetConnMaxIdleTime(conf.Database.ConnMaxIdleTime)
 	bunDB.SetConnMaxLifetime(conf.Database.ConnMaxLifetime)
 
-	// Add query logger
-	bunDB.AddQueryHook(&BunLogger{})
-
-	return bunDB
+	// Add query logger. WithQueryHook returns a clone that shares the same *sql.DB, so the pool settings above still apply.
+	return bunDB.WithQueryHook(&BunLogger{})
 }
 
 func OpenSqlDB(conf config.Config, dbName string, lf log.LoggerFactory) (*sql.DB, error) {
