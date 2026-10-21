@@ -1,6 +1,7 @@
 package databasebun
 
 import (
+	"io"
 	"net/url"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/southernlabs-io/go-fw/config"
+	"github.com/southernlabs-io/go-fw/log"
 )
 
 func TestPostgresDSN_DefaultsTLSOff(t *testing.T) {
@@ -87,4 +89,37 @@ func TestOpenSqlDB_InvalidTLSReturnsErrorInsteadOfPanicking(t *testing.T) {
 			require.NotContains(t, err.Error(), "could not connect to DB")
 		})
 	}
+}
+
+// localPostgresConfig points at the fw_postgres service of test/testdata/docker-compose.yaml (no TLS).
+func localPostgresConfig(sslMode string) config.Config {
+	return config.Config{Database: config.DatabaseConfig{
+		Host: "localhost", Port: 5433, User: "postgres", Pass: "postgres", SSLMode: sslMode,
+	}}
+}
+
+func TestOpenSqlDB_ConnectsToLocalPostgres(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+	for _, sslMode := range []string{"", "disable"} {
+		t.Run("sslMode="+sslMode, func(t *testing.T) {
+			sqlDB, err := OpenSqlDB(localPostgresConfig(sslMode), "postgres", log.NewLoggerFactoryWithWriter(config.GetRootConfig(), io.Discard))
+			require.NoError(t, err)
+			defer sqlDB.Close()
+			var one int
+			require.NoError(t, sqlDB.QueryRow("SELECT 1").Scan(&one))
+			require.Equal(t, 1, one)
+		})
+	}
+}
+
+func TestOpenSqlDB_VerifiedTLSFailsAgainstServerWithoutTLS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+	_, err := OpenSqlDB(localPostgresConfig("verify-full"), "postgres", log.NewLoggerFactoryWithWriter(config.GetRootConfig(), io.Discard))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "SSL is not enabled on the server")
+	require.NotContains(t, err.Error(), "postgres:postgres")
 }
