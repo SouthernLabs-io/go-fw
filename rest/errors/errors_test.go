@@ -205,3 +205,26 @@ func TestErrorHandler_DeadlineExceeded_Returns500(t *testing.T) {
 
 	require.Equal(t, http.StatusInternalServerError, w.Code)
 }
+
+func TestErrorHandler_IncludeStacktrace(t *testing.T) {
+	defer SetIncludeStacktrace(includeStacktrace)
+
+	for _, include := range []bool{false, true} {
+		t.Run(fmt.Sprintf("include=%v", include), func(t *testing.T) {
+			SetIncludeStacktrace(include)
+			fwErr := errors.NewUnknownf("something went wrong")
+
+			w := httptest.NewRecorder()
+			r, err := http.NewRequest(http.MethodGet, "/test", nil)
+			require.NoError(t, err)
+
+			ErrorHandler(w, r, fwErr)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			_, hasStack := body["stack"]
+			require.Equal(t, include, hasStack)
+			require.Contains(t, fwErr.LogValue().String(), "stack", "the logged error must keep its stacktrace")
+		})
+	}
+}

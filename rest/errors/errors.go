@@ -21,6 +21,28 @@ type ErrorCodeHTTPMapperFunc func(ctx context.Context, err error) int
 
 var ErrorCodeMapper ErrorCodeHTTPMapperFunc
 
+// TODO: Replace this global (and ErrorCodeMapper) with an injectable handler, so each fx app
+// gets its own config and nothing is shared process-wide:
+//
+//	type ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err *errors.Error)
+//	type DefaultErrorHandlerOptions struct {
+//		CodeMapper        ErrorCodeHTTPMapperFunc // optional
+//		IncludeStacktrace bool
+//	}
+//	func NewDefaultErrorHandler(opts DefaultErrorHandlerOptions) ErrorHandlerFunc
+//	func NewDefaultErrorHandlerFx(...) ErrorHandlerFunc // IncludeStacktrace = conf.Env.Type != EnvTypeProd; mapper optional via fx
+//
+// Callers (rest/middleware/authn.go, app middlewares/handlers) receive the handler via fx
+// instead of calling a package function; apps can fx.Decorate/Replace it with their own.
+// Until then, SetIncludeStacktrace must only be called at startup, before serving requests.
+var includeStacktrace bool
+
+// SetIncludeStacktrace sets whether error responses include the error stacktrace. Default is false.
+// The logged error keeps its stacktrace either way.
+func SetIncludeStacktrace(include bool) {
+	includeStacktrace = include
+}
+
 func ErrorHandler(w http.ResponseWriter, r *http.Request, err *errors.Error) {
 	ctx := r.Context()
 
@@ -39,10 +61,16 @@ func ErrorHandler(w http.ResponseWriter, r *http.Request, err *errors.Error) {
 		}
 	}
 
-	jsonStr, jsonErr := json.Marshal(err)
+	respErr := err
+	if !includeStacktrace {
+		// Use a copy, so the logged error keeps its stacktrace
+		respErr = err.Copy()
+		respErr.SetStackKey("")
+	}
+	jsonStr, jsonErr := json.Marshal(respErr)
 	if jsonErr != nil {
 		log.GetLoggerFromCtx(ctx).Errorf("failed to marshal error response, sending text as is: %v", jsonErr)
-		http.Error(w, err.Error(), httpCode)
+		http.Error(w, errors.ErrorMessageWithoutStacktrace(err), httpCode)
 	} else {
 		// This is the same implementation as in http.Error as of go1.25, only difference is we are using application/json
 		headers := w.Header()
